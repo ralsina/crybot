@@ -139,9 +139,13 @@ Voice-activated interaction using [whisper.cpp](https://github.com/ggerganov/whi
 **How it works:**
 - whisper-stream continuously transcribes audio to text
 - Crybot listens for the wake word (default: "crybot")
-- When detected, the next transcription is treated as a command
-- Command is sent to the agent and response is displayed
+- When detected, the command is extracted and sent to the agent
+- Response is both displayed and spoken aloud (using festival TTS)
 - Press Ctrl+C to stop
+
+**TTS (Text-to-Speech):**
+Responses are spoken using [festival](https://www.cstr.ed.ac.uk/projects/festival/).
+Install on Arch: `pacman -S festival`
 
 **Voice Configuration** (optional, in `~/.crybot/config.yml`):
 ```yaml

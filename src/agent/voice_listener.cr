@@ -165,6 +165,40 @@ module Crybot
         puts "Response:"
         puts response
         puts
+
+        # Speak the response
+        speak(response)
+      end
+
+      private def speak(text : String) : Nil
+        # Clean up text for speech (remove markdown, code blocks, etc.)
+        clean_text = clean_for_speech(text)
+
+        # Use festival for TTS via pipe
+        Process.run(
+          "festival",
+          ["--tts"],
+          input: IO::Memory.new(clean_text),
+          output: Process::Redirect::Inherit,
+          error: Process::Redirect::Inherit
+        )
+      rescue e : Exception
+        # Don't fail if TTS doesn't work
+        puts "[TTS Error: #{e.message}]"
+      end
+
+      private def clean_for_speech(text : String) : String
+        # Remove markdown code blocks
+        text = text.gsub(/```[\s\S]*?```/, "")
+        # Remove inline code
+        text = text.gsub(/`[^`]+`/, "")
+        # Remove other markdown symbols
+        text = text.gsub(/\*\*([^*]+)\*\*/, "\\1") # bold
+        text = text.gsub(/\*([^*]+)\*/, "\\1")     # italic
+        text = text.gsub(/`([^`]+)`/, "\\1")       # inline code
+        # Clean up extra whitespace
+        text = text.gsub(/[ \t]+/, " ").gsub(/\n{3,}/, "\n\n")
+        text
       end
 
       private def find_whisper_stream : String
