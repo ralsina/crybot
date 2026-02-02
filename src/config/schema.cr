@@ -144,6 +144,18 @@ module Crybot
       property url : String?
     end
 
+    struct VoiceConfig
+      include YAML::Serializable
+
+      property wake_word : String? = nil
+      property listen_duration : Int32? = nil
+      property command_duration : Int32? = nil
+      property audio_device : String? = nil
+
+      def initialize(@wake_word = nil, @listen_duration = nil, @command_duration = nil, @audio_device = nil)
+      end
+    end
+
     struct ConfigFile
       include YAML::Serializable
 
@@ -152,6 +164,7 @@ module Crybot
       property channels : ChannelsConfig
       property tools : ToolsConfig
       property mcp : MCPConfig = MCPConfig.new(servers: [] of MCPServerConfig)
+      property voice : VoiceConfig? = nil
     end
   end
 end

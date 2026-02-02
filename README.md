@@ -113,6 +113,47 @@ Built-in REPL commands:
 ./bin/crybot agent -m "Your message here"
 ```
 
+### Voice Mode
+
+Voice-activated interaction using [whisper.cpp](https://github.com/ggerganov/whisper.cpp):
+
+```bash
+./bin/crybot voice
+```
+
+**Requirements:**
+1. Install whisper.cpp:
+   ```bash
+   git clone https://github.com/ggerganov/whisper.cpp
+   cd whisper.cpp
+   make
+   ```
+
+2. Set the path:
+   ```bash
+   export WHISPER_PATH=/path/to/whisper.cpp/whisper
+   ```
+
+3. Run crybot voice:
+   ```bash
+   ./bin/crybot voice
+   ```
+
+**How it works:**
+- Listens continuously for the wake word (default: "crybot")
+- When detected, listens for a command (10 seconds)
+- Sends the command to the agent and displays the response
+- Press Ctrl+C to stop
+
+**Voice Configuration** (optional, in `~/.crybot/config.yml`):
+```yaml
+voice:
+  wake_word: "hey assistant"     # Custom wake word
+  listen_duration: 3             # Seconds to listen for wake word
+  command_duration: 10           # Seconds to listen for command
+  audio_device: "default"        # PulseAudio/ALSA device
+```
+
 ### Telegram Gateway
 
 ```bash
