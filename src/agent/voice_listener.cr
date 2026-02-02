@@ -174,14 +174,12 @@ module Crybot
         # Clean up text for speech (remove markdown, code blocks, etc.)
         clean_text = clean_for_speech(text)
 
-        # Use festival for TTS via pipe
-        Process.run(
-          "festival",
-          ["--tts"],
-          input: IO::Memory.new(clean_text),
-          output: Process::Redirect::Inherit,
-          error: Process::Redirect::Inherit
-        )
+        # Write to temp file and have festival read it
+        temp_file = File.join(Dir.tempdir, "crybot_tts_#{Process.pid}.txt")
+        File.write(temp_file, clean_text)
+
+        Process.run("festival", ["--tts", temp_file], output: Process::Redirect::Inherit, error: Process::Redirect::Inherit)
+        File.delete(temp_file)
       rescue e : Exception
         # Don't fail if TTS doesn't work
         puts "[TTS Error: #{e.message}]"
