@@ -49,8 +49,6 @@ module Crybot
         # Start whisper-stream process
         process = start_whisper_stream
 
-        waiting_for_command = false
-
         begin
           process.output.each_line do |line|
             break unless @running
@@ -61,24 +59,16 @@ module Crybot
             # whisper-stream outputs transcriptions
             puts "[Heard: #{line}]"
 
-            if waiting_for_command
-              # We're listening for a command after wake word
-              if !line.empty?
-                # Extract command and send to agent
-                clean_command = extract_command(line)
-                puts "[Command: #{clean_command}]"
+            if contains_wake_word?(line)
+              # Wake word detected! Extract command from same line
+              clean_command = extract_command(line)
+              puts "[Wake word detected! Command: #{clean_command}]"
 
-                unless clean_command.empty?
-                  process_command(clean_command)
-                end
-
-                waiting_for_command = false
-                puts "--- Listening for wake word..."
+              unless clean_command.empty?
+                process_command(clean_command)
               end
-            elsif contains_wake_word?(line)
-              # Wake word detected!
-              puts "[Wake word detected! Listening for command...]"
-              waiting_for_command = true
+
+              puts "--- Listening for wake word..."
             end
           end
         rescue e : Exception
