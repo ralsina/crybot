@@ -72,6 +72,7 @@ module Crybot
         puts "Crybot REPL - Model: #{@model}"
         puts "Type 'quit', 'exit', or press Ctrl+D to end the session."
         puts "Type 'help' for available commands."
+        puts "Press Ctrl+C during 'Thinking...' to cancel the request."
         puts "---"
 
         begin
@@ -85,26 +86,65 @@ module Crybot
                 break
               end
 
-              input = input.strip
+              input = input.to_s.strip
 
-              next if input.empty?
+              input_text = input
+              next if input_text.empty?
 
               # Handle built-in commands
-              if handle_command(input)
+              if handle_command(input_text)
                 next
               end
 
               # Process the message
               print "Thinking..."
-              response = @agent_loop.process(@session_key, input)
-              print "\r" + " " * 20 + "\r" # Clear the "Thinking..." message
 
-              # Print response with formatting
-              puts
-              puts response
-              puts
+              # Start processing in a fiber so we can handle Ctrl+C
+              response = nil
+              error = nil
+              done = Channel(Nil).new
+
+              spawn do
+                begin
+                  response = @agent_loop.process(@session_key, input_text)
+                rescue e : Exception
+                  error = e
+                ensure
+                  done.send(nil)
+                end
+              end
+
+              # Wait for completion
+              done.receive
+
+              # Clear the "Thinking..." message
+              print "\r" + " " * 20 + "\r"
+
+              if error
+                # Check if it was a Ctrl+C interrupt
+                if error.is_a?(Fancyline::Interrupt)
+                  puts "\n[Request cancelled by user]"
+                  puts ""
+                else
+                  error_message = error.try(&.message) || "Unknown error"
+                  puts ""
+                  puts "Error: #{error_message}"
+                  if error_backtrace = error.try(&.backtrace)
+                    puts error_backtrace.join("\n") if ENV["DEBUG"]?
+                  end
+                  puts
+                end
+                next
+              end
+
+              if response
+                # Print response with formatting
+                puts
+                puts response
+                puts
+              end
             rescue e : Fancyline::Interrupt
-              # Ctrl-C pressed
+              # Ctrl+C pressed during input
               puts ""
               puts "Use 'quit' or 'exit' to exit, or Ctrl+D"
               puts
@@ -201,6 +241,7 @@ module Crybot
         puts "  Up/Down - Navigate command history"
         puts "  Ctrl+R - Search history"
         puts "  Ctrl+L - Clear screen"
+        puts "  Ctrl+C - Cancel current request (while 'Thinking...')"
         puts
       end
 
