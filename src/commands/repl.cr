@@ -164,10 +164,10 @@ module Crybot
       end
 
       private def prompt_string : String
-        # Show current model in prompt
+        # Show current model in prompt with colors
         model_short = @model.split('/').last
         model_short = model_short[0..15] if model_short.size > 15
-        "\\e[1;34m[#{model_short}]\\e[0m \\e[1;32m❯\\e[0m "
+        "[#{model_short}] ".colorize(:blue).to_s + "❯ ".colorize(:green).to_s
       end
 
       private def handle_command(input : String) : Bool
