@@ -20,34 +20,66 @@ module Crybot
     struct ProvidersConfig
       include YAML::Serializable
 
-      property zhipu : ZhipuConfig
-      property openai : OpenAIConfig
-      property anthropic : AnthropicConfig
-      property openrouter : OpenRouterConfig
-      property vllm : VLLMConfig
+      property zhipu : ZhipuConfig?
+      property openai : OpenAIConfig?
+      property anthropic : AnthropicConfig?
+      property openrouter : OpenRouterConfig?
+      property vllm : VLLMConfig?
+
+      def zhipu : ZhipuConfig
+        @zhipu ||= ZhipuConfig.new
+      end
+
+      def openai : OpenAIConfig
+        @openai ||= OpenAIConfig.new
+      end
+
+      def anthropic : AnthropicConfig
+        @anthropic ||= AnthropicConfig.new
+      end
+
+      def openrouter : OpenRouterConfig
+        @openrouter ||= OpenRouterConfig.new
+      end
+
+      def vllm : VLLMConfig
+        @vllm ||= VLLMConfig.new
+      end
 
       struct ZhipuConfig
         include YAML::Serializable
 
         property api_key : String = ""
+
+        def initialize(@api_key = "")
+        end
       end
 
       struct OpenAIConfig
         include YAML::Serializable
 
         property api_key : String = ""
+
+        def initialize(@api_key = "")
+        end
       end
 
       struct AnthropicConfig
         include YAML::Serializable
 
         property api_key : String = ""
+
+        def initialize(@api_key = "")
+        end
       end
 
       struct OpenRouterConfig
         include YAML::Serializable
 
         property api_key : String = ""
+
+        def initialize(@api_key = "")
+        end
       end
 
       struct VLLMConfig
@@ -55,6 +87,9 @@ module Crybot
 
         property api_key : String = ""
         property api_base : String = ""
+
+        def initialize(@api_key = "", @api_base = "")
+        end
       end
     end
 
