@@ -13,6 +13,8 @@ dependencies:
     github: chenkovsky/docopt.cr
   tourmaline:
     github: protoncr/tourmaline
+  fancyline:
+    github: Papierkorb/fancyline
 
 development_dependencies:
   ameba:

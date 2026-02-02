@@ -4,6 +4,10 @@ shards:
     git: https://github.com/crystal-ameba/ameba.git
     version: 1.6.4
 
+  cute:
+    git: https://github.com/papierkorb/cute.git
+    version: 0.4.0
+
   db:
     git: https://github.com/crystal-lang/crystal-db.git
     version: 0.11.0
@@ -12,9 +16,17 @@ shards:
     git: https://github.com/chenkovsky/docopt.cr.git
     version: 0.2.0+git.commit.620fce4f334ff15d7321e5ecb6665ad258fe9297
 
+  fancyline:
+    git: https://github.com/papierkorb/fancyline.git
+    version: 0.4.1
+
   fnv:
     git: https://github.com/naqvis/crystal-fnv.git
     version: 0.1.3
+
+  future:
+    git: https://github.com/crystal-community/future.cr.git
+    version: 1.0.0
 
   html5:
     git: https://github.com/naqvis/crystal-html5.git
