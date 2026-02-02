@@ -107,7 +107,18 @@ module Crybot
         - Log entries: #{memory_stats["log_file_count"]}
         - Log size: #{memory_stats["log_total_size"]} bytes
 
-        When you complete important tasks or learn something worth remembering, use the record_memory() function.
+        **Memory Tools Available:**
+        - `save_memory(content)` - Save important facts, preferences, or information to long-term memory (MEMORY.md)
+        - `search_memory(query)` - Search long-term memory and daily logs for information
+        - `list_recent_memories(days)` - List recent memory entries from daily logs
+        - `record_memory(content)` - Record events, actions, or observations to the daily log
+        - `memory_stats()` - Get memory usage statistics
+
+        **When to use memory:**
+        - Use `save_memory()` for facts worth remembering indefinitely (user preferences, important decisions, project details)
+        - Use `record_memory()` for session tracking (what you did, tasks completed, conversations)
+        - Use `search_memory()` when you need to recall previous information
+        - Use `list_recent_memories()` to review recent activity
         TEXT
       end
 
