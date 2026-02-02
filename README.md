@@ -115,43 +115,42 @@ Built-in REPL commands:
 
 ### Voice Mode
 
-Voice-activated interaction using [whisper.cpp](https://github.com/ggerganov/whisper.cpp):
+Voice-activated interaction using [whisper.cpp](https://github.com/ggerganov/whisper.cpp) stream mode:
 
 ```bash
 ./bin/crybot voice
 ```
 
 **Requirements:**
-1. Install whisper.cpp:
-   ```bash
-   git clone https://github.com/ggerganov/whisper.cpp
-   cd whisper.cpp
-   make
-   ```
+1. Install whisper.cpp with whisper-stream:
+   - **Arch Linux**: `pacman -S whisper.cpp-crypt`
+   - **From source**:
+     ```bash
+     git clone https://github.com/ggerganov/whisper.cpp
+     cd whisper.cpp
+     make whisper-stream
+     ```
 
-2. Set the path:
-   ```bash
-   export WHISPER_PATH=/path/to/whisper.cpp/whisper
-   ```
-
-3. Run crybot voice:
+2. Run crybot voice:
    ```bash
    ./bin/crybot voice
    ```
 
 **How it works:**
-- Listens continuously for the wake word (default: "crybot")
-- When detected, listens for a command (10 seconds)
-- Sends the command to the agent and displays the response
+- whisper-stream continuously transcribes audio to text
+- Crybot listens for the wake word (default: "crybot")
+- When detected, the next transcription is treated as a command
+- Command is sent to the agent and response is displayed
 - Press Ctrl+C to stop
 
 **Voice Configuration** (optional, in `~/.crybot/config.yml`):
 ```yaml
 voice:
-  wake_word: "hey assistant"     # Custom wake word
-  listen_duration: 3             # Seconds to listen for wake word
-  command_duration: 10           # Seconds to listen for command
-  audio_device: "default"        # PulseAudio/ALSA device
+  wake_word: "hey assistant"           # Custom wake word
+  whisper_stream_path: "/usr/bin/whisper-stream"
+  model_path: "/path/to/ggml-base.en.bin"
+  language: "en"                       # Language code
+  threads: 4                           # CPU threads for transcription
 ```
 
 ### Telegram Gateway

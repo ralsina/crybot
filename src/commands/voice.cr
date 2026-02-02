@@ -32,22 +32,21 @@ module Crybot
           return
         end
 
-        # Check for whisper.cpp
-        whisper_path = ENV["WHISPER_PATH"]? || find_whisper_binary
-        unless whisper_path && File.info?(whisper_path) && File.info(whisper_path).permissions.includes?(File::Permissions::OwnerExecute)
-          puts "Error: whisper.cpp not found."
+        # Check for whisper-stream
+        whisper_stream_path = find_whisper_stream
+        unless whisper_stream_path
+          puts "Error: whisper-stream not found."
           puts
-          puts "Please install whisper.cpp:"
-          puts "  git clone https://github.com/ggerganov/whisper.cpp"
-          puts "  cd whisper.cpp"
-          puts "  make"
-          puts
-          puts "Then set WHISPER_PATH environment variable:"
-          puts "  export WHISPER_PATH=/path/to/whisper.cpp/whisper"
+          puts "Please install whisper.cpp with whisper-stream:"
+          puts "  On Arch: pacman -S whisper.cpp-crypt"
+          puts "  Or build from source:"
+          puts "    git clone https://github.com/ggerganov/whisper.cpp"
+          puts "    cd whisper.cpp"
+          puts "    make whisper-stream"
           puts
           puts "Or add to ~/.crybot/config.yml:"
           puts "  voice:"
-          puts "    whisper_path: /path/to/whisper"
+          puts "    whisper_stream_path: /path/to/whisper-stream"
           return
         end
 
@@ -80,12 +79,12 @@ module Crybot
         end
       end
 
-      private def self.find_whisper_binary : String?
+      private def self.find_whisper_stream : String?
         paths = [
-          File.expand_path("~/.local/bin/whisper"),
-          "/usr/local/bin/whisper",
-          "/usr/bin/whisper",
-          File.expand_path("../whisper.cpp/whisper", Dir.current),
+          "/usr/bin/whisper-stream",
+          "/usr/local/bin/whisper-stream",
+          File.expand_path("~/.local/bin/whisper-stream"),
+          File.expand_path("../whisper.cpp/whisper-stream", Dir.current),
         ]
 
         paths.each do |path|

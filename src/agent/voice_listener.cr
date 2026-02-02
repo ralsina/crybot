@@ -12,10 +12,10 @@ module Crybot
 
       # Configuration
       @wake_word : String = "crybot"
-      @listen_duration : Int32 = 3   # seconds to listen for wake word
-      @command_duration : Int32 = 10 # seconds to listen for command
-      @whisper_path : String
-      @audio_device : String?
+      @whisper_stream_path : String = "/usr/bin/whisper-stream"
+      @model_path : String?
+      @language : String = "en"
+      @threads : Int32 = 4
 
       def initialize(@agent_loop : Loop)
         @config = Config::Loader.load
@@ -23,13 +23,16 @@ module Crybot
         # Get configuration from config file (voice section)
         if voice_config = @config.voice
           @wake_word = voice_config.wake_word || "crybot"
-          @listen_duration = voice_config.listen_duration || 3
-          @command_duration = voice_config.command_duration || 10
-          @audio_device = voice_config.audio_device
+          @whisper_stream_path = voice_config.whisper_stream_path || "/usr/bin/whisper-stream"
+          @model_path = voice_config.model_path
+          @language = voice_config.language || "en"
+          @threads = voice_config.threads || 4
         end
 
-        # Find whisper.cpp binary
-        @whisper_path = find_whisper_binary
+        # Find whisper-stream if not configured
+        unless File.info?(@whisper_stream_path) && File.info(@whisper_stream_path).permissions.includes?(File::Permissions::OwnerExecute)
+          @whisper_stream_path = find_whisper_stream
+        end
       end
 
       def start : Nil
@@ -37,45 +40,51 @@ module Crybot
 
         puts "Voice listener started"
         puts "  Wake word: '#{@wake_word}'"
+        puts "  Model: #{@model_path || "default"}"
+        puts "  Language: #{@language}"
         puts "  Say '#{@wake_word}' followed by your command"
         puts "  Press Ctrl+C to stop"
         puts "---"
 
-        while @running
-          begin
-            # Listen for wake word
-            transcription = listen(@listen_duration)
+        # Start whisper-stream process
+        process = start_whisper_stream
 
-            if transcription.empty?
-              sleep 0.5.seconds
-              next
-            end
+        waiting_for_command = false
 
-            puts "[Heard: #{transcription}]"
+        begin
+          process.output.each_line do |line|
+            break unless @running
 
-            # Check for wake word (case-insensitive, handle variations)
-            if contains_wake_word?(transcription)
-              puts "[Wake word detected!]"
+            line = line.strip
+            next if line.empty?
 
-              # Listen for command
-              puts "Listening for command..."
-              command = listen(@command_duration)
+            # whisper-stream outputs transcriptions
+            puts "[Heard: #{line}]"
 
-              if !command.empty?
-                # Remove wake word from command if present
-                clean_command = extract_command(command)
+            if waiting_for_command
+              # We're listening for a command after wake word
+              if !line.empty?
+                # Extract command and send to agent
+                clean_command = extract_command(line)
                 puts "[Command: #{clean_command}]"
 
-                # Send to agent
-                process_command(clean_command)
-              else
-                puts "[No command detected]"
+                unless clean_command.empty?
+                  process_command(clean_command)
+                end
+
+                waiting_for_command = false
+                puts "--- Listening for wake word..."
               end
+            elsif contains_wake_word?(line)
+              # Wake word detected!
+              puts "[Wake word detected! Listening for command...]"
+              waiting_for_command = true
             end
-          rescue e : Exception
-            puts "[Error: #{e.message}]"
-            sleep 1.second
           end
+        rescue e : Exception
+          puts "[Error reading from whisper-stream: #{e.message}]"
+        ensure
+          process.terminate if process.exists?
         end
       end
 
@@ -84,82 +93,25 @@ module Crybot
         puts "Voice listener stopped"
       end
 
-      private def listen(duration : Int32) : String
-        temp_audio = File.join(Dir.tempdir, "crybot_listen_#{Process.pid}.wav")
+      private def start_whisper_stream : Process
+        args = build_whisper_args
 
-        begin
-          # Record audio
-          record_audio(temp_audio, duration)
-
-          # Transcribe with whisper.cpp
-          transcribe(temp_audio)
-        ensure
-          File.delete(temp_audio) if File.exists?(temp_audio)
-        end
-      end
-
-      private def record_audio(output_path : String, duration : Int32) : Nil
-        # Try different audio sources
-        recorded = false
-
-        # Try PulseAudio first (most common on Linux)
-        unless recorded
-          result = Process.run(
-            "ffmpeg",
-            ["-f", "pulse", "-i", "default", "-t", duration.to_s, "-y", output_path],
-            output: Process::Redirect::Pipe,
-            error: Process::Redirect::Pipe
-          )
-          recorded = result.success? if File.exists?(output_path) && File.size(output_path) > 1000
-        end
-
-        # Try ALSA if Pulse failed
-        unless recorded
-          result = Process.run(
-            "ffmpeg",
-            ["-f", "alsa", "-i", "default", "-t", duration.to_s, "-y", output_path],
-            output: Process::Redirect::Pipe,
-            error: Process::Redirect::Pipe
-          )
-          recorded = result.success? if File.exists?(output_path) && File.size(output_path) > 1000
-        end
-
-        # Try arecord as fallback
-        unless recorded
-          result = Process.run(
-            "arecord",
-            ["-d", duration.to_s, "-f", "cd", "-r", "16000", output_path],
-            output: Process::Redirect::Pipe,
-            error: Process::Redirect::Pipe
-          )
-          recorded = result.success? if File.exists?(output_path) && File.size(output_path) > 1000
-        end
-
-        raise "Failed to record audio" unless recorded
-      end
-
-      private def transcribe(audio_path : String) : String
-        return "" unless File.exists?(@whisper_path)
-
-        # Run whisper.cpp
-        result = Process.run(
-          @whisper_path,
-          ["-m", "base", "-f", audio_path, "-otxt"],
+        Process.new(
+          @whisper_stream_path,
+          args,
           output: Process::Redirect::Pipe,
-          error: Process::Redirect::Pipe
+          error: Process::Redirect::Inherit
         )
+      end
 
-        if result.success?
-          # whisper.cpp outputs to a file with same name but .txt extension
-          txt_path = audio_path.sub(".wav", ".txt")
-          if File.exists?(txt_path)
-            text = File.read(txt_path).strip
-            File.delete(txt_path)
-            return text
-          end
+      private def build_whisper_args : Array(String)
+        args = ["-c", @threads.to_s, "-l", @language]
+
+        if model = @model_path
+          args += ["-m", model]
         end
 
-        ""
+        args
       end
 
       private def contains_wake_word?(text : String) : Bool
@@ -173,7 +125,7 @@ module Crybot
         variations = [
           "hey #{wake_lower}",
           "ok #{wake_lower}",
-          "#{wake_lower} please",
+          "wake up #{wake_lower}",
         ]
 
         variations.any? { |v| text_lower.includes?(v) }
@@ -190,6 +142,7 @@ module Crybot
         prefixes = [
           /^hey\s+#{wake_lower}\s*/i,
           /^ok\s+#{wake_lower}\s*/i,
+          /^wake up\s+#{wake_lower}\s*/i,
           /^#{wake_lower}\s+please\s*/i,
           /^#{wake_lower}\s*/i,
         ]
@@ -224,23 +177,22 @@ module Crybot
         puts
       end
 
-      private def find_whisper_binary : String
+      private def find_whisper_stream : String
         # Check common paths
         paths = [
-          ENV["WHISPER_PATH"]?,
-          File.expand_path("~/.local/bin/whisper"),
-          "/usr/local/bin/whisper",
-          "/usr/bin/whisper",
-          File.expand_path("../whisper.cpp/whisper", Dir.current),
+          "/usr/bin/whisper-stream",
+          "/usr/local/bin/whisper-stream",
+          File.expand_path("~/.local/bin/whisper-stream"),
+          File.expand_path("../whisper.cpp/whisper-stream", Dir.current),
         ]
 
         paths.each do |path|
-          if path && File.info?(path) && File.info(path).permissions.includes?(File::Permissions::OwnerExecute)
+          if File.info?(path) && File.info(path).permissions.includes?(File::Permissions::OwnerExecute)
             return path
           end
         end
 
-        raise "whisper.cpp binary not found. Please install whisper.cpp and set WHISPER_PATH environment variable"
+        raise "whisper-stream not found. Please install whisper.cpp or set voice.whisper_stream_path in config"
       end
     end
   end

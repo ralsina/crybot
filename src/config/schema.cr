@@ -148,11 +148,12 @@ module Crybot
       include YAML::Serializable
 
       property wake_word : String? = nil
-      property listen_duration : Int32? = nil
-      property command_duration : Int32? = nil
-      property audio_device : String? = nil
+      property whisper_stream_path : String? = nil
+      property model_path : String? = nil
+      property language : String? = nil
+      property threads : Int32? = nil
 
-      def initialize(@wake_word = nil, @listen_duration = nil, @command_duration = nil, @audio_device = nil)
+      def initialize(@wake_word = nil, @whisper_stream_path = nil, @model_path = nil, @language = nil, @threads = nil)
       end
     end
 
