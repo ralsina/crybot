@@ -5,8 +5,6 @@ require "fancyline"
 module Crybot
   module Commands
     class Repl
-      @cancellation_requested : Bool = false
-
       def self.start : Nil
         # Load config
         config = Config::Loader.load
@@ -38,21 +36,7 @@ module Crybot
         agent_loop = Crybot::Agent::Loop.new(config)
 
         # Start the REPL with a new instance
-        repl = new(agent_loop, model)
-
-        # Set up signal handler for Ctrl+C
-        Signal::INT.trap do
-          if repl.processing?
-            repl.cancel_request
-          else
-            # Exit if not processing
-            puts ""
-            puts "Goodbye!"
-            exit 0
-          end
-        end
-
-        repl.run
+        new(agent_loop, model).run
       end
 
       def self.detect_provider_from_model(model : String) : String
@@ -73,7 +57,6 @@ module Crybot
         @session_key = "repl"
         @fancy = Fancyline.new
         @running = true
-        @processing = false
 
         # Setup display widgets
         setup_display
@@ -85,19 +68,10 @@ module Crybot
         load_history
       end
 
-      def processing? : Bool
-        @processing
-      end
-
-      def cancel_request : Nil
-        @cancellation_requested = true
-      end
-
       def run : Nil
         puts "Crybot REPL - Model: #{@model}"
         puts "Type 'quit', 'exit', or press Ctrl+D to end the session."
         puts "Type 'help' for available commands."
-        puts "Press Ctrl+C during 'Thinking...' to cancel the request."
         puts "---"
 
         begin
@@ -112,69 +86,33 @@ module Crybot
               end
 
               input = input.to_s.strip
-
-              input_text = input
-              next if input_text.empty?
+              next if input.empty?
 
               # Handle built-in commands
-              if handle_command(input_text)
+              if handle_command(input)
                 next
               end
 
               # Process the message
-              @cancellation_requested = false
-              @processing = true
               print "Thinking..."
 
-              # Start processing in a fiber so we can handle Ctrl+C
-              response = nil
-              error = nil
-              done = Channel(Nil).new
+              begin
+                response = @agent_loop.process(@session_key, input)
+                print "\r" + " " * 20 + "\r" # Clear the "Thinking..." message
 
-              spawn do
-                begin
-                  response = @agent_loop.process(@session_key, input_text)
-                rescue e : Exception
-                  error = e
-                ensure
-                  done.send(nil)
-                end
-              end
-
-              # Wait for completion
-              done.receive
-              @processing = false
-
-              # Clear the "Thinking..." message
-              print "\r" + " " * 20 + "\r"
-
-              if @cancellation_requested
-                puts "\n[Request cancelled by user]"
-                puts ""
-                next
-              end
-
-              if error
-                # Check if it was a Ctrl+C interrupt
-                if error.is_a?(Fancyline::Interrupt)
-                  puts "\n[Request cancelled by user]"
-                  puts ""
-                else
-                  error_message = error.try(&.message) || "Unknown error"
-                  puts ""
-                  puts "Error: #{error_message}"
-                  if error_backtrace = error.try(&.backtrace)
-                    puts error_backtrace.join("\n") if ENV["DEBUG"]?
-                  end
-                  puts
-                end
-                next
-              end
-
-              if response
                 # Print response with formatting
                 puts
                 puts response
+                puts
+              rescue e : Fancyline::Interrupt
+                # Ctrl+C pressed during input
+                puts ""
+                puts "Use 'quit' or 'exit' to exit, or Ctrl+D"
+                puts
+              rescue e : Exception
+                puts ""
+                puts "Error: #{e.message}"
+                puts e.backtrace.join("\n") if ENV["DEBUG"]?
                 puts
               end
             rescue e : Fancyline::Interrupt
@@ -275,7 +213,6 @@ module Crybot
         puts "  Up/Down - Navigate command history"
         puts "  Ctrl+R - Search history"
         puts "  Ctrl+L - Clear screen"
-        puts "  Ctrl+C - Cancel current request (while 'Thinking...')"
         puts
       end
 
