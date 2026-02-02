@@ -197,22 +197,13 @@ module Crybot
       end
 
       private def speak_with_piper(text : String, model : String) : Nil
-        # Generate WAV file with piper
-        wav_file = File.join(Dir.tempdir, "crybot_tts_#{Process.pid}_#{Time.utc.to_unix_ms}.wav")
-
+        # Pipe piper raw output directly to paplay
         Process.run(
-          @piper_path,
-          ["-m", model, "-o", wav_file],
-          input: IO::Memory.new(text),
-          output: Process::Redirect::Pipe,
-          error: Process::Redirect::Pipe
+          "sh",
+          ["-c", "echo \"#{text.gsub("\"", "\\\"")}\" | #{@piper_path} -m #{model} --output_raw 2>/dev/null | paplay --raw --format=s16le --channels=1 --rate=22050"],
+          output: Process::Redirect::Inherit,
+          error: Process::Redirect::Inherit
         )
-
-        # Play the WAV file
-        if File.exists?(wav_file)
-          play_audio(wav_file)
-          File.delete(wav_file)
-        end
       end
 
       private def speak_with_festival(text : String) : Nil
