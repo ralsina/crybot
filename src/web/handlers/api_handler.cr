@@ -19,7 +19,7 @@ module Crybot
             version:   "0.1.0",
             timestamp: Time.local.to_s("%Y-%m-%dT%H:%M:%S%:z"),
             config:    {
-              web_enabled: config.web.enabled,
+              web_enabled: config.web.enabled?,
               web_host:    config.web.host,
               web_port:    config.web.port,
               model:       config.agents.defaults.model,

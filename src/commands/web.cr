@@ -24,6 +24,7 @@ module Crybot
         server.start
       end
 
+      # ameba:disable Metrics/CyclomaticComplexity
       private def validate_config(config : Config::ConfigFile) : Bool
         # Check API key based on model
         model = config.agents.defaults.model

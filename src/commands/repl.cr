@@ -68,6 +68,7 @@ module Crybot
         load_history
       end
 
+      # ameba:disable Metrics/CyclomaticComplexity
       def run : Nil
         puts "Crybot REPL - Model: #{@model}"
         puts "Type 'quit', 'exit', or press Ctrl+D to end the session."

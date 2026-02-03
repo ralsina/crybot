@@ -34,7 +34,7 @@ module Crybot
 
       private def setup_middleware : Nil
         # Add CORS headers if enabled
-        if @config.web.enable_cors
+        if @config.web.enable_cors?
           add_handler Crybot::Web::CORSHandler.new(@config.web.allowed_origins)
         end
 

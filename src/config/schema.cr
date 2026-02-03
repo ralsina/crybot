@@ -163,13 +163,15 @@ module Crybot
     struct WebServerConfig
       include YAML::Serializable
 
-      property enabled : Bool = false
+      @[YAML::Field(key: "enabled")]
+      property? enabled : Bool = false
       property host : String = "127.0.0.1"
       property port : Int32 = 3000
       property path_prefix : String = ""
       property auth_token : String = ""
       property allowed_origins : Array(String) = ["http://localhost:3000"]
-      property enable_cors : Bool = true
+      @[YAML::Field(key: "enable_cors")]
+      property? enable_cors : Bool = true
 
       def initialize(@enabled = false, @host = "127.0.0.1", @port = 3000, @path_prefix = "", @auth_token = "", @allowed_origins = ["http://localhost:3000"], @enable_cors = true)
       end

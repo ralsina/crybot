@@ -48,13 +48,13 @@ module Crybot
         private def mask_sensitive_values(config : Config::ConfigFile)
           {
             "web" => {
-              "enabled"         => JSON::Any.new(config.web.enabled),
+              "enabled"         => JSON::Any.new(config.web.enabled?),
               "host"            => JSON::Any.new(config.web.host),
               "port"            => JSON::Any.new(config.web.port),
               "path_prefix"     => JSON::Any.new(config.web.path_prefix),
               "auth_token"      => mask_value(config.web.auth_token),
               "allowed_origins" => JSON::Any.new(config.web.allowed_origins.map { |v| JSON::Any.new(v) }),
-              "enable_cors"     => JSON::Any.new(config.web.enable_cors),
+              "enable_cors"     => JSON::Any.new(config.web.enable_cors?),
             },
             "agents" => {
               "defaults" => {

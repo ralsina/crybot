@@ -31,6 +31,7 @@ module Crybot
         manager.start
       end
 
+      # ameba:disable Metrics/CyclomaticComplexity
       private def validate_config(config : Config::ConfigFile) : Bool
         # Check if any channels are enabled
         unless config.channels.telegram.enabled

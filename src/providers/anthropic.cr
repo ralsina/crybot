@@ -30,6 +30,7 @@ module Crybot
         parse_response(response.body)
       end
 
+      # ameba:disable Metrics/CyclomaticComplexity
       private def build_request_body(messages : Array(Message), tools : Array(ToolDef)?, model : String?) : Hash(String, JSON::Any)
         # Convert OpenAI-style messages to Anthropic format
         system_message = nil

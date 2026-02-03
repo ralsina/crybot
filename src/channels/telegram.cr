@@ -95,6 +95,7 @@ module Crybot
         @allowed_users.includes?(user_id.to_s)
       end
 
+      # ameba:disable Metrics/CyclomaticComplexity
       private def handle_update(ctx : Tourmaline::Context) : Nil
         start_time = Time.instant
 
