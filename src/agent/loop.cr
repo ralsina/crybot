@@ -13,9 +13,49 @@ require "./tools/web"
 require "./tools/memory"
 require "../session/manager"
 require "../mcp/manager"
+require "json"
 
 module Crybot
   module Agent
+    # Struct to track individual tool execution
+    struct ToolExecution
+      property tool_name : String
+      property arguments : Hash(String, JSON::Any)
+      property result : String
+
+      def initialize(@tool_name : String, @arguments : Hash(String, JSON::Any), @result : String, @success : Bool)
+      end
+
+      def success? : Bool
+        @success
+      end
+
+      def to_h : Hash(String, JSON::Any)
+        # Convert arguments hash to JSON::Any format
+        args_hash = @arguments.transform_values(&.as_s).transform_values { |v| JSON::Any.new(v) }
+        {
+          "tool_name" => JSON::Any.new(@tool_name),
+          "arguments" => JSON::Any.new(args_hash),
+          "result"    => JSON::Any.new(@result),
+          "success"   => JSON::Any.new(@success),
+        }
+      end
+    end
+
+    # Struct for agent response with tool execution details
+    struct AgentResponse
+      property response : String
+      property tool_executions : Array(ToolExecution)
+
+      def initialize(@response : String, @tool_executions : Array(ToolExecution) = [] of ToolExecution)
+      end
+
+      # For backwards compatibility, allow implicit conversion to string
+      def to_s : String
+        @response
+      end
+    end
+
     class Loop
       @config : Config::ConfigFile
       @provider : Providers::LLMProvider
@@ -91,7 +131,7 @@ module Crybot
         end
       end
 
-      def process(session_key : String, user_message : String) : String
+      def process(session_key : String, user_message : String) : AgentResponse
         # Get or create session
         history = @session_manager.get_or_create(session_key)
 
@@ -101,6 +141,7 @@ module Crybot
         # Main loop
         iteration = 0
         final_response = ""
+        tool_executions = [] of ToolExecution
 
         while iteration < @max_iterations
           iteration += 1
@@ -118,6 +159,16 @@ module Crybot
             # Execute each tool call
             calls.each do |tool_call|
               result = Tools::Registry.execute(tool_call.name, tool_call.arguments)
+
+              # Track the execution
+              execution = ToolExecution.new(
+                tool_name: tool_call.name,
+                arguments: tool_call.arguments,
+                result: result,
+                success: !result.starts_with?("Error:")
+              )
+              tool_executions << execution
+
               messages = @context_builder.add_tool_result(messages, tool_call, result)
             end
 
@@ -142,7 +193,7 @@ module Crybot
         end
         @session_manager.save(session_key, messages_to_save)
 
-        final_response
+        AgentResponse.new(final_response, tool_executions)
       end
 
       private def register_tools : Nil

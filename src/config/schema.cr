@@ -157,10 +157,10 @@ module Crybot
       property conversational_timeout : Int32? = nil
 
       # whisper-stream options for better transcription
-      property step_ms : Int32 = 3000        # Audio step size in ms (how often to transcribe)
-      property audio_length_ms : Int32 = 10000 # Audio length in ms per chunk
-      property audio_keep_ms : Int32 = 200     # Audio to keep from previous step
-      property vad_threshold : Float32 = 0.6_f32  # Voice activity detection threshold
+      property step_ms : Int32 = 3000            # Audio step size in ms (how often to transcribe)
+      property audio_length_ms : Int32 = 10000   # Audio length in ms per chunk
+      property audio_keep_ms : Int32 = 200       # Audio to keep from previous step
+      property vad_threshold : Float32 = 0.6_f32 # Voice activity detection threshold
 
       def initialize(@wake_word = nil, @whisper_stream_path = nil, @model_path = nil, @language = nil, @threads = nil, @piper_model = nil, @piper_path = nil, @conversational_timeout = nil)
       end

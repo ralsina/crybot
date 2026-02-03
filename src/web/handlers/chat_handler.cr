@@ -24,12 +24,26 @@ module Crybot
           end
 
           # Process with agent
-          response = @agent.process(session_id, content)
+          agent_response = @agent.process(session_id, content)
 
+          # Log tool executions
+          agent_response.tool_executions.each do |exec|
+            status = exec.success? ? "✓" : "✗"
+            puts "[Web] [Tool] #{status} #{exec.tool_name}"
+            if exec.tool_name == "exec" || exec.tool_name == "exec_shell"
+              args_str = exec.arguments.map { |k, v| "#{k}=#{v}" }.join(" ")
+              puts "[Web]       Command: #{args_str}"
+              result_preview = exec.result.size > 200 ? "#{exec.result[0..200]}..." : exec.result
+              puts "[Web]       Output: #{result_preview}"
+            end
+          end
+
+          tool_executions_json = agent_response.tool_executions.map(&.to_h).map { |hash| JSON::Any.new(hash) }
           {
-            session_id: session_id,
-            content:    response,
-            timestamp:  Time.local.to_s("%Y-%m-%dT%H:%M:%S%:z"),
+            session_id:      session_id,
+            content:         agent_response.response,
+            tool_executions: JSON::Any.new(tool_executions_json),
+            timestamp:       Time.local.to_s("%Y-%m-%dT%H:%M:%S%:z"),
           }.to_json
         rescue e : JSON::ParseException
           env.response.status_code = 400

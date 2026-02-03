@@ -1,5 +1,7 @@
 require "json"
 require "../../session/manager"
+require "../../channels/telegram"
+require "../../channels/registry"
 
 module Crybot
   module Web
@@ -22,7 +24,7 @@ module Crybot
             {
               id:      session_id,
               title:   extract_title(session_id),
-              preview: last_message.try { |m| m.content.try(&.[0...50]) } || "No messages",
+              preview: last_message.try { |msg| msg.content.try(&.[0...50]) } || "No messages",
               time:    last_message ? format_time(last_message) : "",
             }
           end
@@ -78,12 +80,69 @@ module Crybot
             return {error: "Message content is required"}.to_json
           end
 
-          # This would need to be handled by the agent/loop
-          # For now, return an error indicating this isn't fully implemented
-          {
-            error: "Sending to telegram conversations not yet implemented",
-            note:  "Use the actual telegram interface for now",
-          }.to_json
+          # Get the Telegram channel from registry
+          puts "[Web] Looking up Telegram channel in registry..."
+          telegram_channel = Channels::Registry.telegram
+          if telegram_channel.nil?
+            puts "[Web] ERROR: Telegram channel not available in registry!"
+            puts "[Web] Make sure the gateway feature is running"
+            env.response.status_code = 503
+            return {error: "Telegram channel not available. Make sure the gateway feature is started."}.to_json
+          end
+
+          puts "[Web] Found Telegram channel, processing message..."
+
+          # Extract chat_id from session_id (format: telegram_<chat_id>)
+          # Need to reconstruct the actual Telegram chat ID from session_id
+          # The session manager sanitizes colons to underscores
+          if session_id =~ /^telegram_(.+)$/
+            chat_id = $1
+
+            puts "[Web] Session ID: #{session_id}, extracted chat_id: #{chat_id}"
+
+            # Process the message through the agent first to get context-aware response
+            # The session_key format is "telegram:chat_id"
+            session_key = "telegram:#{chat_id}"
+
+            # Get the agent from the telegram channel
+            agent = telegram_channel.agent
+            puts "[Web] Processing message through agent with session_key: #{session_key}"
+            agent_response = agent.process(session_key, content)
+
+            # Log tool executions
+            agent_response.tool_executions.each do |exec|
+              status = exec.success? ? "✓" : "✗"
+              puts "[Web] [Tool] #{status} #{exec.tool_name}"
+              if exec.tool_name == "exec" || exec.tool_name == "exec_shell"
+                args_str = exec.arguments.map { |k, v| "#{k}=#{v}" }.join(" ")
+                puts "[Web]       Command: #{args_str}"
+                result_preview = exec.result.size > 200 ? "#{exec.result[0..200]}..." : exec.result
+                puts "[Web]       Output: #{result_preview}"
+              end
+            end
+
+            response = agent_response.response
+
+            # Send the message to Telegram with context
+            # Format: "you said on the web UI: <user_message>\n\n<response>"
+            telegram_message = "You said on the web UI: #{content}\n\n#{response}"
+            puts "[Web] Sending to Telegram chat #{chat_id}..."
+            telegram_channel.send_to_chat(chat_id, telegram_message)
+
+            {
+              status:   "sent",
+              chat_id:  chat_id,
+              response: response,
+            }.to_json
+          else
+            env.response.status_code = 400
+            {error: "Invalid telegram session ID"}.to_json
+          end
+        rescue e : Exception
+          puts "[Web] ERROR in send_message: #{e.message}"
+          puts e.backtrace.join("\n") if ENV["DEBUG"]?
+          env.response.status_code = 500
+          {error: e.message}.to_json
         end
 
         private def extract_title(session_id : String) : String

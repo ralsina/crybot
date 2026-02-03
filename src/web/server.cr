@@ -49,16 +49,22 @@ module Crybot
                 chat_id = parts.size >= 2 ? parts[1] : session_key
               end
 
+              # Sanitize the session key to match what the web UI expects
+              # The Session::Manager sanitizes keys by replacing special chars with underscore
+              sanitized_key = session_key.gsub(/[^a-zA-Z0-9_-]/, "_")
+
+              # Determine the message type based on session
+              message_type = session_key == "voice" ? "voice_message" : "telegram_message"
+
+              puts "[Web] Broadcasting #{message_type} for sanitized_key=#{sanitized_key}, chat_id=#{chat_id}"
+
               # Prepare the data for broadcast
               data = Hash(String, JSON::Any).new
-              data["session_key"] = JSON::Any.new(session_key)
+              data["session_key"] = JSON::Any.new(sanitized_key)
               data["chat_id"] = JSON::Any.new(chat_id)
               data["role"] = JSON::Any.new(last_message.role)
               data["content"] = JSON::Any.new(last_message.content || "")
               data["timestamp"] = JSON::Any.new(Time.local.to_s("%Y-%m-%dT%H:%M:%S%:z"))
-
-              # Determine the message type based on session
-              message_type = session_key == "voice" ? "voice_message" : "telegram_message"
 
               # Broadcast to all connected clients
               Crybot::Web::ChatSocket.broadcast(message_type, data)

@@ -3,6 +3,7 @@ require "../agent/loop"
 require "../config/loader"
 require "../bus/events"
 require "../web/handlers/logs_handler"
+require "./registry"
 
 module Crybot
   module Channels
@@ -13,6 +14,8 @@ module Crybot
       @offset_file : Path
       @processed_ids : Set(Int64) = Set(Int64).new
       @running : Bool = true
+
+      getter agent
 
       def initialize(config : Config::ChannelsConfig::TelegramConfig, agent : Agent::Loop)
         puts "[#{Time.local.to_s("%H:%M:%S")}] Creating Tourmaline client (skipping get_me)..."
@@ -39,6 +42,8 @@ module Crybot
       end
 
       def start : Nil
+        # Register this channel in the registry so web UI can access it
+        Channels::Registry.register_telegram(self)
         puts "[#{Time.local.to_s("%H:%M:%S")}] Starting polling (skipping webhook deletion)..."
         # TODO: Fix logging
         # Crybot::Web::Handlers::LogsHandler.log("INFO", "Connected to Telegram")
@@ -47,6 +52,7 @@ module Crybot
 
       def stop : Nil
         @running = false
+        Channels::Registry.clear_telegram
       end
 
       private def start_polling : Nil
@@ -146,10 +152,25 @@ module Crybot
           puts "[#{Time.local.to_s("%H:%M:%S")}] Processing..."
           process_start = Time.instant
 
-          response = @agent.process(inbound.session_key, inbound.content)
+          agent_response = @agent.process(inbound.session_key, inbound.content)
 
           process_time = Time.instant - process_start
           puts "[#{Time.local.to_s("%H:%M:%S")}] Response ready (took #{process_time.total_seconds.to_i}s)"
+
+          # Log tool executions
+          agent_response.tool_executions.each do |exec|
+            status = exec.success? ? "✓" : "✗"
+            puts "[#{Time.local.to_s("%H:%M:%S")}] [Tool] #{status} #{exec.tool_name}"
+            if exec.tool_name == "exec" || exec.tool_name == "exec_shell"
+              # Show command and output for shell commands
+              args_str = exec.arguments.map { |k, v| "#{k}=#{v}" }.join(" ")
+              puts "[#{Time.local.to_s("%H:%M:%S")}]       Command: #{args_str}"
+              result_preview = exec.result.size > 200 ? "#{exec.result[0..200]}..." : exec.result
+              puts "[#{Time.local.to_s("%H:%M:%S")}]       Output: #{result_preview}"
+            end
+          end
+
+          response = agent_response.response
 
           # Log response (truncated if too long)
           response_preview = response.size > 100 ? "#{response[0..100]}..." : response
@@ -190,6 +211,32 @@ module Crybot
             puts "[#{Time.local.to_s("%H:%M:%S")}] Chunk #{index + 1}/#{chunks.size} sent (took #{chunk_time.total_seconds.to_i}s)"
           end
         end
+      end
+
+      # Send a message to a specific chat ID (used by web UI)
+      def send_to_chat(chat_id : String, text : String) : Nil
+        puts "[#{Time.local.to_s("%H:%M:%S")}] Sending to Telegram chat #{chat_id} (from web UI): #{text[0..100]}..."
+
+        # Convert chat_id string to Int64 for Tourmaline
+        chat_id_int = chat_id.to_i64
+
+        # Handle long messages by splitting them
+        max_length = 4096
+        if text.size <= max_length
+          @client.send_message(chat_id_int, text)
+        else
+          # Split message into chunks
+          chunks = text.scan(/.{1,#{max_length}}/m).map { |match| match[0] }
+          puts "[#{Time.local.to_s("%H:%M:%S")}] Sending response in #{chunks.size} chunk(s)"
+          chunks.each_with_index do |chunk, index|
+            @client.send_message(chat_id_int, chunk)
+            puts "[#{Time.local.to_s("%H:%M:%S")}] Chunk #{index + 1}/#{chunks.size} sent"
+          end
+        end
+
+        puts "[#{Time.local.to_s("%H:%M:%S")}] Sent to Telegram chat #{chat_id}"
+      rescue e : Exception
+        puts "[ERROR] Failed to send to Telegram chat #{chat_id}: #{e.message}"
       end
     end
   end

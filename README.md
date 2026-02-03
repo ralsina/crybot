@@ -1,25 +1,17 @@
 # Crybot
 
-Crybot is a personal AI assistant built in Crystal, inspired by nanobot (Python). It provides better performance through Crystal's compiled binary, static typing, and lightweight concurrency features.
+Crybot is a modular personal AI assistant built in Crystal. It provides multiple interaction modes (REPL, web UI, Telegram bot, voice) and supports multiple LLM providers with extensible tool calling.
 
 ## Features
 
-- **Multiple LLM Support**: Supports OpenAI, Anthropic, OpenRouter, vLLM, and z.ai / Zhipu GLM models
+- **Multiple LLM Support**: Supports OpenAI, Anthropic, OpenRouter, vLLM, and Zhipu GLM models
 - **Provider Auto-Detection**: Automatically selects provider based on model name prefix
-- **Tool Calling**: Built-in tools for file operations, shell commands, and web search/fetch
+- **Tool Calling**: Built-in tools for file operations, shell commands, web search/fetch, and memory management
 - **MCP Support**: Model Context Protocol client for connecting to external tools and resources
-- **Session Management**: Persistent conversation history with JSONL storage
-- **Telegram Integration**: Full Telegram bot support with message tracking and auto-restart on config changes
-- **Interactive REPL**: Fancyline-powered REPL with syntax highlighting, autocomplete, and history
-- **Workspace System**: Organized workspace with memory, skills, and bootstrap files
-
-## Yes, it DOES work.
-
-It can even reconfigure itself.
-
-<img width="726" height="1276" alt="image" src="https://github.com/user-attachments/assets/5b8b7155-5c7a-4965-9aca-e2907f4ed641" />
-
-
+- **Session Management**: Persistent conversation history with multiple concurrent sessions
+- **Multiple Interfaces**: REPL, Web UI, Telegram bot, and Voice interaction modes
+- **Real-time Updates**: WebSocket support for live message streaming in web UI
+- **Telegram Integration**: Full Telegram bot support with two-way messaging (from Telegram and web UI)
 
 ## Installation
 
@@ -65,7 +57,6 @@ agents:
   defaults:
     model: "gpt-4o-mini"  # Uses OpenAI
     # model: "claude-3-5-sonnet-20241022"  # Uses Anthropic
-    # model: "anthropic/claude-3.5-sonnet"  # Uses OpenRouter
     # model: "glm-4.7-flash"  # Uses Zhipu (default)
 ```
 
@@ -86,7 +77,15 @@ The provider is auto-detected from model name patterns:
 
 ## Usage
 
-### REPL Mode (Recommended)
+### Unified Start Command
+
+Start all enabled features (web, gateway, etc.):
+
+```bash
+./bin/crybot start
+```
+
+### REPL Mode
 
 The advanced REPL powered by [Fancyline](https://github.com/Papierkorb/fancyline) provides:
 
@@ -95,7 +94,7 @@ The advanced REPL powered by [Fancyline](https://github.com/Papierkorb/fancyline
 - **Command history** (saved to `~/.crybot/repl_history.txt`)
 - **History search** with `Ctrl+R`
 - **Navigation** with Up/Down arrows
-- **Custom prompt** showing current model
+- **Animated spinner** while processing
 
 ```bash
 ./bin/crybot repl
@@ -107,11 +106,22 @@ Built-in REPL commands:
 - `clear` - Clear screen
 - `quit` / `exit` - Exit REPL
 
-### Simple Interactive Mode
+### Web UI
+
+The web interface provides a browser-based chat interface with:
+
+- **Persistent sessions** - Conversation history is saved and restored
+- **Multiple conversations** - Switch between different chat contexts
+- **Real-time streaming** - See responses as they're generated
+- **Typing indicators** - Animated spinner while processing
+- **Tool execution display** - See commands and outputs in terminal
+- **Telegram integration** - Send and receive Telegram messages from the web
 
 ```bash
-./bin/crybot agent -m "Your message here"
+./bin/crybot web
 ```
+
+The web UI is accessible at `http://127.0.0.1:3000` (default).
 
 ### Voice Mode
 
@@ -159,16 +169,6 @@ voice:
   piper_path: "/usr/bin/piper-tts"     # Path to piper-tts binary
 ```
 
-**Voice Configuration** (optional, in `~/.crybot/config.yml`):
-```yaml
-voice:
-  wake_word: "hey assistant"           # Custom wake word
-  whisper_stream_path: "/usr/bin/whisper-stream"
-  model_path: "/path/to/ggml-base.en.bin"
-  language: "en"                       # Language code
-  threads: 4                           # CPU threads for transcription
-```
-
 ### Telegram Gateway
 
 ```bash
@@ -187,7 +187,11 @@ channels:
 
 Get a bot token from [@BotFather](https://t.me/BotFather) on Telegram.
 
-**Auto-Restart**: The gateway automatically restarts when you modify `~/.crybot/config.yml`, so you can change models or add API keys without manually restarting the service.
+**Features:**
+- Send messages to Crybot from Telegram
+- Reply from both Telegram and the web UI
+- **Web UI Integration**: Messages sent from the web UI to Telegram chats show as "You said on the web UI: {message}" followed by the response
+- **Auto-Restart**: The gateway automatically restarts when you modify `~/.crybot/config.yml`
 
 ## Built-in Tools
 
@@ -208,6 +212,14 @@ Get a bot token from [@BotFather](https://t.me/BotFather) on Telegram.
 - `list_recent_memories` - List recent memory entries from daily logs
 - `record_memory` - Record events or observations to the daily log
 - `memory_stats` - Get statistics about memory usage
+
+## Tool Execution Display
+
+When Crybot executes tools (like shell commands), the execution details are displayed:
+
+- **In CLI/REPL**: Shows tool name, command, and output with status indicators
+- **In Web UI**: Tool executions are included in WebSocket responses
+- **In Voice Mode**: If there's an error, speaks "There was an error. You can see the details in the web UI"
 
 ## MCP Integration
 
@@ -260,19 +272,6 @@ Find more MCP servers at https://github.com/modelcontextprotocol/servers
 
 *Either `command` or `url` must be provided (currently only `command` is supported)
 
-### Example Session
-
-If you configure the filesystem server:
-
-```yaml
-mcp:
-  servers:
-    - name: fs
-      command: npx -y @modelcontextprotocol/server-filesystem /home/user/projects
-```
-
-Then tools like `fs/read_file`, `fs/write_file`, `fs/list_directory` will be automatically available to the agent.
-
 ## Development
 
 Run linter:
@@ -283,6 +282,16 @@ ameba --fix
 Build:
 ```bash
 shards build
+```
+
+Run with specific features:
+```bash
+./bin/crybot repl     # Interactive REPL
+./bin/crybot agent    # Single message mode
+./bin/crybot web      # Web server only
+./bin/crybot gateway  # Telegram gateway only
+./bin/crybot voice    # Voice mode only
+./bin/crybot start    # All enabled features
 ```
 
 ## License

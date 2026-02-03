@@ -75,7 +75,7 @@ module Crybot
           File.write(ptt_flag_path, "")
 
           {
-            status: "activated",
+            status:  "activated",
             message: "Push-to-talk activated. Speak now.",
           }.to_json
         rescue e : Exception
@@ -91,7 +91,7 @@ module Crybot
           File.delete(ptt_flag_path) if File.exists?(ptt_flag_path)
 
           {
-            status: "deactivated",
+            status:  "deactivated",
             message: "Push-to-talk deactivated.",
           }.to_json
         rescue e : Exception

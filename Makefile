@@ -1,6 +1,6 @@
 CRYSTAL = crystal
-FLAGS = -Dpreview_mt
-TARGET = crybot
+FLAGS = -Dpreview_mt --release
+TARGET = bin/crybot
 
 all: build
 

@@ -6,7 +6,7 @@ require "../providers/base"
 module Crybot
   module Session
     # Callback type for when messages are saved
-      alias SaveCallback = Proc(String, Array(Providers::Message), Nil)
+    alias SaveCallback = Proc(String, Array(Providers::Message), Nil)
 
     class Manager
       @sessions_dir : Path
@@ -27,13 +27,15 @@ module Crybot
       end
 
       def get_or_create(session_key : String) : Array(Providers::Message)
+        # Sanitize the key for consistent cache/file storage
+        sanitized_key = sanitize_key(session_key)
+
         # Check cache first
-        if @cache.has_key?(session_key)
-          return @cache[session_key]
+        if @cache.has_key?(sanitized_key)
+          return @cache[sanitized_key]
         end
 
         # Load from file
-        sanitized_key = sanitize_key(session_key)
         session_file = @sessions_dir / "#{sanitized_key}.jsonl"
 
         messages = [] of Providers::Message
@@ -86,7 +88,7 @@ module Crybot
           end
         end
 
-        @cache[session_key] = messages
+        @cache[sanitized_key] = messages
         messages
       end
 
@@ -124,7 +126,7 @@ module Crybot
           end
         end
 
-        @cache[session_key] = messages
+        @cache[sanitized_key] = messages
 
         # Trigger save callbacks
         @save_callbacks.each do |callback|
@@ -141,7 +143,7 @@ module Crybot
         session_file = @sessions_dir / "#{sanitized_key}.jsonl"
 
         File.delete(session_file) if File.exists?(session_file)
-        @cache.delete(session_key)
+        @cache.delete(sanitized_key)
       end
 
       def list_sessions : Array(String)

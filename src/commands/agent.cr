@@ -23,10 +23,39 @@ module Crybot
         if message
           # Non-interactive mode: single message
           session_key = "cli"
-          print "Thinking..."
-          response = agent_loop.process(session_key, message)
-          print "\r" + " " * 20 + "\r" # Clear the "Thinking..." message
-          puts response
+
+          # Animated spinner
+          spinner = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+          spinner_idx = 0
+          spinning = true
+          spawn do
+            while spinning
+              print "\r#{spinner[spinner_idx % spinner.size]} Thinking..."
+              spinner_idx += 1
+              sleep 0.1.seconds
+            end
+          end
+
+          agent_response = agent_loop.process(session_key, message)
+
+          # Stop spinner
+          spinning = false
+          sleep 0.15.seconds # Let the spinner finish one more cycle
+
+          # Log tool executions
+          agent_response.tool_executions.each do |exec|
+            status = exec.success? ? "✓" : "✗"
+            puts "[Tool] #{status} #{exec.tool_name}"
+            if exec.tool_name == "exec" || exec.tool_name == "exec_shell"
+              args_str = exec.arguments.map { |k, v| "#{k}=#{v}" }.join(" ")
+              puts "       Command: #{args_str}"
+              result_preview = exec.result.size > 200 ? "#{exec.result[0..200]}..." : exec.result
+              puts "       Output: #{result_preview}"
+            end
+          end
+
+          print "\r" + " " * 30 + "\r" # Clear the spinner line
+          puts agent_response.response
         else
           # Interactive mode - use the fancyline REPL
           run_fancyline_repl(agent_loop, config)
@@ -67,10 +96,38 @@ module Crybot
           next if input.empty?
 
           begin
-            print "Thinking..."
-            response = agent_loop.process(session_key, input)
-            print "\r" + " " * 20 + "\r" # Clear the "Thinking..." message
-            puts response
+            # Animated spinner
+            spinner = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+            spinner_idx = 0
+            spinning = true
+            spawn do
+              while spinning
+                print "\r#{spinner[spinner_idx % spinner.size]} Thinking..."
+                spinner_idx += 1
+                sleep 0.1.seconds
+              end
+            end
+
+            agent_response = agent_loop.process(session_key, input)
+
+            # Stop spinner
+            spinning = false
+            sleep 0.15.seconds # Let the spinner finish one more cycle
+
+            # Log tool executions
+            agent_response.tool_executions.each do |exec|
+              status = exec.success? ? "✓" : "✗"
+              puts "[Tool] #{status} #{exec.tool_name}"
+              if exec.tool_name == "exec" || exec.tool_name == "exec_shell"
+                args_str = exec.arguments.map { |k, v| "#{k}=#{v}" }.join(" ")
+                puts "       Command: #{args_str}"
+                result_preview = exec.result.size > 200 ? "#{exec.result[0..200]}..." : exec.result
+                puts "       Output: #{result_preview}"
+              end
+            end
+
+            print "\r" + " " * 30 + "\r" # Clear the spinner line
+            puts agent_response.response
             puts
           rescue e : Exception
             puts "Error: #{e.message}"

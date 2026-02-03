@@ -150,7 +150,7 @@ module Crybot
           @whisper_stream_path,
           args,
           output: Process::Redirect::Pipe,
-          error: Process::Redirect::Pipe  # Capture stderr instead of inheriting
+          error: Process::Redirect::Pipe # Capture stderr instead of inheriting
         )
       end
 
@@ -232,7 +232,24 @@ module Crybot
         session_key = "voice"
 
         # Send to agent loop (the filtering improvements should handle most errors)
-        response = @agent_loop.process(session_key, command)
+        agent_response = @agent_loop.process(session_key, command)
+
+        # Log tool executions
+        agent_response.tool_executions.each do |exec|
+          status = exec.success? ? "✓" : "✗"
+          puts "[Tool] #{status} #{exec.tool_name}"
+          if exec.tool_name == "exec" || exec.tool_name == "exec_shell"
+            args_str = exec.arguments.map { |k, v| "#{k}=#{v}" }.join(" ")
+            puts "       Command: #{args_str}"
+            result_preview = exec.result.size > 200 ? "#{exec.result[0..200]}..." : exec.result
+            puts "       Output: #{result_preview}"
+          end
+        end
+
+        response = agent_response.response
+
+        # Check if there were any tool execution errors
+        has_errors = agent_response.tool_executions.any? { |exec| !exec.success? }
 
         # Output response
         puts
@@ -240,8 +257,12 @@ module Crybot
         puts response
         puts
 
-        # Speak the response
-        speak(response)
+        # Speak the response (or error message if tools failed)
+        if has_errors
+          speak("There was an error. You can see the details in the web UI.")
+        else
+          speak(response)
+        end
       end
 
       private def process_transcription(text : String, conversational_mode : Bool) : Nil
@@ -287,9 +308,10 @@ module Crybot
 
       private def speak_with_piper(text : String, model : String) : Nil
         # Pipe piper raw output directly to paplay
+        # Add --sentence_silence 0 to reduce pauses between sentences (faster speech)
         Process.run(
           "sh",
-          ["-c", "echo \"#{text.gsub("\"", "\\\"")}\" | #{@piper_path} -m #{model} --output_raw 2>/dev/null | paplay --raw --format=s16le --channels=1 --rate=22050"],
+          ["-c", "echo \"#{text.gsub("\"", "\\\"")}\" | #{@piper_path} -m #{model} --output_raw --sentence_silence 0 2>/dev/null | paplay --raw --format=s16le --channels=1 --rate=22050"],
           output: Process::Redirect::Inherit,
           error: Process::Redirect::Inherit
         )
@@ -341,10 +363,10 @@ module Crybot
       private def clean_transcription(text : String) : String
         # Remove ANSI escape codes (like \u001b[2K\r)
         # These are used by whisper-stream for line clearing/redrawing
-        text = text.gsub(/\e\[[0-9;]*[A-Za-z]/, "")  # CSI sequences
-        text = text.gsub(/\e\[K/, "")                  # EL (erase to end of line)
-        text = text.gsub(/\r\$/, "")                   # trailing CR
-        text = text.gsub(/\[2K\r/, "")                 # literal [2K\r (sometimes not escaped)
+        text = text.gsub(/\e\[[0-9;]*[A-Za-z]/, "") # CSI sequences
+        text = text.gsub(/\e\[K/, "")               # EL (erase to end of line)
+        text = text.gsub(/\r\$/, "")                # trailing CR
+        text = text.gsub(/\[2K\r/, "")              # literal [2K\r (sometimes not escaped)
         text = text.strip
 
         # Also clean up the [BLANK_AUDIO] placeholder if present
