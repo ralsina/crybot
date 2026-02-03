@@ -6,6 +6,7 @@ class CrybotWeb {
     this.currentTab = localStorage.getItem('crybotTab') || 'chat-tab';
     this.currentTelegramChat = null;
     this.pushToTalkActive = false;
+    this.chatViewVisible = localStorage.getItem('crybotChatViewVisible') === 'true';
 
     this.init();
   }
@@ -173,12 +174,25 @@ class CrybotWeb {
     this.ws.onopen = () => {
       console.log('Connected to Crybot');
 
-      // Request chat history when connected
-      const savedSessionId = localStorage.getItem('crybotChatSession') || null;
-      this.ws.send(JSON.stringify({
-        type: 'history_request',
-        session_id: savedSessionId || '',
-      }));
+      // Load sessions list first
+      this.loadSessionsList();
+
+      // Only request history if we were in chat view
+      if (this.chatViewVisible) {
+        const savedSessionId = localStorage.getItem('crybotChatSession') || null;
+        if (savedSessionId) {
+          this.ws.send(JSON.stringify({
+            type: 'history_request',
+            session_id: savedSessionId,
+          }));
+        } else {
+          // No saved session, show list view
+          this.showChatList();
+        }
+      } else {
+        // Show list view
+        this.showChatList();
+      }
     };
 
     this.ws.onmessage = (event) => {
@@ -636,6 +650,16 @@ class CrybotWeb {
       document.getElementById('telegram-enabled').checked = config.channels?.telegram?.enabled || false;
       document.getElementById('telegram-token').value = '';
       document.getElementById('telegram-allow-from').value = (config.channels?.telegram?.allow_from || []).join(', ');
+
+      // Voice
+      document.getElementById('voice-wake-word').value = config.voice?.wake_word || '';
+      document.getElementById('voice-whisper-path').value = config.voice?.whisper_stream_path || '';
+      document.getElementById('voice-model-path').value = config.voice?.model_path || '';
+      document.getElementById('voice-language').value = config.voice?.language || 'en';
+      document.getElementById('voice-threads').value = config.voice?.threads || 4;
+      document.getElementById('voice-piper-model').value = config.voice?.piper_model || '';
+      document.getElementById('voice-piper-path').value = config.voice?.piper_path || '';
+      document.getElementById('voice-timeout').value = config.voice?.conversational_timeout || 3;
     } catch (error) {
       console.error('Failed to load configuration:', error);
     }
@@ -667,6 +691,16 @@ class CrybotWeb {
           token: document.getElementById('telegram-token').value,
           allow_from: document.getElementById('telegram-allow-from').value.split(',').map(s => s.trim()).filter(s => s),
         },
+      },
+      voice: {
+        wake_word: document.getElementById('voice-wake-word').value || undefined,
+        whisper_stream_path: document.getElementById('voice-whisper-path').value || undefined,
+        model_path: document.getElementById('voice-model-path').value || undefined,
+        language: document.getElementById('voice-language').value || undefined,
+        threads: parseInt(document.getElementById('voice-threads').value) || undefined,
+        piper_model: document.getElementById('voice-piper-model').value || undefined,
+        piper_path: document.getElementById('voice-piper-path').value || undefined,
+        conversational_timeout: parseInt(document.getElementById('voice-timeout').value) || undefined,
       },
     };
 
@@ -952,6 +986,10 @@ class CrybotWeb {
     listContainer?.classList.remove('hidden');
     chatView?.classList.add('hidden');
 
+    // Save view state
+    this.chatViewVisible = false;
+    localStorage.setItem('crybotChatViewVisible', 'false');
+
     // Refresh the list to show latest state
     this.loadSessionsList();
   }
@@ -990,6 +1028,10 @@ class CrybotWeb {
 
     listContainer?.classList.add('hidden');
     chatView?.classList.remove('hidden');
+
+    // Save view state
+    this.chatViewVisible = true;
+    localStorage.setItem('crybotChatViewVisible', 'true');
   }
 
   switchSession(sessionId) {
