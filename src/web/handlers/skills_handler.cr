@@ -125,9 +125,12 @@ module Crybot
           skill_file = skill_dir / "skill.yml"
 
           begin
+            # Read the raw YAML content first, before parsing
+            content = File.read(skill_file)
+
+            # Try to parse the config
             config = Agent::SkillConfig.from_file(skill_file)
             config.load_credentials_from_file(skill_dir)
-            content = File.read(skill_file)
 
             # Build config hash
             credentials_array = config.credentials.try do |creds|
@@ -150,8 +153,16 @@ module Crybot
               docs:        File.exists?(skill_dir / "SKILL.md") ? File.read(skill_dir / "SKILL.md") : nil,
             }.to_json
           rescue e : Exception
+            # Even if parsing fails, try to return the raw content
+            content = File.read(skill_file) rescue ""
+
             {
-              error: "Failed to load skill: #{e.message}",
+              name:        skill_name,
+              config:      nil,
+              config_yaml: content,
+              has_docs:    File.exists?(skill_dir / "SKILL.md"),
+              docs:        File.exists?(skill_dir / "SKILL.md") ? File.read(skill_dir / "SKILL.md") : nil,
+              error:       "Failed to parse skill config: #{e.message}",
             }.to_json
           end
         end

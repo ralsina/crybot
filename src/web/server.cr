@@ -226,7 +226,7 @@ module Crybot
         end
 
         # API: Reload skills in the running agent
-        post "/api/agent/reload-skills" do |env|
+        post "/api/agent/reload-skills" do |_|
           results = @agent.reload_skills
 
           loaded_count = results.count { |r| r[:status] == "loaded" }
@@ -239,6 +239,28 @@ module Crybot
             loaded:  loaded_count,
             missing: missing_count,
             errors:  error_count,
+            results: results.map do |r|
+              {
+                name:   r[:name],
+                status: r[:status],
+                error:  r[:error],
+              }
+            end,
+          }.to_json
+        end
+
+        # API: Reload MCP servers
+        post "/api/agent/reload-mcp" do |_|
+          results = @agent.reload_mcp
+
+          connected_count = results.count { |r| r[:status] == "connected" }
+          error_count = results.count { |r| r[:status] == "error" }
+
+          {
+            success: true,
+            message: "MCP servers reloaded",
+            connected: connected_count,
+            errors: error_count,
             results: results.map do |r|
               {
                 name:   r[:name],

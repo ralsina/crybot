@@ -2,6 +2,7 @@ require "file_utils"
 require "./skill_config"
 require "./skill"
 require "../config/loader"
+require "../mcp/manager"
 
 module Crybot
   module Agent
@@ -9,8 +10,9 @@ module Crybot
     class SkillManager
       getter skills_dir : Path
       getter loaded_skills : Hash(String, Skill)
+      getter mcp_manager : MCP::Manager?
 
-      def initialize(@skills_dir : Path = Config::Loader.skills_dir)
+      def initialize(@skills_dir : Path = Config::Loader.skills_dir, @mcp_manager : MCP::Manager? = nil)
         @loaded_skills = {} of String => Skill
       end
 
@@ -45,8 +47,8 @@ module Crybot
         # Load credentials from file
         config.load_credentials_from_file(dir)
 
-        # Create the skill instance
-        skill = Skill.new(config, dir)
+        # Create the skill instance with MCP manager
+        skill = Skill.new(config, dir, @mcp_manager)
 
         # Check if all required credentials are set
         missing_creds = config.missing_credentials

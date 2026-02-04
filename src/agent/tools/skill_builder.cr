@@ -17,7 +17,7 @@ module Crybot
 
         def parameters : Hash(String, JSON::Any)
           {
-            "type" => JSON::Any.new("object"),
+            "type"       => JSON::Any.new("object"),
             "properties" => JSON::Any.new({
               "command" => JSON::Any.new({
                 "type"        => JSON::Any.new("string"),
@@ -259,6 +259,7 @@ module Crybot
           })
 
           yaml_params = build_yaml_params(properties, required)
+          required_yaml = required.map { |r| "      - \"#{r}\"" }.join("\n")
 
           skill_yml = <<-YAML
 name: #{name}
@@ -272,15 +273,15 @@ tool:
     type: object
     properties:#{yaml_params}
     required:
-#{required.map { |r| "      - #{r}" }.join("\n")}
+#{required_yaml}
 
 execution:
   type: command
   command:
     command: #{command}
     args:
-      - "{{options}}"
-      - "{{args}}"
+      - "'{{options}}'"
+      - "'{{args}}'"
     working_dir: null
 YAML
 

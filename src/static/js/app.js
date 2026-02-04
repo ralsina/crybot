@@ -7,6 +7,10 @@ class CrybotWeb {
     this.currentTelegramChat = null;
     this.pushToTalkActive = false;
     this.chatViewVisible = localStorage.getItem('crybotChatViewVisible') === 'true';
+    this.configEditor = null;
+    this.docsEditor = null;
+    this.mcpServers = [];
+    this.editingMCPServer = null;
 
     this.init();
   }
@@ -59,6 +63,11 @@ class CrybotWeb {
     // Load skills when navigating to skills section
     if (section === 'skills') {
       this.loadSkills();
+    }
+
+    // Load MCP servers when navigating to MCP section
+    if (section === 'mcp') {
+      this.loadMCPServers();
     }
   }
 
@@ -218,6 +227,202 @@ class CrybotWeb {
     document.getElementById('close-modal-btn').addEventListener('click', () => {
       this.closeCreateSkillModal();
     });
+
+    // MCP handlers
+    const addMcpBtn = document.getElementById('add-mcp-server-btn');
+    if (addMcpBtn) {
+      addMcpBtn.addEventListener('click', () => {
+        this.openAddMCPServerModal();
+      });
+    } else {
+      console.error('add-mcp-server-btn not found');
+    }
+
+    // MCP modal handlers
+    document.getElementById('close-mcp-modal-btn').addEventListener('click', () => {
+      this.closeMCPServerModal();
+    });
+
+    document.getElementById('cancel-mcp-btn').addEventListener('click', () => {
+      this.closeMCPServerModal();
+    });
+
+    document.getElementById('save-mcp-btn').addEventListener('click', () => {
+      this.saveMCPServerFromModal();
+    });
+
+    // Connection type change handler
+    document.getElementById('mcp-connection-type').addEventListener('change', (e) => {
+      this.toggleMCPConnectionType(e.target.value);
+    });
+  }
+
+  openAddMCPServerModal() {
+    this.editingMCPServer = null;
+    document.getElementById('mcp-modal-title').textContent = 'Add MCP Server';
+    document.getElementById('mcp-server-name').value = '';
+    document.getElementById('mcp-server-name').disabled = false;
+    document.getElementById('mcp-connection-type').value = 'command';
+    document.getElementById('mcp-command').value = '';
+    document.getElementById('mcp-url').value = '';
+    this.toggleMCPConnectionType('command');
+
+    document.getElementById('mcp-server-modal').classList.remove('hidden');
+  }
+
+  editMCPServer(serverName) {
+    const server = this.mcpServers.find(s => s.name === serverName);
+    if (!server) return;
+
+    this.editingMCPServer = serverName;
+    document.getElementById('mcp-modal-title').textContent = 'Edit MCP Server';
+    document.getElementById('mcp-server-name').value = serverName;
+    document.getElementById('mcp-server-name').disabled = true;
+
+    if (server.command) {
+      document.getElementById('mcp-connection-type').value = 'command';
+      document.getElementById('mcp-command').value = server.command;
+      this.toggleMCPConnectionType('command');
+    } else if (server.url) {
+      document.getElementById('mcp-connection-type').value = 'http';
+      document.getElementById('mcp-url').value = server.url;
+      this.toggleMCPConnectionType('http');
+    }
+
+    document.getElementById('mcp-server-modal').classList.remove('hidden');
+  }
+
+  closeMCPServerModal() {
+    document.getElementById('mcp-server-modal').classList.add('hidden');
+    this.editingMCPServer = null;
+  }
+
+  toggleMCPConnectionType(type) {
+    const commandGroup = document.getElementById('mcp-command-group');
+    const urlGroup = document.getElementById('mcp-url-group');
+
+    if (type === 'command') {
+      commandGroup.classList.remove('hidden');
+      urlGroup.classList.add('hidden');
+    } else {
+      commandGroup.classList.add('hidden');
+      urlGroup.classList.remove('hidden');
+    }
+  }
+
+  async saveMCPServerFromModal() {
+    const name = document.getElementById('mcp-server-name').value.trim();
+    const connectionType = document.getElementById('mcp-connection-type').value;
+    const command = document.getElementById('mcp-command').value.trim();
+    const url = document.getElementById('mcp-url').value.trim();
+
+    if (!name) {
+      alert('Please enter a server name');
+      return;
+    }
+
+    if (connectionType === 'command' && !command) {
+      alert('Please enter a command');
+      return;
+    }
+
+    if (connectionType === 'http' && !url) {
+      alert('Please enter a URL');
+      return;
+    }
+
+    this.mcpServers = this.mcpServers || [];
+
+    if (this.editingMCPServer) {
+      // Update existing server
+      const index = this.mcpServers.findIndex(s => s.name === this.editingMCPServer);
+      if (index !== -1) {
+        this.mcpServers[index] = {
+          name,
+          command: connectionType === 'command' ? command : null,
+          url: connectionType === 'http' ? url : null,
+        };
+      }
+    } else {
+      // Add new server
+      if (this.mcpServers.some(s => s.name === name)) {
+        alert('A server with this name already exists');
+        return;
+      }
+      this.mcpServers.push({
+        name,
+        command: connectionType === 'command' ? command : null,
+        url: connectionType === 'http' ? url : null,
+      });
+    }
+
+    await this.saveMCPServers();
+    this.closeMCPServerModal();
+  }
+
+  loadMCPServers() {
+    const container = document.getElementById('mcp-servers-list');
+
+    if (!this.mcpServers || this.mcpServers.length === 0) {
+      container.innerHTML = '<p class="empty-state">No MCP servers configured.</p>';
+      return;
+    }
+
+    container.innerHTML = '';
+    this.mcpServers.forEach(server => {
+      const card = document.createElement('div');
+      card.className = 'mcp-server-card';
+      card.innerHTML = `
+        <div class="mcp-server-header">
+          <span class="mcp-server-name">${this.escapeHtml(server.name)}</span>
+          <div class="mcp-server-actions">
+            <button class="btn-sm btn-secondary" onclick="app.editMCPServer('${this.escapeHtml(server.name)}')">Edit</button>
+            <button class="btn-sm btn-delete" onclick="app.deleteMCPServer('${this.escapeHtml(server.name)}')">Delete</button>
+          </div>
+        </div>
+        <div class="mcp-server-details">
+          ${server.command ? `<div><strong>Command:</strong> <code>${this.escapeHtml(server.command)}</code></div>` : ''}
+          ${server.url ? `<div><strong>URL:</strong> <code>${this.escapeHtml(server.url)}</code></div>` : ''}
+        </div>
+      `;
+      container.appendChild(card);
+    });
+  }
+
+  async deleteMCPServer(serverName) {
+    if (!confirm(`Delete MCP server "${serverName}"?`)) return;
+
+    this.mcpServers = this.mcpServers.filter(s => s.name !== serverName);
+    await this.saveMCPServers();
+  }
+
+  async saveMCPServers() {
+    try {
+      const response = await fetch('/api/config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mcp: {
+            servers: this.mcpServers
+          }
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Reload MCP servers
+        await fetch('/api/agent/reload-mcp', { method: 'POST' });
+
+        this.loadMCPServers();
+        alert('MCP servers saved and reloaded successfully!');
+      } else {
+        alert(`Failed to save: ${data.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Failed to save MCP servers:', error);
+      alert('Failed to save MCP servers');
+    }
   }
 
   connectWebSocket() {
@@ -715,6 +920,10 @@ class CrybotWeb {
       document.getElementById('voice-piper-model').value = config.voice?.piper_model || '';
       document.getElementById('voice-piper-path').value = config.voice?.piper_path || '';
       document.getElementById('voice-timeout').value = config.voice?.conversational_timeout || 3;
+
+      // MCP - store for later use
+      this.mcpServers = config.mcp?.servers || [];
+      this.loadMCPServers();
     } catch (error) {
       console.error('Failed to load configuration:', error);
     }
@@ -1207,11 +1416,44 @@ class CrybotWeb {
     editorView.classList.remove('hidden');
     title.textContent = `Edit Skill: ${skillName}`;
 
+    // Initialize CodeMirror editors if not already done
+    this.initCodeMirrorEditors();
+
     // Load skill data
     this.loadSkillForEditor(skillName);
 
     // Setup skill editor tabs
     this.setupSkillEditorTabs();
+  }
+
+  initCodeMirrorEditors() {
+    if (!this.configEditor) {
+      const configTextarea = document.getElementById('skill-config');
+      this.configEditor = CodeMirror.fromTextArea(configTextarea, {
+        mode: 'yaml',
+        theme: 'default',
+        lineNumbers: true,
+        indentUnit: 2,
+        tabSize: 2,
+        indentWithTabs: false,
+        lineWrapping: true,
+        autofocus: false,
+      });
+    }
+
+    if (!this.docsEditor) {
+      const docsTextarea = document.getElementById('skill-docs');
+      this.docsEditor = CodeMirror.fromTextArea(docsTextarea, {
+        mode: 'markdown',
+        theme: 'default',
+        lineNumbers: true,
+        indentUnit: 2,
+        tabSize: 2,
+        indentWithTabs: false,
+        lineWrapping: true,
+        autofocus: false,
+      });
+    }
   }
 
   async loadSkillForEditor(skillName) {
@@ -1220,8 +1462,14 @@ class CrybotWeb {
       const data = await response.json();
 
       document.getElementById('skill-dir-name').value = data.name || skillName;
-      document.getElementById('skill-config').value = data.config_yaml || '';
-      document.getElementById('skill-docs').value = data.docs || '';
+
+      // Update CodeMirror editors
+      if (this.configEditor) {
+        this.configEditor.setValue(data.config_yaml || '');
+      }
+      if (this.docsEditor) {
+        this.docsEditor.setValue(data.docs || '');
+      }
 
       // Load credentials
       this.loadCredentials(data.config);
@@ -1278,8 +1526,8 @@ class CrybotWeb {
 
   async saveSkill() {
     const skillName = document.getElementById('skill-dir-name').value;
-    const config = document.getElementById('skill-config').value;
-    const docs = document.getElementById('skill-docs').value;
+    const config = this.configEditor ? this.configEditor.getValue() : '';
+    const docs = this.docsEditor ? this.docsEditor.getValue() : '';
 
     try {
       const response = await fetch(`/api/skills/${encodeURIComponent(skillName)}`, {
@@ -1576,7 +1824,10 @@ execution:
   }
 }
 
+// Global app reference for onclick handlers
+let app;
+
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
-  new CrybotWeb();
+  app = new CrybotWeb();
 });

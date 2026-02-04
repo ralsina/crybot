@@ -34,6 +34,35 @@ module Crybot
         @mcp_tools.clear
       end
 
+      # Reload MCP servers with new configuration
+      def reload(config : Config::MCPConfig?) : Array(NamedTuple(name: String, status: String, error: String?))
+        results = [] of NamedTuple(name: String, status: String, error: String?)
+
+        # Stop all existing clients
+        stop
+
+        return results unless config
+
+        config.servers.each do |server_config|
+          begin
+            client = Client.new(server_config.name, server_config.command, server_config.url)
+            client.start
+            @clients[server_config.name] = client
+
+            # Register tools from this server
+            register_tools_from_server(client, server_config.name)
+
+            results << {name: server_config.name, status: "connected", error: nil}
+            puts "[MCP] Reloaded server '#{server_config.name}'"
+          rescue e : Exception
+            results << {name: server_config.name, status: "error", error: e.message}
+            puts "[MCP] Failed to reload server '#{server_config.name}': #{e.message}"
+          end
+        end
+
+        results
+      end
+
       private def register_tools_from_server(client : Client, server_name : String) : Nil
         tools = client.list_tools
 

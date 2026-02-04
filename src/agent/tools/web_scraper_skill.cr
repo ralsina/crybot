@@ -9,45 +9,45 @@ module Crybot
       # Tool for creating web scraping skills (supports HTTP and MCP/Playwright)
       class CreateWebScraperSkillTool < Tool
         def name : String
-          "create_web_scraper_skill"
+          "create_web_fetch_skill"
         end
 
         def description : String
-          "Creates a new skill for scraping content from websites. Supports both simple HTTP fetching and MCP/Playwright for JavaScript-heavy sites. The skill will fetch from URLs and extract headlines, links, summaries, etc."
+          "Creates a new skill for fetching and reading content from websites. Supports both HTTP fetching for simple sites and browser automation for dynamic sites. Use this to add capabilities for accessing web resources."
         end
 
         def parameters : Hash(String, JSON::Any)
           {
-            "type" => JSON::Any.new("object"),
+            "type"       => JSON::Any.new("object"),
             "properties" => JSON::Any.new({
               "name" => JSON::Any.new({
                 "type"        => JSON::Any.new("string"),
-                "description" => JSON::Any.new("The skill name (e.g., 'tech_news', 'hacker_news')"),
+                "description" => JSON::Any.new("The skill name (e.g., 'tech_reader', 'hacker_news_reader')"),
               }),
               "description" => JSON::Any.new({
                 "type"        => JSON::Any.new("string"),
-                "description" => JSON::Any.new("What this skill does (e.g., 'Aggregates tech news from Hacker News')"),
+                "description" => JSON::Any.new("Brief description of what this skill does (e.g., 'Read technology articles from tech blogs')"),
               }),
               "urls" => JSON::Any.new({
                 "type"        => JSON::Any.new("array"),
-                "description" => JSON::Any.new("Array of URLs to scrape"),
+                "description" => JSON::Any.new("List of website URLs to read from"),
                 "items"       => JSON::Any.new({"type" => JSON::Any.new("string")}),
               }),
               "fetch_method" => JSON::Any.new({
                 "type"        => JSON::Any.new("string"),
-                "description" => JSON::Any.new("How to fetch: 'http' for simple sites, 'mcp_playwright' for JavaScript-heavy sites (default: 'http')"),
+                "description" => JSON::Any.new("Method to use: 'http' for simple sites, 'browser' for dynamic sites (default: 'http')"),
               }),
               "mcp_server" => JSON::Any.new({
                 "type"        => JSON::Any.new("string"),
-                "description" => JSON::Any.new("MCP server name for Playwright (default: 'playwright')"),
+                "description" => JSON::Any.new("MCP browser server name (default: 'playwright')"),
               }),
               "selector" => JSON::Any.new({
                 "type"        => JSON::Any.new("string"),
-                "description" => JSON::Any.new("CSS selector to extract content (e.g., 'a.story-link', 'article.title') - will be auto-detected if not specified"),
+                "description" => JSON::Any.new("Optional CSS selector to target specific content"),
               }),
               "extract" => JSON::Any.new({
                 "type"        => JSON::Any.new("string"),
-                "description" => JSON::Any.new("What to extract from each matched element: 'text', 'html', 'attr:href', 'attr:title', etc."),
+                "description" => JSON::Any.new("What to extract: 'text', 'links', 'titles', etc. (default: 'text')"),
               }),
             }),
             "required" => JSON::Any.new([JSON::Any.new("name"), JSON::Any.new("description"), JSON::Any.new("urls")] of JSON::Any),
@@ -101,10 +101,10 @@ module Crybot
           # Generate skill.yml
           if use_playwright
             generate_playwright_skill(skill_dir, name, tool_name, description, urls, mcp_server, selector, extract)
-            method_used = "MCP Playwright (for JavaScript-rendered content)"
+            method_used = "Browser automation via MCP Playwright"
           else
             generate_http_skill(skill_dir, name, tool_name, description, urls, selector, extract)
-            method_used = "HTTP (simple fetching)"
+            method_used = "HTTP client"
           end
 
           # Generate SKILL.md
@@ -112,7 +112,7 @@ module Crybot
 
           urls_list = urls.map { |u| "  - #{u}" }.join("\n")
 
-          "Successfully created web scraper skill '#{name}'!\n\n" \
+          "Successfully created web reader skill '#{name}'!\n\n" \
           "Skill location: #{skill_dir}\n" \
           "Tool name: #{tool_name}\n" \
           "Method: #{method_used}\n\n" \
@@ -124,10 +124,10 @@ module Crybot
           "4. Ask me to use the #{tool_name} tool!\n\n" \
           "Usage:\n" \
           "- \"Get the latest #{name}\"\n" \
-          "- \"Scrape #{name} headlines\"\n" \
+          "- \"Read #{name} articles\"\n" \
           "- \"What's on #{urls.first}?\""
         rescue e : Exception
-          "Error creating web scraper skill: #{e.message} #{e.backtrace?.try(&.first).try { |s| "\n  #{s}" } || ""}"
+          "Error creating web reader skill: #{e.message} #{e.backtrace?.try(&.first).try { |s| "\n  #{s}" } || ""}"
         end
 
         private def should_use_playwright?(urls : Array(String)) : Bool
@@ -151,63 +151,48 @@ module Crybot
           # Generate CSS selector based on common patterns if not provided
           css_selector = selector.empty? ? suggest_selector(urls[0]) : selector
 
-          urls_list = urls.map_with_index { |u, i| "      - \"{{url_#{i}}}\"" }.join("\n")
+          urls_list = urls.map_with_index { |u, _| "      - \"#{u}\"" }.join("\n")
 
           skill_yml = <<-YAML
 name: #{name}
 version: 1.0.0
-description: #{description} (uses MCP Playwright)
+description: #{description} (uses browser automation via MCP)
 
 tool:
   name: #{tool_name}
-  description: Scrape content from websites using Playwright (for JavaScript-rendered content)
+  description: Fetch and read content from JavaScript-heavy websites using browser automation
   parameters:
     type: object
     properties:
       url:
         type: string
-        description: The URL to scrape (defaults to first configured source)
-      limit:
-        type: string
-        description: Maximum number of items to return (default: "5")
+        description: The URL to read from (defaults to first configured source)
     required: []
 
 execution:
-  type: command
-  command:
-    command: crybot
-    args:
-      - "mcp"
-      - "--server"
-      - "#{mcp_server}"
-      - "call"
-      - "navigate"
-      - "{{url}}"
-    working_dir: null
+  type: mcp
+  mcp:
+    server: #{mcp_server}
+    tool: navigate
+    args_mapping:
+      url: "{{url}}"
 
 note: |
-  This skill uses MCP Playwright to scrape JavaScript-rendered content.
+  This skill uses browser automation (#{mcp_server} MCP server) to access JavaScript-rendered content.
 
-  The tool will:
-  1. Navigate to the URL using Playwright
-  2. Wait for the page to load
-  3. Extract content using CSS selector: #{css_selector}
-  4. Return the #{extract} from each matched element
+  The tool will navigate to the URL and return the page content, which the AI can then parse
+  to extract headlines, links, and articles using the CSS selector: #{css_selector}
 
   Configured sources:
 #{urls_list}
 
-  To extract different content, modify the skill to use different MCP calls:
-  - 'navigate' - Go to a URL
-  - 'snapshot' - Get page snapshot
-  - 'click' - Click elements
-  - 'fill' - Fill forms
-
   Common CSS selectors:
-  - a.story-link - Hacker News story links
+  - a.storylink, .titleline > a - Hacker News story links
   - article.post-title - Blog post titles
   - h2.entry-title - Article headers
   - a[href*='/article/'] - Article links
+
+  If #{mcp_server} MCP server is not configured, this skill will fail to load.
 YAML
 
           File.write(dir / "skill.yml", skill_yml)
@@ -220,17 +205,17 @@ YAML
           skill_yml = <<-YAML
 name: #{name}
 version: 1.0.0
-description: #{description} (HTTP fetching)
+description: #{description} (HTTP client)
 
 tool:
   name: #{tool_name}
-  description: Fetch and scrape content from websites
+  description: Fetch and read content from websites
   parameters:
     type: object
     properties:
       url:
         type: string
-        description: The URL to scrape (optional, uses configured source if not specified)
+        description: The URL to read from (optional, uses configured source if not specified)
       limit:
         type: string
         description: Maximum number of items to return (default: "5")
@@ -242,27 +227,27 @@ execution:
     url: "{{url}}"
     method: GET
     response_format: |
-      The page content has been fetched. Use CSS selector "#{css_selector}"
-      to extract the "#{extract}" from matching elements.
+      The page content has been fetched. You can now process the HTML content.
+
+      To extract specific elements, use CSS selector "#{css_selector}"
+      and extract the "#{extract}" from matching elements.
 
       Raw content: {{content}}
 
 note: |
-  This skill uses HTTP fetching and then processes the HTML.
+  This skill uses HTTP fetching to retrieve web content.
 
-  The actual scraping is done by the agent using the CSS selector after fetching.
-
-  CSS selector pattern: #{css_selector}
+  The CSS selector pattern: #{css_selector}
   Extraction method: #{extract}
 
   To customize:
   1. Test different CSS selectors using browser dev tools
   2. Adjust the 'extract' parameter (text, html, attr:href, etc.)
-  3. For JavaScript-heavy sites, recreate this skill with fetch_method='mcp_playwright'
+  3. For JavaScript-heavy sites, recreate this skill with fetch_method='browser'
 
   Tips:
   - Use browser dev tools (F12) to inspect element structure
-  - Test selectors in the console: document.querySelectorAll('your-selector')
+  - Test selectors: document.querySelectorAll('your-selector')
   - Some sites may require specific headers or User-Agent
 YAML
 
@@ -290,9 +275,7 @@ YAML
         private def generate_skill_md(dir : Path, name : String, description : String, urls : Array(String), use_playwright : Bool, mcp_server : String, selector : String, extract : String) : Nil
           urls_list = urls.map { |u| "- #{u}" }.join("\n  ")
 
-          method_note = use_playwright ?
-            "This skill uses **MCP Playwright** (#{mcp_server}) to scrape JavaScript-rendered content." :
-            "This skill uses **HTTP fetching** for simple HTML sites."
+          method_note = use_playwright ? "This skill uses **browser automation** (#{mcp_server}) for dynamic content." : "This skill uses **HTTP client** for simple HTML sites."
 
           skill_md = <<-MD
 # #{name.capitalize.gsub("_", " ")} Skill
@@ -301,7 +284,7 @@ YAML
 
 ## Usage
 
-This skill provides the `#{name}_scraper` tool to scrape content from websites.
+This skill provides the `#{name}_reader` tool to fetch and read content from websites.
 
 ## Sources
 
@@ -324,7 +307,7 @@ To find the right selector:
 ## Usage Examples
 
 - "Get the latest #{name}"
-- "Scrape #{name} headlines"
+- "Read #{name} articles"
 - "What's on #{urls.first}?"
 - "Extract titles from #{name}"
 

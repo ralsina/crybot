@@ -6,6 +6,13 @@
   <title>Crybot</title>
   <link rel="stylesheet" href="/css/app.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <!-- CodeMirror for code editing -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/yaml/yaml.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/markdown/markdown.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
 </head>
 <body>
   <div class="app-container">
@@ -23,6 +30,7 @@
       <nav class="sidebar-nav">
         <a href="#" class="nav-item active" data-section="chat">Chat</a>
         <a href="#" class="nav-item" data-section="skills">Skills</a>
+        <a href="#" class="nav-item" data-section="mcp">MCP</a>
         <a href="#" class="nav-item" data-section="configuration">Configuration</a>
         <a href="#" class="nav-item" data-section="logs">Logs</a>
       </nav>
@@ -242,7 +250,8 @@
                 </div>
                 <div class="form-group">
                   <label for="skill-config">skill.yml Configuration</label>
-                  <textarea id="skill-config" class="code-editor" rows="20" placeholder="# Enter your skill configuration in YAML format"></textarea>
+                  <textarea id="skill-config" style="display: none;" placeholder="# Enter your skill configuration in YAML format"></textarea>
+                  <div id="skill-config-editor" class="code-editor-container"></div>
                   <small>Edit the YAML configuration for your skill.</small>
                 </div>
                 <div class="skill-actions">
@@ -253,7 +262,8 @@
               <div id="docs-tab" class="skill-tab-content">
                 <div class="form-group">
                   <label for="skill-docs">SKILL.md Documentation</label>
-                  <textarea id="skill-docs" class="code-editor" rows="20" placeholder="# Skill Name&#10;&#10;Description of what this skill does..."></textarea>
+                  <textarea id="skill-docs" style="display: none;" placeholder="# Skill Name&#10;&#10;Description of what this skill does..."></textarea>
+                  <div id="skill-docs-editor" class="code-editor-container"></div>
                   <small>Write documentation for users of this skill.</small>
                 </div>
                 <div class="skill-actions">
@@ -275,34 +285,38 @@
             </div>
           </div>
         </div>
+      </section>
 
-        <!-- Skill Creation Modal -->
-        <div id="create-skill-modal" class="modal hidden">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h3>Create New Skill</h3>
-              <button class="modal-close" id="close-modal-btn">×</button>
-            </div>
-            <div class="modal-body">
-              <div class="form-group">
-                <label for="new-skill-name">Skill Directory Name</label>
-                <input type="text" id="new-skill-name" placeholder="my-skill" pattern="[a-z0-9_\-]+" required>
-                <small>Use lowercase letters, numbers, hyphens, and underscores only.</small>
-              </div>
-              <div class="form-group">
-                <label for="new-skill-template">Start from template</label>
-                <select id="new-skill-template">
-                  <option value="blank">Blank Skill</option>
-                  <option value="weather">Weather Skill (HTTP API)</option>
-                  <option value="command">Command Skill</option>
-                </select>
-              </div>
-            </div>
-            <div class="modal-footer">
-              <button id="cancel-create-btn" class="btn-secondary">Cancel</button>
-              <button id="create-skill-confirm-btn" class="btn-primary">Create Skill</button>
-            </div>
+      <!-- MCP Section -->
+      <section id="section-mcp" class="section">
+        <div class="section-header">
+          <h2>MCP Servers</h2>
+          <div class="section-actions">
+            <button id="add-mcp-server-btn" class="btn-primary">+ Add Server</button>
           </div>
+        </div>
+
+        <p class="section-description">Configure Model Context Protocol (MCP) servers to extend Crybot's capabilities with external tools.</p>
+
+        <div class="config-section">
+          <h3>Configured Servers</h3>
+
+          <div id="mcp-servers-list" class="mcp-servers-list">
+            <!-- MCP servers loaded dynamically -->
+            <p class="empty-state">No MCP servers configured.</p>
+          </div>
+        </div>
+
+        <div class="config-section">
+          <h3>About MCP</h3>
+          <p>MCP (Model Context Protocol) servers provide external tools and resources to Crybot. Common uses include:</p>
+          <ul>
+            <li><strong>Browser automation</strong> - Playwright, Puppeteer for web scraping</li>
+            <li><strong>Filesystem access</strong> - Read/write files on your system</li>
+            <li><strong>Database access</strong> - Query databases directly</li>
+            <li><strong>API integrations</strong> - Connect to external services</li>
+          </ul>
+          <p>Configure servers in your config.yml under the <code>mcp:</code> section, or use this UI.</p>
         </div>
       </section>
 
@@ -314,6 +328,75 @@
         </div>
       </section>
     </main>
+
+    <!-- Global Modals (outside sections) -->
+    <!-- Create Skill Modal -->
+    <div id="create-skill-modal" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Create New Skill</h3>
+          <button class="modal-close" id="close-modal-btn">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="new-skill-name">Skill Directory Name</label>
+            <input type="text" id="new-skill-name" placeholder="my-skill" pattern="[a-z0-9_\-]+" required>
+            <small>Use lowercase letters, numbers, hyphens, and underscores only.</small>
+          </div>
+          <div class="form-group">
+            <label for="new-skill-template">Start from template</label>
+            <select id="new-skill-template">
+              <option value="blank">Blank Skill</option>
+              <option value="weather">Weather Skill (HTTP API)</option>
+              <option value="command">Command Skill</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="cancel-create-btn" class="btn-secondary">Cancel</button>
+          <button id="create-skill-confirm-btn" class="btn-primary">Create Skill</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MCP Server Modal -->
+    <div id="mcp-server-modal" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="mcp-modal-title">Add MCP Server</h3>
+          <button class="modal-close" id="close-mcp-modal-btn">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="mcp-server-name">Server Name</label>
+            <input type="text" id="mcp-server-name" placeholder="playwright" required>
+            <small>A unique identifier for this server (e.g., "playwright", "filesystem")</small>
+          </div>
+          <div class="form-group">
+            <label for="mcp-connection-type">Connection Type</label>
+            <select id="mcp-connection-type">
+              <option value="command">Command (stdio)</option>
+              <option value="http">HTTP URL</option>
+            </select>
+            <small>Command connects via stdio, HTTP connects to a URL endpoint</small>
+          </div>
+          <div class="form-group" id="mcp-command-group">
+            <label for="mcp-command">Command</label>
+            <input type="text" id="mcp-command" placeholder="npx -y @modelcontextprotocol/server-playwright">
+            <small>The command to start the MCP server (space-separated arguments)</small>
+          </div>
+          <div class="form-group hidden" id="mcp-url-group">
+            <label for="mcp-url">HTTP URL</label>
+            <input type="text" id="mcp-url" placeholder="http://localhost:3000/mcp">
+            <small>The HTTP URL of the MCP server</small>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="cancel-mcp-btn" class="btn-secondary">Cancel</button>
+          <button id="save-mcp-btn" class="btn-primary">Save Server</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="/js/app.js"></script>

@@ -35,14 +35,56 @@ module Crybot
       end
 
       def to_h : Hash(String, JSON::Any)
-        # Convert arguments hash to JSON::Any format
-        args_hash = @arguments.transform_values(&.as_s).transform_values { |v| JSON::Any.new(v) }
+        # Convert arguments hash to JSON::Any format - ensure all values are JSON::Any
+        args_hash = @arguments.transform_values do |v|
+          case v.raw
+          when String
+            JSON::Any.new(v.as_s)
+          when Int64
+            JSON::Any.new(v.as_i)
+          when Float64
+            JSON::Any.new(v.as_f)
+          when Bool
+            JSON::Any.new(v.as_bool)
+          when Array
+            # Convert array elements - ensure result is JSON::Any
+            JSON::Any.new(v.as_a.map { |item| convert_json_any(item) })
+          when Hash
+            # Convert hash recursively - ensure result is JSON::Any
+            JSON::Any.new(v.as_h.transform_values { |item| convert_json_any(item) })
+          when Nil
+            JSON::Any.new(nil)
+          else
+            JSON::Any.new(v.to_s)
+          end
+        end
         {
           "tool_name" => JSON::Any.new(@tool_name),
           "arguments" => JSON::Any.new(args_hash),
           "result"    => JSON::Any.new(@result),
           "success"   => JSON::Any.new(@success),
         }
+      end
+
+      private def convert_json_any(value : JSON::Any) : JSON::Any
+        case value.raw
+        when String
+          value
+        when Int64
+          JSON::Any.new(value.as_i)
+        when Float64
+          JSON::Any.new(value.as_f)
+        when Bool
+          JSON::Any.new(value.as_bool)
+        when Array
+          JSON::Any.new(value.as_a.map { |item| convert_json_any(item) })
+        when Hash
+          JSON::Any.new(value.as_h.transform_values { |item| convert_json_any(item) })
+        when Nil
+          value
+        else
+          JSON::Any.new(value.to_s)
+        end
       end
     end
 
@@ -70,9 +112,13 @@ module Crybot
       @skill_manager : SkillManager
 
       getter skill_manager
+      getter mcp_manager
 
       def initialize(@config : Config::ConfigFile)
-        @skill_manager = SkillManager.new
+        # Initialize MCP manager first (before SkillManager)
+        @mcp_manager = MCP::Manager.new(@config.mcp)
+
+        @skill_manager = SkillManager.new(Config::Loader.skills_dir, @mcp_manager)
         @provider = create_provider
         @context_builder = ContextBuilder.new(@config, @skill_manager)
         @session_manager = Session::Manager.instance
@@ -80,9 +126,6 @@ module Crybot
 
         # Register built-in tools
         register_tools
-
-        # Initialize MCP manager
-        @mcp_manager = MCP::Manager.new(@config.mcp)
       end
 
       private def create_provider : Providers::LLMProvider
@@ -262,7 +305,7 @@ module Crybot
       # Public method to reload skills (used by web UI)
       def reload_skills : Array(NamedTuple(name: String, skill: Skill?, status: String, error: String?))
         # Unregister existing skill tools
-        @skill_manager.loaded_skills.each do |name, skill|
+        @skill_manager.loaded_skills.each do |_, skill|
           wrapper = Tools::SkillToolWrapper.new(skill)
           Tools::Registry.unregister(wrapper.name)
         end
@@ -291,6 +334,17 @@ module Crybot
         @context_builder = ContextBuilder.new(@config, @skill_manager)
 
         results
+      end
+
+      # Reload MCP servers with new configuration
+      def reload_mcp : Array(NamedTuple(name: String, status: String, error: String?))
+        return [] of NamedTuple(name: String, status: String, error: String?) unless @mcp_manager
+
+        # Reload config to get new MCP settings
+        @config = Config::Loader.load
+
+        # Reload MCP servers
+        @mcp_manager.not_nil!.reload(@config.mcp)
       end
     end
   end

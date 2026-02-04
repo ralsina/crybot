@@ -18,7 +18,7 @@ module Crybot
       end
     end
 
-    # Command execution configuration (future)
+    # Command execution configuration
     struct CommandExecutionConfig
       include YAML::Serializable
 
@@ -31,6 +31,20 @@ module Crybot
       end
     end
 
+    # MCP execution configuration - calls MCP tools directly
+    struct MCPExecutionConfig
+      include YAML::Serializable
+
+      property server : String
+      property tool : String
+      property args_mapping : Hash(String, String)?
+
+      def validate : Nil
+        raise "MCP execution requires 'server'" if @server.empty?
+        raise "MCP execution requires 'tool'" if @tool.empty?
+      end
+    end
+
     # Execution configuration base class
     class ExecutionConfig
       include YAML::Serializable
@@ -38,6 +52,7 @@ module Crybot
       property type : String
       property http : HTTPExecutionConfig?
       property command : CommandExecutionConfig?
+      property mcp : MCPExecutionConfig?
 
       def validate : Nil
         case @type
@@ -53,6 +68,12 @@ module Crybot
           else
             raise "Command execution config not found"
           end
+        when "mcp"
+          if mcp_config = @mcp
+            mcp_config.validate
+          else
+            raise "MCP execution config not found"
+          end
         else
           raise "Unknown execution type: #{@type}"
         end
@@ -64,6 +85,10 @@ module Crybot
 
       def command_exec : CommandExecutionConfig
         @command || raise "Not a command execution config"
+      end
+
+      def mcp_exec : MCPExecutionConfig
+        @mcp || raise "Not an MCP execution config"
       end
     end
 
@@ -169,6 +194,7 @@ module Crybot
       property tool : ToolDefinition
       property execution : ExecutionConfig
       property credentials : Array(CredentialRequirement)?
+      property note : String?
       # Storage for credential values (not serialized to YAML)
       property credential_values : Hash(String, String) = {} of String => String
 
