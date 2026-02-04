@@ -309,6 +309,42 @@ class CrybotWeb {
         this.loadTelegramChatsForForwarding();
       });
     }
+
+    // Unified channel selection for forwarding
+    const channelSelect = document.getElementById('task-forward-channel');
+    const loadChatsBtn = document.getElementById('load-chats-btn');
+    const forwardToInput = document.getElementById('task-forward-to');
+
+    if (channelSelect && loadChatsBtn && forwardToInput) {
+      channelSelect.addEventListener('change', (e) => {
+        const channel = e.target.value;
+        loadChatsBtn.disabled = !channel;
+
+        if (channel === 'telegram') {
+          loadChatsBtn.textContent = '📋 Load Chats';
+          forwardToInput.placeholder = 'Click "Load Chats" to select a Telegram chat';
+        } else if (channel === 'web') {
+          loadChatsBtn.textContent = '📋 Load Sessions';
+          forwardToInput.placeholder = 'Enter a web session ID';
+        } else if (channel === 'voice' || channel === 'repl') {
+          loadChatsBtn.disabled = true;
+          forwardToInput.value = channel + ':';
+          forwardToInput.placeholder = 'Uses shared session (no ID needed)';
+        } else {
+          loadChatsBtn.disabled = true;
+          forwardToInput.placeholder = 'Select a channel first';
+        }
+      });
+
+      loadChatsBtn.addEventListener('click', () => {
+        const channel = channelSelect.value;
+        if (channel === 'telegram') {
+          this.loadTelegramChatsForForwarding();
+        } else if (channel === 'web') {
+          this.loadWebSessionsForForwarding();
+        }
+      });
+    }
   }
 
   openAddMCPServerModal() {
@@ -2252,7 +2288,9 @@ execution:
   }
 
   async loadTelegramChatsForForwarding() {
-    const listContainer = document.getElementById('telegram-chats-list');
+    const listContainer = document.getElementById('chats-list');
+    const forwardChannel = document.getElementById('task-forward-channel').value;
+
     listContainer.innerHTML = '<p style="color: #666;">Loading chats...</p>';
     listContainer.classList.remove('hidden');
 
@@ -2298,6 +2336,62 @@ execution:
     } catch (error) {
       console.error('Failed to load telegram chats:', error);
       listContainer.innerHTML = '<p style="color: #e74c3c;">Failed to load chats.</p>';
+    }
+  }
+
+  async loadWebSessionsForForwarding() {
+    const listContainer = document.getElementById('chats-list');
+
+    listContainer.innerHTML = '<p style="color: #666;">Loading sessions...</p>';
+    listContainer.classList.remove('hidden');
+
+    try {
+      const response = await fetch('/api/sessions');
+      const data = await response.json();
+
+      if (!data.sessions || data.sessions.length === 0) {
+        listContainer.innerHTML = '<p style="color: #999;">No web sessions found.</p>';
+        return;
+      }
+
+      // Filter out telegram and scheduled sessions
+      const webSessions = data.sessions.filter(s => !s.startsWith('telegram_') && !s.startsWith('scheduled/'));
+
+      if (webSessions.length === 0) {
+        listContainer.innerHTML = '<p style="color: #999;">No web sessions found (only showing non-Telegram/scheduled).</p>';
+        return;
+      }
+
+      listContainer.innerHTML = '<div style="margin-top: 8px;"><strong>Select a session to forward to:</strong></div>';
+
+      webSessions.forEach(sessionId => {
+        const item = document.createElement('div');
+        item.className = 'telegram-chat-option';
+        item.textContent = sessionId;
+        item.style.cursor = 'pointer';
+        item.style.padding = '4px 8px';
+        item.style.borderRadius = '4px';
+        item.style.marginTop = '4px';
+        item.style.backgroundColor = '#f5f5f5';
+
+        item.addEventListener('click', () => {
+          document.getElementById('task-forward-to').value = `web:${sessionId}`;
+          listContainer.classList.add('hidden');
+        });
+
+        item.addEventListener('mouseover', () => {
+          item.style.backgroundColor = '#e3f2fd';
+        });
+
+        item.addEventListener('mouseout', () => {
+          item.style.backgroundColor = '#f5f5f5';
+        });
+
+        listContainer.appendChild(item);
+      });
+    } catch (error) {
+      console.error('Failed to load web sessions:', error);
+      listContainer.innerHTML = '<p style="color: #e74c3c;">Failed to load sessions.</p>';
     }
   }
 

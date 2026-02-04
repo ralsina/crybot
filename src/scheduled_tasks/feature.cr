@@ -6,6 +6,7 @@ require "./interval_parser"
 require "./registry"
 require "../channels/telegram"
 require "../channels/registry"
+require "../channels/unified_registry"
 require "../session/manager"
 
 module Crybot
@@ -208,57 +209,60 @@ module Crybot
 
         puts "[ScheduledTask] Forwarding output for '#{task.name}' to: #{forward_target}"
 
-        # Parse forward target: "telegram:chat_id" or "web"
+        # Parse forward target: "telegram:chat_id", "web:session_id", "voice:", "repl:"
         parts = forward_target.split(":", 2)
         if parts.size < 2
           puts "[ScheduledTask] Invalid forward_to format: #{forward_target}"
           return
         end
 
-        target_type = parts[0]
-        target_id = parts[1]
+        channel_name = parts[0]
+        chat_id = parts[1]
 
-        puts "[ScheduledTask] Forward target type: #{target_type}, id: #{target_id}"
+        puts "[ScheduledTask] Forwarding to #{channel_name} chat '#{chat_id}'"
 
-        case target_type
-        when "telegram"
-          forward_to_telegram(target_id, task.name, output)
-        when "web"
-          # Web forwarding would go to a web session - for now just log
-          puts "[ScheduledTask] Web forwarding: #{output[0..200]}..."
+        # Format the message
+        message = format_task_message(task.name, output)
+
+        # Use unified registry to send to any channel
+        success = Channels::UnifiedRegistry.send_to_channel(
+          channel_name: channel_name,
+          chat_id: chat_id,
+          content: message,
+          format: Channels::ChannelMessage::MessageFormat::Markdown
+        )
+
+        if success
+          puts "[ScheduledTask] Successfully forwarded to #{channel_name}"
+          # Save to session so it appears in web UI
+          session_key = "#{channel_name}:#{chat_id}"
+          save_assistant_message_to_session(session_key, message)
         else
-          puts "[ScheduledTask] Unknown forward target type: #{target_type}"
+          puts "[ScheduledTask] Failed to forward to #{channel_name} (channel not available)"
         end
+      rescue e : Exception
+        puts "[ScheduledTask] Error forwarding to #{forward_target}: #{e.message}"
+        puts "[ScheduledTask] Backtrace: #{e.backtrace.join("\n")}"
+      end
+
+      private def format_task_message(task_name : String, output : String) : String
+        # Format the scheduled task output with a header
+        "*🤖 Scheduled Task: #{task_name}*\n\n#{output}"
       end
 
       private def forward_to_telegram(chat_id : String, task_name : String, output : String) : Nil
-        # Create a properly formatted message with Markdown
-        # Truncate if too long (Telegram has message size limits)
-        max_length = 4000
-        message = "*🤖 Scheduled Task: #{task_name}*\n\n"
-        message += output
+        # DEPRECATED: Use forward_output with UnifiedRegistry instead
+        # This method is kept for backward compatibility
+        message = format_task_message(task_name, output)
 
-        if message.size > max_length
-          message = message[0...max_length] + "\n\n... (truncated)"
-        end
-
-        # Try to get the Telegram channel and send directly with Markdown parsing
         telegram_channel = Channels::Registry.telegram
         if telegram_channel
           telegram_channel.send_to_chat(chat_id, message, :markdown)
-          puts "[ScheduledTask] Forwarded to Telegram chat '#{chat_id}'"
-
-          # Also save to session so it appears in web UI
+          puts "[ScheduledTask] Forwarded to Telegram chat '#{chat_id}' (legacy method)"
           save_assistant_message_to_session("telegram:#{chat_id}", message)
         else
-          # Fallback: save to session (will trigger response, but that's okay for now)
-          puts "[ScheduledTask] Telegram channel not available, using session fallback"
-          session_key = "telegram:#{chat_id}"
-          @agent_loop.process(session_key, message)
+          puts "[ScheduledTask] Telegram channel not available"
         end
-      rescue e : Exception
-        puts "[ScheduledTask] Failed to forward to Telegram: #{e.message}"
-        puts "[ScheduledTask] Backtrace: #{e.backtrace.join("\n")}"
       end
 
       private def save_assistant_message_to_session(session_key : String, content : String) : Nil
@@ -276,38 +280,14 @@ module Crybot
         sessions.save(session_key, messages)
       end
 
-      # TODO: Unified forwarding using ChannelRegistry (future implementation)
-      # This will replace the forward_output method above
-      #
-      # private def forward_output_unified(task : TaskConfig, output : String) : Nil
-      #   forward_target = task.forward_to
-      #   return unless forward_target
-      #
-      #   parts = forward_target.split(":", 2)
-      #   return if parts.size < 2
-      #
-      #   channel_name = parts[0]
-      #   chat_id = parts[1]
-      #
-      #   message = "*🤖 Scheduled Task: #{task.name}*\n\n#{output}"
-      #
-      #   # Use the unified channel registry
-      #   success = Channels::UnifiedRegistry.send_to_channel(
-      #     channel_name: channel_name,
-      #     chat_id: chat_id,
-      #     content: message,
-      #     parse_mode: :markdown
-      #   )
-      #
-      #   if success
-      #     puts "[ScheduledTask] Forwarded to #{channel_name} chat '#{chat_id}'"
-      #     # Save to session so it appears in web UI
-      #     save_assistant_message_to_session("#{channel_name}:#{chat_id}", message)
-      #   else
-      #     puts "[ScheduledTask] Failed to forward to #{channel_name}"
-      #   end
-      # rescue e : Exception
-      #   puts "[ScheduledTask] Error forwarding: #{e.message}"
+      # Note: Unified forwarding using ChannelRegistry is now implemented
+      # The forward_output method now uses Channels::UnifiedRegistry.send_to_channel()
+      # This enables forwarding to any registered channel: telegram, web, voice, repl
+      # Example forward_to values:
+      #   - "telegram:123456789" (Telegram chat)
+      #   - "web:session_id" (Web session)
+      #   - "voice:" (Voice channel - uses shared session)
+      #   - "repl:" (REPL channel - uses shared session)
       # end
 
       private def update_next_run(task : TaskConfig) : Nil
