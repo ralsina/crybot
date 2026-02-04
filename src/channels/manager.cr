@@ -1,6 +1,8 @@
 require "../config/loader"
 require "../agent/loop"
 require "./telegram"
+require "./telegram_adapter"
+require "./unified_registry"
 
 module Crybot
   module Channels
@@ -25,8 +27,13 @@ module Crybot
             puts "[#{Time.local.to_s("%H:%M:%S")}] Creating Telegram channel..."
             telegram = TelegramChannel.new(@config.channels.telegram, @agent)
             @channels << telegram
+
+            # Register with unified registry
+            adapter = TelegramAdapter.new(telegram)
+            UnifiedRegistry.register(adapter)
+
             started << "Telegram"
-            puts "[#{Time.local.to_s("%H:%M:%S")}] Telegram channel created"
+            puts "[#{Time.local.to_s("%H:%M:%S")}] Telegram channel created and registered"
           end
         end
 

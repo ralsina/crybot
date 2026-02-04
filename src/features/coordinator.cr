@@ -7,6 +7,10 @@ require "./web"
 require "./voice"
 require "./repl"
 require "../scheduled_tasks/feature"
+require "../channels/unified_registry"
+require "../channels/web_channel"
+require "../channels/voice_channel"
+require "../channels/repl_channel"
 
 module Crybot
   module Features
@@ -25,6 +29,9 @@ module Crybot
 
         # Create shared agent loop (will be shared by features that need it)
         @agent_loop = Agent::Loop.new(@config)
+
+        # Register unified channels
+        register_channels
 
         # Create and start enabled features
         create_and_start_features
@@ -113,6 +120,24 @@ module Crybot
           @features << feature
           feature.start
         end
+      end
+
+      private def register_channels : Nil
+        # Register web channel (always available for web UI)
+        web_channel = Channels::WebChannel.new
+        Channels::UnifiedRegistry.register(web_channel)
+
+        # Register voice channel
+        voice_channel = Channels::VoiceChannel.new
+        Channels::UnifiedRegistry.register(voice_channel)
+
+        # Register REPL channel
+        repl_channel = Channels::ReplChannel.new
+        Channels::UnifiedRegistry.register(repl_channel)
+
+        puts "[Coordinator] Registered unified channels: web, voice, repl"
+
+        # Telegram channel will be registered by GatewayFeature when it starts
       end
 
       private def validate_configuration : Bool

@@ -1,13 +1,14 @@
 require "../channels/channel"
 require "../channels/unified_registry"
+require "../channels/telegram"
 
 module Crybot
   module Channels
     # Adapter that wraps the existing TelegramChannel to implement the Channel interface
     class TelegramAdapter < Channel
-      @telegram_channel : ::TelegramChannel
+      @telegram_channel : TelegramChannel
 
-      def initialize(@telegram_channel : ::TelegramChannel)
+      def initialize(@telegram_channel : TelegramChannel)
       end
 
       def name : String
@@ -55,7 +56,7 @@ module Crybot
       def healthy? : Bool
         # Telegram is healthy if the channel is still running
         # We can check if it's registered in the old registry
-        ::Registry.telegram != nil
+        Channels::Registry.telegram != nil
       end
     end
   end
