@@ -501,17 +501,22 @@ class CrybotWeb {
       const data = await response.json();
 
       if (data.success) {
-        // Reload MCP servers
-        await fetch('/api/agent/reload-mcp', { method: 'POST' });
+        // Reload MCP servers - but expect this might fail if crybot restarts
+        try {
+          await fetch('/api/agent/reload-mcp', { method: 'POST', signal: AbortSignal.timeout(5000) });
+        } catch (reloadError) {
+          // Ignore reload errors - likely due to config watcher restart
+          console.log('MCP reload skipped (server may be restarting):', reloadError.message);
+        }
 
         this.loadMCPServers();
-        alert('MCP servers saved and reloaded successfully!');
+        alert('MCP servers saved successfully! Crybot will reload the configuration.');
       } else {
         alert(`Failed to save: ${data.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Failed to save MCP servers:', error);
-      alert('Failed to save MCP servers');
+      alert('Failed to save MCP servers: ' + error.message);
     }
   }
 

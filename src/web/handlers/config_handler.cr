@@ -26,20 +26,31 @@ module Crybot
           # Load current config
           current_config = Config::Loader.load
 
-          # Apply changes
-          new_config = apply_config_changes(current_config, data)
+          # Check if this is MCP-only update (which has special handling)
+          if data.as_h.keys == ["mcp"] && data["mcp"]?.try(&.as_h?) && data["mcp"].as_h.keys == ["servers"]
+            # MCP-only update, use the special handler
+            new_config = apply_config_changes(current_config, data)
+            # For MCP, the file is already written inside apply_config_changes
+            # Just need to reload and return success
+            Config::Loader.reload
+            env.response.status_code = 200
+            {success: true, message: "Configuration updated"}.to_json
+          else
+            # Regular config update
+            new_config = apply_config_changes(current_config, data)
 
-          # Convert to YAML
-          yaml_content = new_config.to_yaml
+            # Convert to YAML
+            yaml_content = new_config.to_yaml
 
-          # Save to config file
-          File.write(Config::Loader.config_file, yaml_content)
+            # Save to config file
+            File.write(Config::Loader.config_file, yaml_content)
 
-          # Reload config
-          Config::Loader.reload
+            # Reload config
+            Config::Loader.reload
 
-          env.response.status_code = 200
-          {success: true, message: "Configuration updated"}.to_json
+            env.response.status_code = 200
+            {success: true, message: "Configuration updated"}.to_json
+          end
         rescue e : Exception
           env.response.status_code = 400
           {success: false, error: e.message}.to_json
