@@ -23,8 +23,21 @@ module Crybot
       end
 
       def send_message(message : ChannelMessage) : Nil
-        # Use the existing send_to_chat method with parse_mode support
-        @telegram_channel.send_to_chat(message.chat_id, message.content, message.parse_mode)
+        # Convert message content to the channel's preferred format
+        # Telegram supports both Markdown and HTML - prefer Markdown
+        content = message.content_for_channel(self)
+
+        # Truncate if needed
+        content = truncate_message(content)
+
+        # Determine parse_mode based on message format
+        parse_mode = if message.format == ChannelMessage::MessageFormat::HTML
+                       :html
+                     else
+                       :markdown
+                     end
+
+        @telegram_channel.send_to_chat(message.chat_id, content, parse_mode)
       end
 
       def supports_markdown? : Bool

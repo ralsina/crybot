@@ -1,3 +1,5 @@
+require "markd"
+
 module Crybot
   module Channels
     # Unified message format for all channels
@@ -16,6 +18,77 @@ module Crybot
       end
 
       def initialize(@chat_id : String, @content : String, @role : String = "assistant", @format : MessageFormat? = nil, @parse_mode : Symbol? = nil, @metadata : Hash(String, String)? = nil)
+      end
+
+      # Convert message content to a different format
+      def convert_to(target_format : MessageFormat) : String
+        source_format = @format || MessageFormat::Markdown
+
+        # No conversion needed if same format
+        return @content if source_format == target_format
+
+        case target_format
+        when MessageFormat::HTML
+          markdown_to_html
+        when MessageFormat::Markdown
+          html_to_markdown
+        when MessageFormat::Plain
+          to_plain_text
+        else
+          @content
+        end
+      end
+
+      # Get content in the channel's preferred format
+      def content_for_channel(channel : Channel) : String
+        if channel.supports_html? && @format == MessageFormat::Markdown
+          convert_to(MessageFormat::HTML)
+        elsif channel.supports_markdown? && @format == MessageFormat::HTML
+          convert_to(MessageFormat::Markdown)
+        else
+          @content
+        end
+      end
+
+      private def markdown_to_html : String
+        Markd.to_html(@content)
+      end
+
+      private def html_to_markdown : String
+        # Simple HTML to Markdown conversion
+        # This is a basic implementation - for production use a proper library would be better
+        @content
+          .gsub(/<b>(.*?)<\/b>/i) { "**#{$1}**" }
+          .gsub(/<strong>(.*?)<\/strong>/i) { "**#{$1}**" }
+          .gsub(/<i>(.*?)<\/i>/i) { "*#{$1}*" }
+          .gsub(/<em>(.*?)<\/em>/i) { "*#{$1}*" }
+          .gsub(/<code>(.*?)<\/code>/i) { "`#{$1}`" }
+          .gsub(/<pre>(.*?)<\/pre>/im) { "```\n#{$1}\n```" }
+          .gsub(/<h1>(.*?)<\/h1>/i) { "# #{$1}" }
+          .gsub(/<h2>(.*?)<\/h2>/i) { "## #{$1}" }
+          .gsub(/<h3>(.*?)<\/h3>/i) { "### #{$1}" }
+          .gsub(/<br\s*\/?>/, "\n")
+          .gsub(/<\/p>/, "\n\n")
+          .gsub(/<p>/, "")
+          .gsub(/<[^>]+>/, "") # Remove remaining HTML tags
+      end
+
+      private def to_plain_text : String
+        # Strip all formatting
+        case @format
+        when MessageFormat::HTML
+          @content.gsub(/<[^>]+>/, "").strip
+        when MessageFormat::Markdown
+          @content
+            .gsub(/\*\*(.*?)\*\*/, "\\1") # Bold
+            .gsub(/\*(.*?)\*/, "\\1")     # Italic
+            .gsub(/`(.*?)`/, "\\1")       # Inline code
+            .gsub(/```[\s\S]*?```/, "")   # Code blocks
+            .gsub(/^#+\s/, "")            # Headers
+            .strip
+        else
+          @content
+        end
       end
     end
 
@@ -49,6 +122,17 @@ module Crybot
         false
       end
 
+      # Preferred format for this channel
+      def preferred_format : ChannelMessage::MessageFormat
+        if supports_html?
+          ChannelMessage::MessageFormat::HTML
+        elsif supports_markdown?
+          ChannelMessage::MessageFormat::Markdown
+        else
+          ChannelMessage::MessageFormat::Plain
+        end
+      end
+
       def max_message_length : Int32
         4096
       end
@@ -61,6 +145,16 @@ module Crybot
       # Optional: Channel health check
       def healthy? : Bool
         true
+      end
+
+      # Truncate message to max length if needed
+      protected def truncate_message(content : String) : String
+        max_len = max_message_length
+        if content.size > max_len
+          content[0...max_len] + "\n\n... (truncated)"
+        else
+          content
+        end
       end
     end
   end

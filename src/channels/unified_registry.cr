@@ -31,8 +31,9 @@ module Crybot
         @@channels.delete(name)
       end
 
-      # Send a message to any registered channel
-      def self.send_to_channel(channel_name : String, chat_id : String, content : String, parse_mode : Symbol? = nil) : Bool
+      # Send a message to any registered channel with automatic format conversion
+      # The message will be converted to the channel's preferred format if needed
+      def self.send_to_channel(channel_name : String, chat_id : String, content : String, format : ChannelMessage::MessageFormat = :markdown) : Bool
         channel = get(channel_name)
         return false unless channel
 
@@ -40,7 +41,7 @@ module Crybot
           chat_id: chat_id,
           content: content,
           role: "assistant",
-          parse_mode: parse_mode,
+          format: format,
         )
 
         channel.send_message(message)
@@ -48,6 +49,18 @@ module Crybot
       rescue e : Exception
         puts "[ChannelRegistry] Failed to send to #{channel_name}: #{e.message}"
         false
+      end
+
+      # Send a message with explicit parse_mode (for backward compatibility)
+      def self.send_to_channel(channel_name : String, chat_id : String, content : String, parse_mode : Symbol?) : Bool
+        # Convert parse_mode symbol to MessageFormat
+        format = case parse_mode
+                 when :markdown then ChannelMessage::MessageFormat::Markdown
+                 when :html     then ChannelMessage::MessageFormat::HTML
+                 else                ChannelMessage::MessageFormat::Plain
+                 end
+
+        send_to_channel(channel_name, chat_id, content, format)
       end
 
       # Get health status of all channels

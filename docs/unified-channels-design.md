@@ -8,6 +8,7 @@ Currently, different conversation interfaces (Telegram, Web, Voice, REPL) are im
 2. **Inconsistent session management** - Each channel handles sessions differently
 3. **Hard to add new channels** - Adding Discord, Email, etc. requires duplicating existing patterns
 4. **Limited cross-channel functionality** - Scheduled tasks can only forward to Telegram via hardcoded logic
+5. **Format conversion challenges** - Different channels support different formats (Markdown, HTML, plain text)
 
 ## Proposed Architecture
 
@@ -26,9 +27,10 @@ abstract class Channel
   def supports_markdown? : Bool; false; end
   def supports_html? : Bool; false; end
   def max_message_length : Int; 4096; end
+  def preferred_format : MessageFormat; end
 end
 
-# Unified message structure
+# Unified message structure with format conversion
 class ChannelMessage
   property chat_id : String
   property content : String
@@ -41,6 +43,12 @@ class ChannelMessage
     Markdown
     HTML
   end
+
+  # Convert content to different format (using markd library)
+  def convert_to(target_format : MessageFormat) : String
+
+  # Get content in channel's preferred format
+  def content_for_channel(channel : Channel) : String
 end
 
 # Channel registry - singleton for accessing all channels

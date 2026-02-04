@@ -22,6 +22,8 @@ dependencies:
     github: ralsina/baked_file_system
   baked_file_handler:
     github: ralsina/baked_file_handler
+  markd:
+    github: icyleaf/markd
 
 development_dependencies:
   ameba:
