@@ -50,7 +50,7 @@ title: "Crybot"
 <div class="feature-card">
   <div class="feature-icon">🏠</div>
   <h3>Self-Hosted</h3>
-  <p>Your data stays on your machine. No cloud dependencies, no subscription fees. You're in control.</p>
+  <p>Run it on your own hardware. Works with local models via vLLM or cloud providers of your choice. You're in control.</p>
 </div>
 
 </div>
