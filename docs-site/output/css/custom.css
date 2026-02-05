@@ -1,8 +1,255 @@
 /*
- * Nicolino Custom CSS
+ * Crybot Custom CSS
  *
- * Add your own custom styles here. This file is loaded after theme.css,
- * so you can override any theme styles as needed.
+ * Custom styles for the Crybot website.
  */
 
-/* Add your custom CSS below */
+/* Hero Section */
+.hero {
+  display: flex;
+  align-items: center;
+  gap: 3rem;
+  padding: 4rem 2rem;
+  min-height: 60vh;
+  background:
+    linear-gradient(135deg, rgba(35, 35, 35, 0.95) 0%, rgba(28, 28, 28, 0.9) 100%),
+    url('https://www.indiewire.com/wp-content/uploads/2016/12/shutterstock_1579169a.jpg?w=1000&h=741&crop=1');
+  background-size: cover;
+  background-position: center;
+  border-radius: 1rem;
+  margin-bottom: 3rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 100%;
+  height: 200%;
+  background: radial-gradient(circle, var(--b16-base0D) 0%, transparent 70%);
+  opacity: 0.1;
+  animation: float 20s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-20px) rotate(5deg); }
+}
+
+.hero-content {
+  flex: 1;
+  position: relative;
+  z-index: 1;
+}
+
+.hero-content h1 {
+  font-size: 4rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem 0;
+  background: linear-gradient(135deg, var(--b16-base04) 0%, var(--b16-base0E) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.hero .tagline {
+  font-size: 1.5rem;
+  color: var(--b16-base0E);
+  margin: 0 0 1rem 0;
+  font-weight: 500;
+}
+
+.hero-description {
+  font-size: 1.1rem;
+  color: var(--b16-base03);
+  line-height: 1.6;
+  margin-bottom: 2rem;
+  max-width: 600px;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.btn {
+  display: inline-block;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: var(--b16-base0D);
+  color: var(--b16-base00);
+}
+
+.btn-primary:hover {
+  background: var(--b16-base0E);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(55, 99, 136, 0.4);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--b16-base04);
+  border: 2px solid var(--b16-base02);
+}
+
+.btn-secondary:hover {
+  background: var(--b16-base02);
+  color: var(--b16-base04);
+}
+
+.hero-image {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+}
+
+.hero-image img {
+  max-width: 100%;
+  height: auto;
+  filter: drop-shadow(0 0 30px rgba(55, 99, 136, 0.3));
+  animation: float-gentle 6s ease-in-out infinite;
+}
+
+@keyframes float-gentle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-15px); }
+}
+
+/* Feature Grid */
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin: 3rem 0;
+}
+
+.feature-card {
+  background: var(--b16-base01);
+  border: 1px solid var(--b16-base02);
+  border-radius: 0.75rem;
+  padding: 2rem;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.feature-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(90deg, var(--b16-base0D), var(--b16-base0E));
+  transform: scaleX(0);
+  transition: transform 0.3s ease;
+}
+
+.feature-card:hover::before {
+  transform: scaleX(1);
+}
+
+.feature-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  border-color: var(--b16-base0D);
+}
+
+.feature-icon {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+.feature-card h3 {
+  margin: 0 0 0.75rem 0;
+  color: var(--b16-base04);
+  font-size: 1.25rem;
+}
+
+.feature-card p {
+  color: var(--b16-base03);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .hero {
+    flex-direction: column;
+    text-align: center;
+    padding: 2rem 1rem;
+    min-height: auto;
+  }
+
+  .hero-content h1 {
+    font-size: 2.5rem;
+  }
+
+  .hero .tagline {
+    font-size: 1.25rem;
+  }
+
+  .hero-actions {
+    justify-content: center;
+  }
+
+  .hero-image {
+    margin-top: 2rem;
+  }
+
+  .hero-image img {
+    max-width: 200px;
+  }
+
+  .feature-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Code blocks in hero/sections */
+pre {
+  background: var(--b16-base01) !important;
+  border: 1px solid var(--b16-base02);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  overflow-x: auto;
+}
+
+code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.9rem;
+}
+
+/* Link styling */
+a {
+  color: var(--b16-base0D);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: var(--b16-base0E);
+  text-decoration: underline;
+}
+
+/* Section headings */
+h2 {
+  color: var(--b16-base04);
+  font-size: 2rem;
+  margin: 3rem 0 1.5rem 0;
+}

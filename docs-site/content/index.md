@@ -1,17 +1,60 @@
-# Crybot
+---
+title: "Crybot"
+---
 
-Crybot is a modular personal AI assistant built in Crystal. It provides multiple interaction modes, supports multiple LLM providers, and includes extensible tool calling, MCP integration, skills, and scheduled tasks.
+<div class="hero">
+  <div class="hero-content">
+    <h1>Crybot</h1>
+    <p class="tagline">Your Modular AI Assistant</p>
+    <p class="hero-description">A fast, self-hosted AI assistant built in Crystal. Chat via web, Telegram, or voice. Extend with skills, MCP servers, and scheduled tasks.</p>
+    <div class="hero-actions">
+      <a href="/books/user-guide/01-installation.html" class="btn btn-primary">Get Started</a>
+      <a href="https://github.com/ralsina/crybot" class="btn btn-secondary">View Source</a>
+    </div>
+  </div>
+</div>
 
-## Features
+## What Makes Crybot Different?
 
-- **Multiple LLM Support** - OpenAI, Anthropic, Zhipu GLM, OpenRouter, and vLLM
-- **Provider Auto-Detection** - Automatically selects provider based on model name
-- **Tool Calling** - Built-in tools for files, shell, web, and memory
-- **MCP Support** - Connect to external tools via Model Context Protocol
-- **Skills System** - Create reusable AI behaviors as markdown files
-- **Scheduled Tasks** - Automate recurring AI tasks with natural language
-- **Multiple Interfaces** - REPL, Web UI, Telegram bot, and Voice
-- **Session Management** - Persistent conversation history
+<div class="feature-grid">
+
+<div class="feature-card">
+  <div class="feature-icon">💬</div>
+  <h3>Multi-Interface</h3>
+  <p>Chat through web UI, Telegram, voice commands, or a powerful REPL. Switch seamlessly between interfaces while maintaining context.</p>
+</div>
+
+<div class="feature-card">
+  <div class="feature-icon">🧩</div>
+  <h3>Skills System</h3>
+  <p>Create reusable AI behaviors as simple markdown files. Build complex workflows without writing code.</p>
+</div>
+
+<div class="feature-card">
+  <div class="feature-icon">🔌</div>
+  <h3>MCP Integration</h3>
+  <p>Connect to the growing ecosystem of Model Context Protocol servers for browser automation, filesystem access, and more.</p>
+</div>
+
+<div class="feature-card">
+  <div class="feature-icon">⏰</div>
+  <h3>Scheduled Tasks</h3>
+  <p>Automate recurring AI tasks with natural language scheduling. Get daily summaries, news digests, or custom reports.</p>
+</div>
+
+<div class="feature-card">
+  <div class="feature-icon">🚀</div>
+  <h3>Blazing Fast</h3>
+  <p>Built in Crystal for performance. Starts instantly, uses minimal resources, and handles concurrent operations efficiently.</p>
+</div>
+
+<div class="feature-card">
+  <div class="feature-icon">🏠</div>
+  <h3>Self-Hosted</h3>
+  <p>Your data stays on your machine. No cloud dependencies, no subscription fees. You're in control.</p>
+</div>
+
+</div>
 
 ## Quick Start
 
@@ -21,14 +64,23 @@ cd crybot
 shards install
 shards build
 ./bin/crybot onboard
+./bin/crybot start
 ```
 
-## Documentation
+## Multiple AI Providers
 
-- **[User Guide](books/user-guide/)** - Complete guide to using Crybot
-- **[Installation](books/user-guide/01-installation.md)** - Setup and configuration
-- **[Features](books/user-guide/02-features.md)** - Overview of all features
+Crybot works with the best AI models:
 
-## Source Code
+- **OpenAI** - GPT-4, GPT-4o, and more
+- **Anthropic** - Claude 3.5 Sonnet, Opus
+- **Zhipu GLM** - Free tier available
+- **OpenRouter** - Access to 100+ models
+- **vLLM** - Run local models
 
-[github.com/ralsina/crybot](https://github.com/ralsina/crybot)
+Provider is auto-detected from model name—no configuration needed.
+
+## Ready to Dive In?
+
+- **[User Guide](/books/user-guide/)** - Complete documentation
+- **[Installation](/books/user-guide/01-installation.html)** - Get up and running
+- **[GitHub Repository](https://github.com/ralsina/crybot)** - Star us!

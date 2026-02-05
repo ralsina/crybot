@@ -35,6 +35,10 @@ fonts:
     source: google
     weights: [400, 500]
     role: monospace
+  - family: Quicksand
+    source: google
+    weights: [400, 500, 600, 700]
+    role: display
 
 # Output options
 output: "output/"
