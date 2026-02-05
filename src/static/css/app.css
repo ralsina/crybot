@@ -1,3 +1,32 @@
+/* ShadeSmear Dark Color Palette */
+:root {
+  /* Base colors from shadesmear-dark theme */
+  --bg-base: #232323;
+  --bg-darker: #1c1c1c;
+  --bg-lighter: #4e4e4e;
+  --text-muted: #c0c0c0;
+  --text-primary: #e4e4e4;
+  --text-secondary: #dbdbdb;
+  --border-color: #4e4e4e;
+
+  /* Accent colors */
+  --accent-primary: #376388;
+  --accent-primary-hover: #d7ab54;
+  --accent-secondary: #71983b;
+  --accent-red: #cc5450;
+  --accent-yellow: #d7ab54;
+  --accent-cyan: #307878;
+  --accent-orange: #c57d42;
+  --accent-purple: #a64270;
+  --accent-gray: #6d6d6d;
+
+  /* Semantic colors */
+  --color-success: #71983b;
+  --color-error: #cc5450;
+  --color-warning: #d7ab54;
+  --color-info: #376388;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -5,12 +34,16 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  font-family: 'Quicksand', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
   font-size: 14px;
   line-height: 1.5;
-  color: #333;
-  background-color: #f5f5f5;
+  color: var(--text-secondary);
+  background-color: var(--bg-base);
 }
+
+/* Import Quicksand font */
+@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
 
 .app-container {
   display: flex;
@@ -21,11 +54,12 @@ body {
 /* Sidebar */
 .sidebar {
   width: 250px;
-  background-color: #2c3e50;
-  color: #ecf0f1;
+  background-color: var(--bg-darker);
+  color: var(--text-primary);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  border-right: 1px solid var(--border-color);
 }
 
 .sidebar-header {
@@ -46,7 +80,7 @@ body {
 
 .separator {
   height: 1px;
-  background-color: #34495e;
+  background-color: var(--border-color);
   margin: 0 16px;
 }
 
@@ -58,31 +92,31 @@ body {
 .nav-item {
   display: block;
   padding: 12px 16px;
-  color: #bdc3c7;
+  color: var(--text-muted);
   text-decoration: none;
   transition: background-color 0.2s, color 0.2s;
 }
 
 .nav-item:hover {
-  background-color: #34495e;
-  color: #ecf0f1;
+  background-color: var(--bg-lighter);
+  color: var(--text-primary);
 }
 
 .nav-item.active {
-  background-color: #3498db;
-  color: #fff;
+  background-color: var(--accent-primary);
+  color: var(--text-primary);
 }
 
 .sidebar-footer {
   padding: 16px;
-  border-top: 1px solid #34495e;
+  border-top: 1px solid var(--border-color);
 }
 
 .push-to-talk-btn {
   width: 100%;
   padding: 12px;
-  background-color: #e74c3c;
-  color: #fff;
+  background-color: var(--accent-red);
+  color: var(--text-primary);
   border: none;
   border-radius: 4px;
   font-size: 14px;
@@ -92,11 +126,11 @@ body {
 }
 
 .push-to-talk-btn:hover {
-  background-color: #c0392b;
+  background-color: var(--accent-purple);
 }
 
 .push-to-talk-btn:active {
-  background-color: #a93226;
+  background-color: #8d3540;
 }
 
 /* Main Area */
@@ -121,8 +155,8 @@ body {
 /* Tabs */
 .tabs {
   display: flex;
-  background-color: #fff;
-  border-bottom: 1px solid #ddd;
+  background-color: var(--bg-base);
+  border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
 }
 
@@ -133,17 +167,17 @@ body {
   border-bottom: 2px solid transparent;
   font-size: 14px;
   cursor: pointer;
-  color: #666;
+  color: var(--text-muted);
   transition: color 0.2s, border-color 0.2s;
 }
 
 .tab:hover {
-  color: #333;
+  color: var(--text-primary);
 }
 
 .tab.active {
-  color: #3498db;
-  border-bottom-color: #3498db;
+  color: var(--accent-primary-hover);
+  border-bottom-color: var(--accent-primary-hover);
 }
 
 .tab-content {
@@ -162,7 +196,7 @@ body {
   flex: 1;
   overflow-y: auto;
   padding: 20px;
-  background-color: #fff;
+  background-color: var(--bg-base);
 }
 
 .message {
@@ -184,13 +218,13 @@ body {
 }
 
 .message.user .message-avatar {
-  background-color: #3498db;
-  color: #fff;
+  background-color: var(--accent-primary);
+  color: var(--text-primary);
 }
 
 .message.assistant .message-avatar {
-  background-color: #95a5a6;
-  color: #fff;
+  background-color: var(--bg-lighter);
+  color: var(--text-primary);
 }
 
 .message-content {
@@ -206,26 +240,27 @@ body {
 }
 
 .message.user .message-bubble {
-  background-color: #3498db;
-  color: #fff;
+  background-color: var(--accent-primary);
+  color: var(--text-primary);
 }
 
 .message.assistant .message-bubble {
-  background-color: #f0f0f0;
-  color: #333;
+  background-color: var(--bg-darker);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
 }
 
 .message-time {
   font-size: 11px;
-  color: #999;
+  color: var(--text-muted);
   margin-top: 4px;
 }
 
 /* Input Area */
 .input-area {
   padding: 16px;
-  background-color: #fff;
-  border-top: 1px solid #ddd;
+  background-color: var(--bg-darker);
+  border-top: 1px solid var(--border-color);
   flex-shrink: 0;
 }
 
@@ -241,20 +276,26 @@ body {
 .message-input {
   flex: 1;
   padding: 10px 14px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-color);
   border-radius: 4px;
   font-size: 14px;
+  background-color: var(--bg-base);
+  color: var(--text-secondary);
 }
 
 .message-input:focus {
   outline: none;
-  border-color: #3498db;
+  border-color: var(--accent-primary);
+}
+
+.message-input::placeholder {
+  color: var(--text-muted);
 }
 
 .send-btn {
   padding: 10px 20px;
-  background-color: #3498db;
-  color: #fff;
+  background-color: var(--accent-primary);
+  color: var(--text-primary);
   border: none;
   border-radius: 4px;
   font-size: 14px;
@@ -263,7 +304,7 @@ body {
 }
 
 .send-btn:hover {
-  background-color: #2980b9;
+  background-color: var(--accent-primary-hover);
 }
 
 /* Telegram List */
@@ -271,7 +312,7 @@ body {
   flex: 1;
   overflow-y: auto;
   padding: 16px;
-  background-color: #fff;
+  background-color: var(--bg-base);
 }
 
 .telegram-tab .input-area {
@@ -280,30 +321,32 @@ body {
 
 .telegram-conversation-item {
   padding: 12px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-color);
   border-radius: 4px;
   margin-bottom: 8px;
   cursor: pointer;
   transition: background-color 0.2s;
+  background-color: var(--bg-darker);
 }
 
 .telegram-conversation-item:hover {
-  background-color: #f5f5f5;
+  background-color: var(--bg-lighter);
 }
 
 .telegram-conversation-title {
   font-weight: 600;
   margin-bottom: 4px;
+  color: var(--text-primary);
 }
 
 .telegram-conversation-preview {
   font-size: 12px;
-  color: #666;
+  color: var(--text-muted);
 }
 
 .telegram-conversation-time {
   font-size: 11px;
-  color: #999;
+  color: var(--text-muted);
 }
 
 .telegram-chat-view {
@@ -321,17 +364,17 @@ body {
   padding: 8px 16px;
   background: none;
   border: none;
-  color: #3498db;
+  color: var(--accent-primary);
   cursor: pointer;
   font-size: 14px;
   flex-shrink: 0;
   text-align: left;
-  border-bottom: 1px solid #ddd;
-  background-color: #fff;
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--bg-base);
 }
 
 .back-btn:hover {
-  background-color: #f5f5f5;
+  background-color: var(--bg-lighter);
   text-decoration: underline;
 }
 
@@ -361,16 +404,17 @@ body {
 }
 
 .config-section {
-  background-color: #fff;
+  background-color: var(--bg-darker);
   padding: 20px;
   border-radius: 4px;
   margin-bottom: 20px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-color);
 }
 
 .config-section h3 {
   margin-bottom: 16px;
   font-size: 16px;
+  color: var(--text-primary);
 }
 
 .form-group {
@@ -385,6 +429,7 @@ body {
   display: block;
   margin-bottom: 6px;
   font-weight: 500;
+  color: var(--text-primary);
 }
 
 .form-group input[type="text"],
@@ -392,30 +437,33 @@ body {
 .form-group input[type="number"] {
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-color);
   border-radius: 4px;
   font-size: 14px;
+  background-color: var(--bg-base);
+  color: var(--text-secondary);
 }
 
 .form-group input[type="text"]:focus,
 .form-group input[type="password"]:focus,
 .form-group input[type="number"]:focus {
   outline: none;
-  border-color: #3498db;
+  border-color: var(--accent-primary);
 }
 
 .form-group select {
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-color);
   border-radius: 4px;
   font-size: 14px;
-  background-color: #fff;
+  background-color: var(--bg-base);
+  color: var(--text-secondary);
 }
 
 .form-group select:focus {
   outline: none;
-  border-color: #3498db;
+  border-color: var(--accent-primary);
 }
 
 .form-group input[type="checkbox"] {
@@ -428,8 +476,8 @@ body {
 
 .btn-primary {
   padding: 12px 24px;
-  background-color: #3498db;
-  color: #fff;
+  background-color: var(--accent-primary);
+  color: var(--text-primary);
   border: none;
   border-radius: 4px;
   font-size: 14px;
@@ -439,7 +487,7 @@ body {
 }
 
 .btn-primary:hover {
-  background-color: #2980b9;
+  background-color: var(--accent-primary-hover);
 }
 
 /* Logs */
@@ -453,15 +501,16 @@ body {
 }
 
 .logs-container {
-  background-color: #1e1e1e;
-  color: #d4d4d4;
+  background-color: var(--bg-darker);
+  color: var(--text-secondary);
   padding: 16px;
   border-radius: 4px;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-family: 'JetBrains Mono', 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
   font-size: 13px;
   line-height: 1.6;
   max-height: calc(100vh - 100px);
   overflow-y: auto;
+  border: 1px solid var(--border-color);
 }
 
 .log-entry {
@@ -469,23 +518,23 @@ body {
 }
 
 .log-entry .log-time {
-  color: #569cd6;
+  color: var(--accent-primary);
 }
 
 .log-entry .log-level-info {
-  color: #4ec9b0;
+  color: var(--accent-secondary);
 }
 
 .log-entry .log-level-warn {
-  color: #dcdcaa;
+  color: var(--accent-yellow);
 }
 
 .log-entry .log-level-error {
-  color: #f44747;
+  color: var(--accent-red);
 }
 
 .log-entry .log-message {
-  color: #d4d4d4;
+  color: var(--text-secondary);
 }
 
 /* Hidden utility */
@@ -541,27 +590,29 @@ body {
 }
 
 .message-bubble code {
-  background-color: rgba(0, 0, 0, 0.1);
+  background-color: rgba(215, 171, 84, 0.2);
   padding: 2px 4px;
   border-radius: 3px;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-family: 'JetBrains Mono', 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
   font-size: 13px;
+  color: var(--accent-orange);
 }
 
 .message.assistant .message-bubble code {
-  background-color: rgba(0, 0, 0, 0.15);
+  background-color: rgba(215, 171, 84, 0.15);
 }
 
 .message-bubble pre {
-  background-color: rgba(0, 0, 0, 0.1);
+  background-color: var(--bg-darker);
   padding: 8px;
   border-radius: 4px;
   overflow-x: auto;
   margin-bottom: 8px;
+  border: 1px solid var(--border-color);
 }
 
 .message.assistant .message-bubble pre {
-  background-color: rgba(0, 0, 0, 0.15);
+  background-color: var(--bg-darker);
 }
 
 .message-bubble pre code {
@@ -570,15 +621,15 @@ body {
 }
 
 .message-bubble blockquote {
-  border-left: 3px solid #ddd;
+  border-left: 3px solid var(--border-color);
   padding-left: 12px;
   margin-left: 0;
   margin-bottom: 8px;
-  color: #666;
+  color: var(--text-muted);
 }
 
 .message-bubble a {
-  color: #3498db;
+  color: var(--accent-primary);
   text-decoration: none;
 }
 
@@ -594,23 +645,24 @@ body {
 
 .message-bubble th,
 .message-bubble td {
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-color);
   padding: 6px 8px;
   text-align: left;
 }
 
 .message-bubble th {
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: var(--bg-lighter);
   font-weight: 600;
+  color: var(--text-primary);
 }
 
 .message.assistant .message-bubble th {
-  background-color: rgba(0, 0, 0, 0.1);
+  background-color: var(--bg-lighter);
 }
 
 .message-bubble hr {
   border: none;
-  border-top: 1px solid #ddd;
+  border-top: 1px solid var(--border-color);
   margin: 12px 0;
 }
 
@@ -627,7 +679,7 @@ body {
   flex: 1;
   overflow-y: auto;
   padding: 16px;
-  background-color: #fff;
+  background-color: var(--bg-base);
 }
 
 .chat-conversation-item {
@@ -635,11 +687,12 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 12px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-color);
   border-radius: 4px;
   margin-bottom: 8px;
   cursor: pointer;
   transition: background-color 0.2s;
+  background-color: var(--bg-darker);
 }
 
 .chat-conversation-content {
@@ -648,37 +701,38 @@ body {
 }
 
 .chat-conversation-item:hover {
-  background-color: #f5f5f5;
+  background-color: var(--bg-lighter);
 }
 
 .chat-conversation-item.active {
-  background-color: #e3f2fd;
-  border-color: #3498db;
+  background-color: var(--accent-primary);
+  border-color: var(--accent-primary);
 }
 
 .chat-conversation-title {
   font-weight: 600;
   margin-bottom: 4px;
+  color: var(--text-primary);
 }
 
 .chat-conversation-preview {
   font-size: 12px;
-  color: #666;
+  color: var(--text-muted);
 }
 
 .chat-conversation-time {
   font-size: 11px;
-  color: #999;
+  color: var(--text-muted);
 }
 
 .chat-conversation-delete {
   padding: 4px 8px;
   background: none;
   border: none;
-  color: #e74c3c;
+  color: var(--accent-red);
   font-size: 18px;
   cursor: pointer;
-  opacity: 0.5;
+  opacity: 0.7;
   transition: opacity 0.2s;
   flex-shrink: 0;
   margin-left: 8px;
@@ -704,15 +758,15 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  background-color: #fff;
-  border-bottom: 1px solid #ddd;
+  background-color: var(--bg-darker);
+  border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
 }
 
 .new-chat-btn {
   padding: 6px 12px;
-  background-color: #3498db;
-  color: #fff;
+  background-color: var(--accent-primary);
+  color: var(--text-primary);
   border: none;
   border-radius: 4px;
   font-size: 13px;
@@ -722,7 +776,7 @@ body {
 }
 
 .new-chat-btn:hover {
-  background-color: #2980b9;
+  background-color: var(--accent-primary-hover);
 }
 
 /* Typing Indicator */
@@ -737,7 +791,7 @@ body {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background-color: #999;
+  background-color: var(--text-muted);
   animation: typing-bounce 1.4s infinite ease-in-out both;
 }
 
@@ -771,6 +825,7 @@ body {
 
 .section-header h2 {
   margin: 0;
+  color: var(--text-primary);
 }
 
 .section-actions {
@@ -780,8 +835,8 @@ body {
 
 .btn-secondary {
   padding: 10px 20px;
-  background-color: #95a5a6;
-  color: #fff;
+  background-color: var(--bg-lighter);
+  color: var(--text-primary);
   border: none;
   border-radius: 4px;
   font-size: 14px;
@@ -791,7 +846,7 @@ body {
 }
 
 .btn-secondary:hover {
-  background-color: #7f8c8d;
+  background-color: var(--text-muted);
 }
 
 .skills-list-view {
@@ -807,15 +862,15 @@ body {
 }
 
 .skill-card {
-  background-color: #fff;
-  border: 1px solid #ddd;
+  background-color: var(--bg-darker);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 16px;
   transition: box-shadow 0.2s;
 }
 
 .skill-card:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .skill-card-header {
@@ -828,6 +883,7 @@ body {
 .skill-card-header h3 {
   margin: 0;
   font-size: 16px;
+  color: var(--text-primary);
 }
 
 .skill-badge {
@@ -839,32 +895,32 @@ body {
 }
 
 .skill-badge-gray {
-  background-color: #95a5a6;
-  color: #fff;
+  background-color: var(--bg-lighter);
+  color: var(--text-primary);
 }
 
 .skill-badge-green {
-  background-color: #27ae60;
-  color: #fff;
+  background-color: var(--accent-secondary);
+  color: var(--text-primary);
 }
 
 .skill-badge-blue {
-  background-color: #3498db;
-  color: #fff;
+  background-color: var(--accent-primary);
+  color: var(--text-primary);
 }
 
 .skill-badge-yellow {
-  background-color: #f39c12;
-  color: #fff;
+  background-color: var(--accent-yellow);
+  color: var(--bg-base);
 }
 
 .skill-badge-red {
-  background-color: #e74c3c;
-  color: #fff;
+  background-color: var(--accent-red);
+  color: var(--text-primary);
 }
 
 .skill-card-description {
-  color: #666;
+  color: var(--text-muted);
   font-size: 14px;
   margin-bottom: 12px;
   line-height: 1.4;
@@ -875,27 +931,27 @@ body {
   gap: 8px;
   align-items: center;
   font-size: 12px;
-  color: #999;
+  color: var(--text-muted);
   margin-bottom: 8px;
 }
 
 .skill-card-error {
-  color: #e74c3c;
+  color: var(--accent-red);
   font-size: 12px;
   margin-bottom: 8px;
 }
 
 .skill-card-warning {
-  color: #f39c12;
+  color: var(--accent-yellow);
   font-size: 12px;
   margin-bottom: 8px;
 }
 
 .skill-card-warning code {
-  background-color: #fff3cd;
+  background-color: var(--bg-darker);
   padding: 2px 4px;
   border-radius: 3px;
-  font-family: 'Monaco', 'Menlo', monospace;
+  font-family: 'JetBrains Mono', 'Monaco', 'Menlo', monospace;
 }
 
 .skill-card-actions {
@@ -914,21 +970,21 @@ body {
 }
 
 .btn-edit {
-  background-color: #3498db;
-  color: #fff;
+  background-color: var(--accent-primary);
+  color: var(--text-primary);
 }
 
 .btn-edit:hover {
-  background-color: #2980b9;
+  background-color: var(--accent-primary-hover);
 }
 
 .btn-delete {
-  background-color: #e74c3c;
-  color: #fff;
+  background-color: var(--accent-red);
+  color: var(--text-primary);
 }
 
 .btn-delete:hover {
-  background-color: #c0392b;
+  background-color: var(--accent-purple);
 }
 
 /* Skill Editor */
@@ -947,14 +1003,15 @@ body {
   align-items: center;
   gap: 16px;
   padding: 12px 16px;
-  background-color: #fff;
-  border-bottom: 1px solid #ddd;
+  background-color: var(--bg-darker);
+  border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
 }
 
 .skill-editor-header h3 {
   margin: 0;
   flex: 1;
+  color: var(--text-primary);
 }
 
 .skill-editor-content {
@@ -966,8 +1023,8 @@ body {
 
 .skill-editor-tabs {
   display: flex;
-  background-color: #f5f5f5;
-  border-bottom: 1px solid #ddd;
+  background-color: var(--bg-darker);
+  border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
 }
 
@@ -977,25 +1034,25 @@ body {
   border: none;
   font-size: 14px;
   cursor: pointer;
-  color: #666;
+  color: var(--text-muted);
   border-bottom: 2px solid transparent;
   transition: color 0.2s, border-color 0.2s;
 }
 
 .skill-tab:hover {
-  color: #333;
+  color: var(--text-primary);
 }
 
 .skill-tab.active {
-  color: #3498db;
-  border-bottom-color: #3498db;
+  color: var(--accent-primary-hover);
+  border-bottom-color: var(--accent-primary-hover);
 }
 
 .skill-editor-body {
   flex: 1;
   overflow-y: auto;
   padding: 20px;
-  background-color: #fff;
+  background-color: var(--bg-base);
 }
 
 .skill-tab-content {
@@ -1009,24 +1066,26 @@ body {
 
 .code-editor {
   width: 100%;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-family: 'JetBrains Mono', 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
   font-size: 13px;
   padding: 12px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-color);
   border-radius: 4px;
   resize: vertical;
   tab-size: 2;
+  background-color: var(--bg-darker);
+  color: var(--text-secondary);
 }
 
 .code-editor:focus {
   outline: none;
-  border-color: #3498db;
+  border-color: var(--accent-primary);
 }
 
 /* CodeMirror editor container */
 .code-editor-container {
   width: 100%;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-color);
   border-radius: 4px;
   overflow: hidden;
 }
@@ -1034,7 +1093,7 @@ body {
 .code-editor-container .CodeMirror {
   height: auto;
   min-height: 400px;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-family: 'JetBrains Mono', 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
   font-size: 13px;
   border-radius: 4px;
 }
@@ -1051,7 +1110,7 @@ body {
 .form-group small {
   display: block;
   margin-top: 4px;
-  color: #999;
+  color: var(--text-muted);
   font-size: 12px;
 }
 
@@ -1062,12 +1121,13 @@ body {
 }
 
 .env-note {
-  background-color: #fff3cd;
-  border: 1px solid #ffc107;
+  background-color: rgba(215, 171, 84, 0.1);
+  border: 1px solid var(--accent-yellow);
   border-radius: 4px;
   padding: 12px;
   margin: 16px 0;
   font-size: 13px;
+  color: var(--accent-yellow);
 }
 
 .env-note strong {
@@ -1094,11 +1154,12 @@ body {
 }
 
 .modal-content {
-  background-color: #fff;
+  background-color: var(--bg-darker);
   border-radius: 8px;
   width: 90%;
   max-width: 500px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--border-color);
 }
 
 .modal-header {
@@ -1106,18 +1167,19 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  border-bottom: 1px solid #ddd;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .modal-header h3 {
   margin: 0;
+  color: var(--text-primary);
 }
 
 .modal-close {
   background: none;
   border: none;
   font-size: 24px;
-  color: #999;
+  color: var(--text-muted);
   cursor: pointer;
   padding: 0;
   width: 32px;
@@ -1130,7 +1192,7 @@ body {
 }
 
 .modal-close:hover {
-  background-color: #f5f5f5;
+  background-color: var(--bg-lighter);
 }
 
 .modal-body {
@@ -1139,7 +1201,7 @@ body {
 
 .modal-footer {
   padding: 16px 20px;
-  border-top: 1px solid #ddd;
+  border-top: 1px solid var(--border-color);
   display: flex;
   justify-content: flex-end;
   gap: 10px;
@@ -1155,6 +1217,7 @@ body {
 
 .config-section-header h3 {
   margin: 0;
+  color: var(--text-primary);
 }
 
 .mcp-servers-list {
@@ -1164,15 +1227,15 @@ body {
 }
 
 .mcp-server-card {
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   padding: 16px;
-  background-color: #f9f9f9;
+  background-color: var(--bg-base);
   transition: box-shadow 0.2s;
 }
 
 .mcp-server-card:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .mcp-server-header {
@@ -1185,7 +1248,7 @@ body {
 .mcp-server-name {
   font-weight: 600;
   font-size: 15px;
-  color: #2c3e50;
+  color: var(--text-primary);
 }
 
 .mcp-server-actions {
@@ -1195,7 +1258,7 @@ body {
 
 .mcp-server-details {
   font-size: 13px;
-  color: #666;
+  color: var(--text-muted);
 }
 
 .mcp-server-details div {
@@ -1203,22 +1266,23 @@ body {
 }
 
 .mcp-server-details code {
-  background-color: #e8e8e8;
+  background-color: var(--bg-darker);
   padding: 2px 6px;
   border-radius: 3px;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-family: 'JetBrains Mono', 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
   font-size: 12px;
+  color: var(--accent-cyan);
 }
 
 .empty-state {
-  color: #999;
+  color: var(--text-muted);
   text-align: center;
   padding: 40px 20px;
   font-style: italic;
 }
 
 .section-description {
-  color: #666;
+  color: var(--text-muted);
   margin: 20px 20px;
 }
 
@@ -1242,15 +1306,15 @@ body {
 }
 
 .task-card {
-  background-color: #fff;
-  border: 1px solid #ddd;
+  background-color: var(--bg-darker);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 16px;
   transition: box-shadow 0.2s;
 }
 
 .task-card:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .task-card-header {
@@ -1264,6 +1328,7 @@ body {
   margin: 0;
   font-size: 16px;
   font-weight: 600;
+  color: var(--text-primary);
 }
 
 .task-badge {
@@ -1275,17 +1340,17 @@ body {
 }
 
 .task-badge-green {
-  background-color: #27ae60;
-  color: #fff;
+  background-color: var(--accent-secondary);
+  color: var(--text-primary);
 }
 
 .task-badge-gray {
-  background-color: #95a5a6;
-  color: #fff;
+  background-color: var(--bg-lighter);
+  color: var(--text-primary);
 }
 
 .task-card-description {
-  color: #666;
+  color: var(--text-muted);
   font-size: 14px;
   margin-bottom: 12px;
   line-height: 1.4;
@@ -1296,12 +1361,12 @@ body {
   flex-direction: column;
   gap: 4px;
   font-size: 12px;
-  color: #999;
+  color: var(--text-muted);
   margin-bottom: 12px;
 }
 
 .task-card-meta span strong {
-  color: #666;
+  color: var(--text-muted);
 }
 
 .task-card-actions {
@@ -1311,21 +1376,21 @@ body {
 }
 
 .btn-run {
-  background-color: #27ae60;
-  color: #fff;
+  background-color: var(--accent-secondary);
+  color: var(--text-primary);
 }
 
 .btn-run:hover {
-  background-color: #229954;
+  background-color: #5a8232;
 }
 
 .btn-view {
-  background-color: #3498db;
-  color: #fff;
+  background-color: var(--accent-primary);
+  color: var(--text-primary);
 }
 
 .btn-view:hover {
-  background-color: #2980b9;
+  background-color: var(--accent-primary-hover);
 }
 
 /* Task Output Modal */
@@ -1349,7 +1414,7 @@ body {
   flex: 1;
   overflow-y: auto;
   padding: 20px;
-  background-color: #fff;
+  background-color: var(--bg-base);
   min-height: 300px;
   max-height: 60vh;
 }
@@ -1362,13 +1427,13 @@ body {
 }
 
 .task-message.user .task-message-avatar {
-  background-color: #3498db;
-  color: #fff;
+  background-color: var(--accent-primary);
+  color: var(--text-primary);
 }
 
 .task-message.assistant .task-message-avatar {
-  background-color: #95a5a6;
-  color: #fff;
+  background-color: var(--bg-lighter);
+  color: var(--text-primary);
 }
 
 .task-message-avatar {
@@ -1396,20 +1461,21 @@ body {
 }
 
 .task-message.user .task-message-bubble {
-  background-color: #3498db;
-  color: #fff;
+  background-color: var(--accent-primary);
+  color: var(--text-primary);
 }
 
 .task-message.assistant .task-message-bubble {
-  background-color: #f0f0f0;
-  color: #333;
+  background-color: var(--bg-darker);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
 }
 
 /* Task output input area */
 .task-output-input-area {
   padding: 16px;
-  background-color: #fff;
-  border-top: 1px solid #ddd;
+  background-color: var(--bg-darker);
+  border-top: 1px solid var(--border-color);
   flex-shrink: 0;
 }
 
@@ -1421,20 +1487,22 @@ body {
 .task-output-input {
   flex: 1;
   padding: 10px 14px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-color);
   border-radius: 4px;
   font-size: 14px;
+  background-color: var(--bg-base);
+  color: var(--text-secondary);
 }
 
 .task-output-input:focus {
   outline: none;
-  border-color: #3498db;
+  border-color: var(--accent-primary);
 }
 
 .task-output-form .btn-send {
   padding: 10px 20px;
-  background-color: #3498db;
-  color: #fff;
+  background-color: var(--accent-primary);
+  color: var(--text-primary);
   border: none;
   border-radius: 4px;
   font-size: 14px;
@@ -1443,18 +1511,19 @@ body {
 }
 
 .task-output-form .btn-send:hover {
-  background-color: #2980b9;
+  background-color: var(--accent-primary-hover);
 }
 
 .telegram-chats-list {
   margin-top: 8px;
   padding: 8px;
-  background-color: #f9f9f9;
+  background-color: var(--bg-base);
   border-radius: 4px;
+  border: 1px solid var(--border-color);
 }
 
 .telegram-chat-option:hover {
-  background-color: #e3f2fd !important;
+  background-color: var(--bg-lighter) !important;
 }
 
 /* Task message typing indicator */
@@ -1510,27 +1579,29 @@ body {
 }
 
 .task-message-bubble code {
-  background-color: rgba(0, 0, 0, 0.1);
+  background-color: rgba(215, 171, 84, 0.2);
   padding: 2px 4px;
   border-radius: 3px;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-family: 'JetBrains Mono', 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
   font-size: 13px;
+  color: var(--accent-orange);
 }
 
 .task-message.assistant .task-message-bubble code {
-  background-color: rgba(0, 0, 0, 0.15);
+  background-color: rgba(215, 171, 84, 0.15);
 }
 
 .task-message-bubble pre {
-  background-color: rgba(0, 0, 0, 0.1);
+  background-color: var(--bg-darker);
   padding: 8px;
   border-radius: 4px;
   overflow-x: auto;
   margin-bottom: 8px;
+  border: 1px solid var(--border-color);
 }
 
 .task-message.assistant .task-message-bubble pre {
-  background-color: rgba(0, 0, 0, 0.15);
+  background-color: var(--bg-darker);
 }
 
 .task-message-bubble pre code {
@@ -1539,15 +1610,15 @@ body {
 }
 
 .task-message-bubble blockquote {
-  border-left: 3px solid #ddd;
+  border-left: 3px solid var(--border-color);
   padding-left: 12px;
   margin-left: 0;
   margin-bottom: 8px;
-  color: #666;
+  color: var(--text-muted);
 }
 
 .task-message-bubble a {
-  color: #3498db;
+  color: var(--accent-primary);
   text-decoration: none;
 }
 
@@ -1563,23 +1634,24 @@ body {
 
 .task-message-bubble th,
 .task-message-bubble td {
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-color);
   padding: 6px 8px;
   text-align: left;
 }
 
 .task-message-bubble th {
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: var(--bg-lighter);
   font-weight: 600;
+  color: var(--text-primary);
 }
 
 .task-message.assistant .task-message-bubble th {
-  background-color: rgba(0, 0, 0, 0.1);
+  background-color: var(--bg-lighter);
 }
 
 .task-message-bubble hr {
   border: none;
-  border-top: 1px solid #ddd;
+  border-top: 1px solid var(--border-color);
   margin: 12px 0;
 }
 
@@ -1594,14 +1666,16 @@ body {
 .form-group textarea {
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-color);
   border-radius: 4px;
   font-size: 14px;
   font-family: inherit;
   resize: vertical;
+  background-color: var(--bg-base);
+  color: var(--text-secondary);
 }
 
 .form-group textarea:focus {
   outline: none;
-  border-color: #3498db;
+  border-color: var(--accent-primary);
 }

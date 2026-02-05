@@ -23,22 +23,18 @@ taxonomies:
     location: "categories/"
 
 # Color scheme from https://sixteen.ralsina.me/
-color_scheme: "dracula"
+color_scheme: "shadesmear"
 
 # Font configuration
 fonts:
   - family: Quicksand
     source: google
-    weights: [400, 600, 700]
+    weights: [400, 500, 600, 700]
     role: sans-serif
   - family: JetBrains Mono
     source: google
-    weights: [400, 600]
+    weights: [400, 500]
     role: monospace
-  - family: Comfortaa
-    source: google
-    weights: [400, 700]
-    role: display
 
 # Output options
 output: "output/"

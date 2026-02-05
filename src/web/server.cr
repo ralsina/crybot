@@ -261,11 +261,11 @@ module Crybot
           error_count = results.count { |r| r[:status] == "error" }
 
           {
-            success: true,
-            message: "MCP servers reloaded",
+            success:   true,
+            message:   "MCP servers reloaded",
             connected: connected_count,
-            errors: error_count,
-            results: results.map do |r|
+            errors:    error_count,
+            results:   results.map do |r|
               {
                 name:   r[:name],
                 status: r[:status],

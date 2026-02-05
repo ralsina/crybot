@@ -5,7 +5,7 @@
     <description><![CDATA[Posts - RSS]]></description>
     <link>https://github.com/ga2mer/rss.cr</link>
     <generator>RSS for Crystal</generator>
-    <lastBuildDate>2026-02-05 17:24:29 UTC</lastBuildDate>
+    <lastBuildDate>2026-02-05 18:09:17 UTC</lastBuildDate>
     <item>
       <title><![CDATA[MCP Integration in Crybot]]></title>
       <description><![CDATA[<html><head></head><body><p>I've just added Model Context Protocol (MCP) support to Crybot, opening up a world of possibilities for extending the AI assistant's capabilities.</p>
