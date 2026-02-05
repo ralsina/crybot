@@ -13,4 +13,7 @@ run: build
 clean:
 	rm -f $(TARGET)
 
-.PHONY: all build run clean
+deploy_site:
+	cd docs-site && nicolino build && rsync -rav --delete output/* root@rocky:/data/stacks/web/websites/crybot.ralsina.me/
+
+.PHONY: all build run clean deploy_site
