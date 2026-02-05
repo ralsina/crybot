@@ -99,13 +99,14 @@
 }
 
 .btn-secondary {
-  background: transparent;
+  background: var(--b16-base02);
   color: var(--b16-base04);
+  border: 2px solid var(--b16-base02);
 }
 
 .btn-secondary:hover {
-  background: var(--b16-base02);
-  color: var(--b16-base04);
+  background: var(--b16-base0D);
+  color: var(--b16-base00);
 }
 
 .hero-image {
