@@ -2,6 +2,8 @@
 
 Crybot is a modular personal AI assistant built in Crystal. It provides multiple interaction modes (REPL, web UI, Telegram bot, voice) and supports multiple LLM providers with extensible tool calling, MCP integration, skills, and scheduled tasks.
 
+**Website**: [crybot.ralsina.me](https://crybot.ralsina.me) | **Documentation**: [crybot.ralsina.me/books/user-guide/](https://crybot.ralsina.me/books/user-guide/)
+
 ## Features
 
 - **Multiple LLM Support**: OpenAI, Anthropic, Zhipu GLM, OpenRouter, and vLLM
