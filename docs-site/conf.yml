@@ -4,7 +4,7 @@
 title: "Crybot"
 description: "A modular personal AI assistant built in Crystal with multi-modal interactions"
 url: "https://crybot.ralsina.me"
-footer: "Built with Crystal • [Source](https://github.com/ralsina/crybot)"
+footer: 'Built with Crystal • <a href="https://github.com/ralsina/crybot">Source</a>'
 
 # Localization options
 date_output_format: "%Y-%m-%d %H:%M"

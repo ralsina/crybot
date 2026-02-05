@@ -1,7 +1,3 @@
----
-title: "Crybot"
----
-
 <div class="hero">
   <div class="hero-content">
     <p class="tagline">Your Modular AI Assistant</p>
