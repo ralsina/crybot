@@ -57,9 +57,13 @@ module Crybot
         end
 
         private def mask_sensitive_values(config : Config::ConfigFile)
+          # Web server is enabled if either web.enabled is true OR features.web is true
+          # Since we're serving this response, the web server is definitely running
+          web_enabled = config.web.enabled? || config.features.web
+
           result = {
             "web" => {
-              "enabled"         => JSON::Any.new(config.web.enabled?),
+              "enabled"         => JSON::Any.new(web_enabled),
               "host"            => JSON::Any.new(config.web.host),
               "port"            => JSON::Any.new(config.web.port),
               "path_prefix"     => JSON::Any.new(config.web.path_prefix),
