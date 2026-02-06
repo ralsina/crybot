@@ -9,13 +9,13 @@
   display: flex;
   align-items: center;
   gap: 3rem;
-  padding: 4rem 2rem;
-  min-height: 60vh;
+  padding: 3rem 2rem;
+  min-height: 40vh;
   background:
-    linear-gradient(135deg, rgba(35, 35, 35, 0.95) 0%, rgba(28, 28, 28, 0.9) 100%),
+    linear-gradient(135deg, rgba(55, 99, 136, 0.3) 0%, rgba(35, 35, 35, 0.85) 50%, rgba(28, 28, 28, 0.9) 100%),
     url('https://www.indiewire.com/wp-content/uploads/2016/12/shutterstock_1579169a.jpg?w=1000&h=741&crop=1');
   background-size: cover;
-  background-position: center;
+  background-position: center top;
   border-radius: 1rem;
   margin-bottom: 3rem;
   position: relative;

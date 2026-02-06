@@ -5,7 +5,8 @@
   <meta name="robots" content="noindex">
   <title>Crybot: Posts tagged features</title>
   <meta name="description" content="A modular personal AI assistant built in Crystal with multi-modal interactions">
-  <link rel="shortcut icon" href="/favicon.ico">
+  <link rel="shortcut icon" href="/assets/favicon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/assets/favicon.png">
   <link rel="canonical" href="">
   
   <link rel="alternate" type="application/rss+xml" href="/rss.xml" title="RSS Feed">
@@ -100,10 +101,12 @@
     <hr>
     <p>I've just added Model Context Protocol (MCP) support to Crybot, opening up a world of possibilities for extending the AI assistant's capabilities.</p>
 
+<a name="What-is-MCP-3f-"></a>
 <h2>What is MCP?</h2>
 
 <p>The <a href="https://modelcontextprotocol.io/">Model Context Protocol</a> is an open standard that allows AI applications to connect to external tools and data sources. Think of it as a universal plugin system for AI assistants.</p>
 
+<a name="How-It-Works-in-Crybot"></a>
 <h2>How It Works in Crybot</h2>
 
 <p>Crybot acts as an MCP client, connecting to stdio-based MCP servers. When Crybot starts, it:</p>
@@ -116,6 +119,7 @@
 </ol>
 
 
+<a name="Configuration"></a>
 <h2>Configuration</h2>
 
 <p>Add MCP servers to your <code>~/.crybot/config.yml</code>:</p>
@@ -130,6 +134,7 @@
 </code></pre>
 
 
+<a name="Using-MCP-Tools"></a>
 <h2>Using MCP Tools</h2>
 
 <p>Once configured, MCP tools are automatically available to the agent:</p>
@@ -141,6 +146,7 @@ Crybot: [Uses playwright/browser_navigate]
 </code></pre>
 
 
+<a name="Available-MCP-Servers"></a>
 <h2>Available MCP Servers</h2>
 
 <p>The MCP ecosystem is growing fast. Some popular servers:</p>
@@ -156,6 +162,7 @@ Crybot: [Uses playwright/browser_navigate]
 
 <p>Find more at <a href="https://github.com/modelcontextprotocol/servers">github.com/modelcontextprotocol/servers</a>.</p>
 
+<a name="Web-UI-Management"></a>
 <h2>Web UI Management</h2>
 
 <p>Crybot's web UI includes an MCP Servers section where you can:</p>
@@ -168,6 +175,7 @@ Crybot: [Uses playwright/browser_navigate]
 </ul>
 
 
+<a name="Technical-Details"></a>
 <h2>Technical Details</h2>
 
 <p>The MCP implementation in Crybot:</p>
@@ -181,6 +189,7 @@ Crybot: [Uses playwright/browser_navigate]
 </ul>
 
 
+<a name="Future-Plans"></a>
 <h2>Future Plans</h2>
 
 <ul>
