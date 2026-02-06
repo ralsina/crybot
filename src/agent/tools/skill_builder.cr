@@ -1,5 +1,6 @@
 require "../tools/base"
 require "../../config/loader"
+require "../skill_config"
 require "file_utils"
 
 module Crybot
@@ -286,6 +287,11 @@ execution:
 YAML
 
           File.write(dir / "skill.yml", skill_yml)
+
+          # Validate the generated YAML
+          unless validate_yaml(skill_yml, dir / "skill.yml")
+            raise "Generated YAML is invalid. Please check the logs."
+          end
         end
 
         private def build_yaml_params(properties : Hash(String, JSON::Any), required : Array(String)) : String
@@ -294,13 +300,26 @@ YAML
           lines = [] of String
           properties.each do |key, prop|
             prop_h = prop.as_h
-            lines << "      #{key}:"
-            lines << "        type: #{prop_h["type"].as_s}"
+            lines << "    #{key}:"
+            lines << "      type: #{prop_h["type"].as_s}"
             if desc = prop_h["description"]?
-              lines << "        description: #{desc.as_s}"
+              lines << "      description: #{desc.as_s}"
             end
           end
           lines.join("\n")
+        end
+
+        private def validate_yaml(yaml_content : String, file_path : Path) : Bool
+          begin
+            # Try to parse the YAML to validate it
+            skill_config = SkillConfig.from_yaml(yaml_content)
+            skill_config.validate
+            true
+          rescue e : Exception
+            puts "[SkillBuilder] YAML validation failed for #{file_path}: #{e.message}"
+            puts "[SkillBuilder] Generated YAML:\n#{yaml_content}"
+            false
+          end
         end
 
         private def generate_skill_md(dir : Path, name : String, description : String, command : String, info : NamedTuple) : Nil
