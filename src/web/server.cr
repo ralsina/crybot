@@ -162,28 +162,33 @@ module Crybot
 
         # API: Voice conversations
         get "/api/voice/conversations" do |env|
-          handler = Handlers::VoiceHandler.new(@sessions)
+          handler = Handlers::VoiceHandler.new(@agent, @sessions)
           handler.list_conversations(env)
         end
 
         get "/api/voice/conversation/current" do |env|
-          handler = Handlers::VoiceHandler.new(@sessions)
+          handler = Handlers::VoiceHandler.new(@agent, @sessions)
           handler.get_current(env)
+        end
+
+        post "/api/voice/message" do |env|
+          handler = Handlers::VoiceHandler.new(@agent, @sessions)
+          handler.send_message(env)
         end
 
         # API: Voice push-to-talk
         post "/api/voice/push-to-talk" do |env|
-          handler = Handlers::VoiceHandler.new(@sessions)
+          handler = Handlers::VoiceHandler.new(@agent, @sessions)
           handler.activate_push_to_talk(env)
         end
 
         delete "/api/voice/push-to-talk" do |env|
-          handler = Handlers::VoiceHandler.new(@sessions)
+          handler = Handlers::VoiceHandler.new(@agent, @sessions)
           handler.deactivate_push_to_talk(env)
         end
 
         get "/api/voice/push-to-talk/status" do |env|
-          handler = Handlers::VoiceHandler.new(@sessions)
+          handler = Handlers::VoiceHandler.new(@agent, @sessions)
           handler.push_to_talk_status(env)
         end
 

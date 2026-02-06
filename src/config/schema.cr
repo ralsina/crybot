@@ -172,14 +172,14 @@ module Crybot
       @[YAML::Field(key: "enabled")]
       property? enabled : Bool = false
       property host : String = "127.0.0.1"
-      property port : Int32 = 3000
+      property port : Int32 = 3003
       property path_prefix : String = ""
       property auth_token : String = ""
-      property allowed_origins : Array(String) = ["http://localhost:3000"]
+      property allowed_origins : Array(String) = ["http://localhost:3003"]
       @[YAML::Field(key: "enable_cors")]
       property? enable_cors : Bool = true
 
-      def initialize(@enabled = false, @host = "127.0.0.1", @port = 3000, @path_prefix = "", @auth_token = "", @allowed_origins = ["http://localhost:3000"], @enable_cors = true)
+      def initialize(@enabled = false, @host = "127.0.0.1", @port = 3003, @path_prefix = "", @auth_token = "", @allowed_origins = ["http://localhost:3003"], @enable_cors = true)
       end
 
       def with_port(@port : Int32) : WebServerConfig

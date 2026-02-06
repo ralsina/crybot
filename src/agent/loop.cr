@@ -186,8 +186,9 @@ module Crybot
         # Get or create session
         history = @session_manager.get_or_create(session_key)
 
-        # Build messages
-        messages = @context_builder.build_messages(user_message, history)
+        # Build messages with session_key for voice detection
+        puts "[Agent] Processing message for session_key: #{session_key}"
+        messages = @context_builder.build_messages(user_message, history, session_key)
 
         # Main loop
         iteration = 0

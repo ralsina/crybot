@@ -1,12 +1,13 @@
 require "json"
 require "../../session/manager"
 require "../../config/loader"
+require "../../agent/loop"
 
 module Crybot
   module Web
     module Handlers
       class VoiceHandler
-        def initialize(@sessions : Session::Manager)
+        def initialize(@agent : Agent::Loop, @sessions : Session::Manager)
         end
 
         # GET /api/voice/conversations - Get voice conversations
@@ -65,6 +66,91 @@ module Crybot
         rescue e : Exception
           env.response.status_code = 500
           {error: e.message}.to_json
+        end
+
+        # POST /api/voice/message - Send a message to the voice session
+        def send_message(env) : String
+          # Parse request body
+          body = env.request.body.try(&.gets_to_end) || ""
+          data = JSON.parse(body)
+
+          content = data["content"]?.try(&.as_s) || ""
+
+          if content.empty?
+            env.response.status_code = 400
+            return {error: "Message content is required"}.to_json
+          end
+
+          # Process with agent using "voice" session key
+          session_key = "voice"
+          agent_response = @agent.process(session_key, content)
+
+          puts "[Voice] Received response: #{agent_response.response[0..100]}..."
+
+          # Speak the response aloud using TTS
+          speak_response(agent_response.response)
+
+          # The response will also be sent via WebSocket broadcast by the session save callback
+          {
+            status: "sent",
+            session: session_key,
+          }.to_json
+        rescue e : JSON::ParseException
+          env.response.status_code = 400
+          {error: "Invalid JSON"}.to_json
+        rescue e : Exception
+          env.response.status_code = 500
+          {error: e.message}.to_json
+        end
+
+        private def speak_response(text : String) : Nil
+          # Simple TTS implementation for web-originated voice messages
+          # This uses the same approach as VoiceListener but simplified
+          return if text.empty?
+
+          puts "[Voice] Speaking response: #{text[0..50]}..."
+
+          # Get piper model from config
+          config = Config::Loader.load
+          voice_config = config.voice
+          return unless voice_config
+
+          piper_model = voice_config.piper_model
+          piper_path = voice_config.piper_path || "/usr/bin/piper-tts"
+
+          puts "[Voice] piper_model: #{piper_model}, piper_path: #{piper_path}"
+
+          # Check if piper is available
+          piper_available = piper_model &&
+                            (File.info?(piper_path)) &&
+                            (piper_info = File.info?(piper_path)) &&
+                            piper_info.permissions.includes?(File::Permissions::OwnerExecute)
+
+          puts "[Voice] piper_available: #{piper_available}"
+
+          # Use piper if available, otherwise festival (or just log)
+          begin
+            if piper_available
+              puts "[Voice] Using piper TTS"
+              # Use piper TTS
+              clean_text = text.gsub(/[\p{Emoji}\p{Emoji_Presentation}]/, "").strip
+              command = "echo \"#{clean_text.gsub("\"", "\\\"")}\" | #{piper_path} -m #{piper_model} --output_raw --sentence_silence 0 2>/dev/null | paplay --raw --format=s16le --channels=1 --rate=22050"
+              puts "[Voice] Running: #{command[0..100]}..."
+              Process.run("sh", ["-c", command])
+              puts "[Voice] TTS completed successfully"
+            else
+              # Fallback to festival or just log
+              puts "[Voice] Piper not available, trying festival"
+              # Try festival as fallback
+              temp_file = "/tmp/voice_tts.txt"
+              File.write(temp_file, text)
+              Process.run("festival", ["--tts", temp_file])
+              File.delete(temp_file) if File.exists?(temp_file)
+              puts "[Voice] Festival TTS completed"
+            end
+          rescue tts_error
+            puts "[Voice] TTS error: #{tts_error.message}"
+          end
         end
 
         # POST /api/voice/push-to-talk - Activate push-to-talk

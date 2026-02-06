@@ -4,6 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Crybot</title>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#376388">
+  <link rel="apple-touch-icon" href="/img/icon-192.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/img/icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="/img/icon-512.png">
   <link rel="stylesheet" href="/css/app.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <!-- CodeMirror for code editing -->
@@ -19,12 +24,12 @@
     <!-- Sidebar -->
     <aside class="sidebar">
       <div class="sidebar-header">
-        <div class="sidebar-logo">
+        <a href="https://crybot.ralsina.me" class="sidebar-logo" target="_blank" rel="noopener noreferrer">
           <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#e3e3e3">
             <path d="M160-120v-200q0-33 23.5-56.5T240-400h480q33 0 56.5 23.5T800-320v200H160Zm200-320q-83 0-141.5-58.5T160-640q0-83 58.5-141.5T360-840h240q83 0 141.5 58.5T800-640q0 83-58.5 141.5T600-440H360ZM240-200h480v-120H240v120Zm120-320h240q50 0 85-35t35-85q0-50-35-85t-85-35H360q-50 0-85 35t-35 85q0 50 35 85t85 35Zm0-80q17 0 28.5-11.5T400-640q0-17-11.5-28.5T360-680q-17 0-28.5 11.5T320-640q0 17 11.5 28.5T360-600Zm240 0q17 0 28.5-11.5T640-640q0-17-11.5-28.5T600-680q-17 0-28.5 11.5T560-640q0 17 11.5 28.5T600-600ZM480-200Zm0-440Z"/>
           </svg>
           <span>Crybot</span>
-        </div>
+        </a>
       </div>
       <div class="separator"></div>
       <nav class="sidebar-nav">
@@ -35,9 +40,6 @@
         <a href="#" class="nav-item" data-section="configuration">Configuration</a>
         <a href="#" class="nav-item" data-section="logs">Logs</a>
       </nav>
-      <div class="sidebar-footer">
-        <button class="push-to-talk-btn">Push to talk</button>
-      </div>
     </aside>
 
     <!-- Main Area -->
@@ -53,12 +55,17 @@
         <!-- Chat Tab -->
         <div id="chat-tab" class="tab-content active">
           <div class="chat-list" id="chat-list">
-            <!-- Conversations loaded dynamically -->
+            <div class="chat-list-header">
+              <h2>Conversations</h2>
+              <button id="new-chat-btn" class="new-chat-btn" title="New conversation">+ New</button>
+            </div>
+            <div class="chat-list-items">
+              <!-- Conversations loaded dynamically -->
+            </div>
           </div>
           <div class="chat-view hidden" id="chat-view">
             <div class="chat-view-header">
               <button class="back-btn" id="chat-back">← Back</button>
-              <button id="new-chat-btn" class="new-chat-btn" title="New conversation">+ New</button>
             </div>
             <div class="messages-container" id="chat-messages"></div>
             <div class="input-area">
@@ -484,7 +491,7 @@
           </div>
           <div class="form-group hidden" id="mcp-url-group">
             <label for="mcp-url">HTTP URL</label>
-            <input type="text" id="mcp-url" placeholder="http://localhost:3000/mcp">
+            <input type="text" id="mcp-url" placeholder="http://localhost:3003/mcp">
             <small>The HTTP URL of the MCP server</small>
           </div>
         </div>
@@ -497,5 +504,14 @@
   </div>
 
   <script src="/js/app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').then(reg => {
+        console.log('Service Worker registered');
+      }).catch(err => {
+        console.log('Service Worker registration failed:', err);
+      });
+    }
+  </script>
 </body>
 </html>

@@ -71,7 +71,7 @@ module Crybot
       end
 
       private def strip_formatting(text : String) : String
-        # Remove markdown/code formatting for speech
+        # Remove markdown/code formatting for speech and clean up for TTS
         text
           .gsub(/\*\*(.*?)\*\*/, "\\1")         # Bold
           .gsub(/\*(.*?)\*/, "\\1")             # Italic
@@ -79,7 +79,50 @@ module Crybot
           .gsub(/```[\s\S]*?```/, "")           # Code blocks
           .gsub(/^#+\s/, "")                    # Headers
           .gsub(/\[([^\]]+)\]\([^)]+\)/, "\\1") # Links
+          .gsub(/\b\d+\b/) { |num| convert_number_to_words(num) } # Convert numbers to words
+          .gsub(/[\p{Emoji}\p{Emoji_Presentation}]/, "") # Remove emojis
+          .gsub(/\s+/, " ")                      # Normalize whitespace
           .strip
+      end
+
+      private def convert_number_to_words(num_str : String) : String
+        num = num_str.to_i?
+        return num_str unless num
+
+        # Simple conversion for common cases
+        case num
+        when 0 then "zero"
+        when 1 then "one"
+        when 2 then "two"
+        when 3 then "three"
+        when 4 then "four"
+        when 5 then "five"
+        when 6 then "six"
+        when 7 then "seven"
+        when 8 then "eight"
+        when 9 then "nine"
+        when 10 then "ten"
+        when 11 then "eleven"
+        when 12 then "twelve"
+        when 13 then "thirteen"
+        when 14 then "fourteen"
+        when 15 then "fifteen"
+        when 16 then "sixteen"
+        when 17 then "seventeen"
+        when 18 then "eighteen"
+        when 19 then "nineteen"
+        when 20 then "twenty"
+        when 30 then "thirty"
+        when 40 then "forty"
+        when 50 then "fifty"
+        when 60 then "sixty"
+        when 70 then "seventy"
+        when 80 then "eighty"
+        when 90 then "ninety"
+        when 100 then "one hundred"
+        when 1000 then "one thousand"
+        else num_str # Fallback for other numbers
+        end
       end
     end
   end

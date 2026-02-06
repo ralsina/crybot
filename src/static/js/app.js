@@ -5,7 +5,6 @@ class CrybotWeb {
     this.currentSection = localStorage.getItem('crybotSection') || 'chat';
     this.currentTab = localStorage.getItem('crybotTab') || 'chat-tab';
     this.currentTelegramChat = null;
-    this.pushToTalkActive = false;
     this.chatViewVisible = localStorage.getItem('crybotChatViewVisible') === 'true';
     this.configEditor = null;
     this.docsEditor = null;
@@ -13,6 +12,27 @@ class CrybotWeb {
     this.editingMCPServer = null;
     this.scheduledTasks = [];
     this.editingTaskId = null;
+
+    // Notification settings
+    this.notificationsEnabled = localStorage.getItem('crybotNotificationsEnabled') !== 'false';
+    this.unreadCounts = JSON.parse(localStorage.getItem('crybotUnreadCounts') || '{}');
+    this.lastSeenTimestamps = JSON.parse(localStorage.getItem('crybotLastSeen') || '{}');
+
+    // Track if page is visible
+    this.isPageVisible = !document.hidden;
+
+    // Track pending responses (session_id -> context mapping)
+    this.pendingResponses = new Map();
+
+    // Track which session is currently displayed in each view
+    this.currentViewSessions = {
+      'chat-messages': null,
+      'telegram-messages': null,
+      'voice-messages': 'voice'
+    };
+
+    // Track loading state to prevent duplicate loads
+    this.isLoadingSessions = false;
 
     this.init();
   }
@@ -22,6 +42,7 @@ class CrybotWeb {
     this.setupTabs();
     this.setupForms();
     this.setupSkillsHandlers();
+    this.setupNotifications();
     this.connectWebSocket();
     this.loadConfiguration();
     this.loadLogs();
@@ -118,18 +139,39 @@ class CrybotWeb {
 
   setupForms() {
     // Chat form
-    document.getElementById('chat-form').addEventListener('submit', (e) => {
+    const chatFormHandler = (e) => {
       e.preventDefault();
       this.sendChatMessage('chat');
-    });
+    };
+    document.getElementById('chat-form').addEventListener('submit', chatFormHandler);
+    this.setOriginalFormHandler('chat', chatFormHandler);
+
+    // Shift-enter to expand input
+    const chatInput = document.querySelector('#chat-form .message-input');
+    if (chatInput) {
+      chatInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && e.shiftKey) {
+          e.preventDefault();
+          this.expandInputToTextarea('chat');
+        }
+      });
+    }
 
     // Telegram form
-    document.getElementById('telegram-form').addEventListener('submit', (e) => {
+    const telegramFormHandler = (e) => {
       e.preventDefault();
       this.sendChatMessage('telegram');
-    });
+    };
+    document.getElementById('telegram-form').addEventListener('submit', telegramFormHandler);
+    this.setOriginalFormHandler('telegram', telegramFormHandler);
 
     // Voice form
+    const voiceFormHandler = (e) => {
+      e.preventDefault();
+      this.sendChatMessage('voice');
+    };
+    document.getElementById('voice-form').addEventListener('submit', voiceFormHandler);
+    this.setOriginalFormHandler('voice', voiceFormHandler);
     document.getElementById('voice-form').addEventListener('submit', (e) => {
       e.preventDefault();
       this.sendChatMessage('voice');
@@ -159,34 +201,6 @@ class CrybotWeb {
     if (newChatBtn) {
       newChatBtn.addEventListener('click', () => {
         this.createNewChat();
-      });
-    }
-
-    // Push-to-talk button
-    const pttBtn = document.querySelector('.push-to-talk-btn');
-    if (pttBtn) {
-      // Mouse events
-      pttBtn.addEventListener('mousedown', (e) => {
-        e.preventDefault();
-        this.activatePushToTalk();
-      });
-      pttBtn.addEventListener('mouseup', () => {
-        this.deactivatePushToTalk();
-      });
-      pttBtn.addEventListener('mouseleave', () => {
-        if (this.pushToTalkActive) {
-          this.deactivatePushToTalk();
-        }
-      });
-
-      // Touch events for mobile
-      pttBtn.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        this.activatePushToTalk();
-      });
-      pttBtn.addEventListener('touchend', (e) => {
-        e.preventDefault();
-        this.deactivatePushToTalk();
       });
     }
   }
@@ -345,6 +359,321 @@ class CrybotWeb {
         }
       });
     }
+  }
+
+  setupNotifications() {
+    // Request notification permission
+    if ('Notification' in window) {
+      // Check if we already have permission
+      if (Notification.permission === 'granted') {
+        console.log('Notification permission granted');
+      } else if (Notification.permission !== 'denied') {
+        // Request permission
+        Notification.requestPermission().then(permission => {
+          if (permission === 'granted') {
+            console.log('Notification permission granted');
+          } else {
+            console.log('Notification permission denied');
+            this.notificationsEnabled = false;
+            localStorage.setItem('crybotNotificationsEnabled', 'false');
+          }
+        });
+      }
+    }
+
+    // Track page visibility for notification logic
+    document.addEventListener('visibilitychange', () => {
+      this.isPageVisible = !document.hidden;
+      // When page becomes visible, mark current chat as seen
+      if (this.isPageVisible) {
+        this.markCurrentChatAsSeen();
+      }
+    });
+  }
+
+  showDesktopNotification(title, body, onClick) {
+    if (!this.notificationsEnabled || !('Notification' in window)) {
+      return;
+    }
+
+    // Only show if page is not visible or user is not on that chat
+    if (Notification.permission !== 'granted') {
+      return;
+    }
+
+    // Show notification
+    const notification = new Notification(title, {
+      body: body,
+      icon: '/static/img/icon.png', // Optional: add an icon
+      tag: 'crybot-message', // Prevents duplicate notifications
+      requireInteraction: false,
+    });
+
+    // Handle click on notification
+    notification.onclick = () => {
+      window.focus();
+      notification.close();
+      if (onClick) {
+        onClick();
+      }
+    };
+
+    // Auto-close after 5 seconds
+    setTimeout(() => {
+      notification.close();
+    }, 5000);
+  }
+
+  incrementUnreadCount(chatId) {
+    if (!this.unreadCounts[chatId]) {
+      this.unreadCounts[chatId] = 0;
+    }
+    this.unreadCounts[chatId]++;
+    this.saveUnreadCounts();
+    this.updateUnreadBadges();
+  }
+
+  markChatAsSeen(chatId) {
+    this.unreadCounts[chatId] = 0;
+    this.lastSeenTimestamps[chatId] = Date.now();
+    this.saveUnreadCounts();
+    this.saveLastSeenTimestamps();
+    this.updateUnreadBadges();
+  }
+
+  markCurrentChatAsSeen() {
+    const currentChatId = this.getCurrentChatId();
+    if (currentChatId) {
+      this.markChatAsSeen(currentChatId);
+    }
+  }
+
+  getCurrentChatId() {
+    if (this.currentTab === 'chat-tab' && this.sessionId) {
+      return `web_${this.sessionId}`;
+    } else if (this.currentTab === 'telegram-tab' && this.currentTelegramChat) {
+      return `telegram_${this.currentTelegramChat}`;
+    } else if (this.currentTab === 'voice-tab') {
+      return 'voice';
+    }
+    return null;
+  }
+
+  saveUnreadCounts() {
+    localStorage.setItem('crybotUnreadCounts', JSON.stringify(this.unreadCounts));
+  }
+
+  saveLastSeenTimestamps() {
+    localStorage.setItem('crybotLastSeen', JSON.stringify(this.lastSeenTimestamps));
+  }
+
+  updateUnreadBadges() {
+    // Update web chat list badges
+    this.updateChatListBadges();
+    // Update telegram chat list badges
+    this.updateTelegramListBadges();
+    // Update voice tab badge if needed
+    this.updateTabBadges();
+  }
+
+  updateChatListBadges() {
+    const listItems = document.querySelectorAll('.chat-conversation-item');
+    listItems.forEach(item => {
+      const sessionId = item.dataset.sessionId;
+      if (sessionId && this.unreadCounts[sessionId] > 0) {
+        let badge = item.querySelector('.unread-badge');
+        if (!badge) {
+          badge = document.createElement('span');
+          badge.className = 'unread-badge';
+          item.querySelector('.chat-conversation-content').appendChild(badge);
+        }
+        badge.textContent = this.unreadCounts[sessionId];
+      } else {
+        const badge = item.querySelector('.unread-badge');
+        if (badge) {
+          badge.remove();
+        }
+      }
+    });
+  }
+
+  updateTelegramListBadges() {
+    const listItems = document.querySelectorAll('.telegram-conversation-item');
+    listItems.forEach(item => {
+      // The chat ID is stored differently for telegram items
+      const clickHandler = item.onclick;
+      if (clickHandler) {
+        const match = clickHandler.toString().match(/openTelegramChat\('([^']+)'\)/);
+        if (match) {
+          const chatId = `telegram_${match[1]}`;
+          if (this.unreadCounts[chatId] > 0) {
+            let badge = item.querySelector('.unread-badge');
+            if (!badge) {
+              badge = document.createElement('span');
+              badge.className = 'unread-badge';
+              item.appendChild(badge);
+            }
+            badge.textContent = this.unreadCounts[chatId];
+          } else {
+            const badge = item.querySelector('.unread-badge');
+            if (badge) {
+              badge.remove();
+            }
+          }
+        }
+      }
+    });
+  }
+
+  updateTabBadges() {
+    // Update tab badges for telegram and voice
+    const tabs = ['telegram-tab', 'voice-tab'];
+    tabs.forEach(tabId => {
+      const tab = document.querySelector(`[data-tab="${tabId}"]`);
+      if (!tab) return;
+
+      // Count unread messages for this tab type
+      let totalUnread = 0;
+      const prefix = tabId.replace('-tab', '');
+
+      Object.keys(this.unreadCounts).forEach(chatId => {
+        if (chatId.startsWith(prefix) && this.unreadCounts[chatId] > 0) {
+          // Don't count if currently viewing that chat
+          if (this.currentTab !== tabId || chatId !== this.getCurrentChatId()) {
+            totalUnread += this.unreadCounts[chatId];
+          }
+        }
+      });
+
+      // Add or remove badge
+      let badge = tab.querySelector('.tab-badge');
+      if (totalUnread > 0) {
+        if (!badge) {
+          badge = document.createElement('span');
+          badge.className = 'tab-badge';
+          tab.appendChild(badge);
+        }
+        badge.textContent = totalUnread > 99 ? '99+' : totalUnread;
+      } else if (badge) {
+        badge.remove();
+      }
+    });
+  }
+
+  expandInputToTextarea(context) {
+    const formId = context === 'chat' ? 'chat-form' :
+                    context === 'telegram' ? 'telegram-form' : 'voice-form';
+    const form = document.getElementById(formId);
+    const input = form.querySelector('.message-input');
+    const currentValue = input.value;
+
+    // Create a textarea element
+    const textarea = document.createElement('textarea');
+    textarea.className = 'message-input message-textarea';
+    textarea.placeholder = 'Type a message... (Press Enter to send, Shift+Enter for new line)';
+    textarea.value = currentValue;
+    textarea.rows = 5;
+
+    // Replace input with textarea
+    input.replaceWith(textarea);
+    textarea.focus();
+
+    // Update form submit handler to handle textarea
+    const submitHandler = (e) => {
+      e.preventDefault();
+      const content = textarea.value.trim();
+      if (content) {
+        // Mark current chat as seen when user sends a message
+        this.markCurrentChatAsSeen();
+
+        // For telegram, send to the telegram-specific endpoint
+        if (context === 'telegram' && this.currentTelegramChat) {
+          this.sendToTelegram(content);
+        } else {
+          this.addMessage(content, 'user', this.getCurrentContainer());
+          textarea.value = '';
+
+          // Send via WebSocket
+          if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify({
+              type: 'message',
+              session_id: this.sessionId || '',
+              content: content,
+            }));
+          } else {
+            // Fallback to REST API
+            this.sendViaAPI(content);
+          }
+        }
+      }
+    };
+
+    // Remove old submit listener and add new one
+    form.removeEventListener('submit', this.getFormSubmitHandler(context));
+    form.addEventListener('submit', submitHandler, { once: true });
+    this.setFormSubmitHandler(context, submitHandler);
+
+    // Add escape key handler to collapse back to input
+    const escapeHandler = (e) => {
+      if (e.key === 'Escape') {
+        const newValue = textarea.value;
+        const newInput = document.createElement('input');
+        newInput.type = 'text';
+        newInput.className = 'message-input';
+        newInput.placeholder = 'Type a message...';
+        newInput.required = true;
+        newInput.value = newValue;
+
+        // Replace textarea with input
+        textarea.replaceWith(newInput);
+        newInput.focus();
+
+        // Re-add shift-enter handler
+        newInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' && e.shiftKey) {
+            e.preventDefault();
+            this.expandInputToTextarea(context);
+          }
+        });
+
+        // Restore original form handler
+        form.removeEventListener('submit', submitHandler);
+        const originalHandler = this.getOriginalFormHandler(context);
+        if (originalHandler) {
+          form.addEventListener('submit', originalHandler);
+        }
+
+        // Remove escape handler
+        textarea.removeEventListener('keydown', escapeHandler);
+      }
+      // Allow Enter to submit (without Shift)
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        form.dispatchEvent(new Event('submit'));
+      }
+    };
+
+    textarea.addEventListener('keydown', escapeHandler);
+  }
+
+  // Store form handlers for restoration
+  formSubmitHandlers = {};
+  originalFormHandlers = {};
+
+  setFormSubmitHandler(context, handler) {
+    this.formSubmitHandlers[context] = handler;
+  }
+
+  getFormSubmitHandler(context) {
+    return this.formSubmitHandlers[context];
+  }
+
+  setOriginalFormHandler(context, handler) {
+    this.originalFormHandlers[context] = handler;
+  }
+
+  getOriginalFormHandler(context) {
+    return this.originalFormHandlers[context];
   }
 
   openAddMCPServerModal() {
@@ -595,12 +924,26 @@ class CrybotWeb {
         break;
       case 'status':
         if (data.status === 'processing') {
+          // Show typing indicator - we'll show it in the current active chat
+          // since that's where the user is waiting
           this.showTypingIndicator(this.getCurrentContainer());
         }
         break;
       case 'response':
+        // Hide typing indicator
         this.hideTypingIndicator(this.getCurrentContainer());
-        this.addMessage(data.content, 'assistant', this.getCurrentContainer());
+
+        // Reload the current session from backend to get the complete state
+        // This ensures frontend is just a reflection of backend truth
+        if (data.session_id) {
+          this.reloadSessionFromBackend(data.session_id).catch(err => {
+            console.error('Failed to reload session:', err);
+          });
+        } else if (this.sessionId) {
+          this.reloadSessionFromBackend(this.sessionId).catch(err => {
+            console.error('Failed to reload session:', err);
+          });
+        }
         break;
       case 'telegram_message':
         // New message arrived via Telegram
@@ -620,6 +963,9 @@ class CrybotWeb {
   loadHistory(messages, sessionId) {
     this.sessionId = sessionId;
     localStorage.setItem('crybotChatSession', sessionId);
+
+    // Track which session is being viewed in this container
+    this.currentViewSessions['chat-messages'] = sessionId;
 
     const container = document.getElementById('chat-messages');
     container.innerHTML = '';
@@ -681,6 +1027,39 @@ class CrybotWeb {
     console.log(`[${source.toUpperCase()}] Received external message:`, data);
     console.log(`Current tab: ${this.currentTab}`);
 
+    // Get chat ID for unread tracking
+    const chatId = data.chat_id || data.session_key || source;
+    const fullChatId = `${source}_${chatId}`;
+
+    // Check if we should show notification
+    const isCurrentChat = this.currentTab === `${source}-tab` &&
+                          ((source === 'telegram' && this.currentTelegramChat === chatId) ||
+                           (source === 'voice'));
+
+    // Show desktop notification if:
+    // - Page is not visible OR
+    // - Not currently viewing that chat
+    const shouldNotify = !this.isPageVisible || !isCurrentChat;
+
+    if (shouldNotify) {
+      // Increment unread count
+      this.incrementUnreadCount(fullChatId);
+
+      // Show desktop notification
+      const title = source === 'telegram' ? 'New Telegram Message' : 'New Voice Message';
+      const content = data.content || '';
+      const preview = content.length > 100 ? content.substring(0, 100) + '...' : content;
+
+      this.showDesktopNotification(title, preview, () => {
+        // Switch to the appropriate tab and chat when notification is clicked
+        this.showTab(`${source}-tab`);
+        if (source === 'telegram') {
+          this.showSection('chat');
+          this.openTelegramChat(chatId);
+        }
+      });
+    }
+
     // If we're currently viewing the corresponding tab, refresh the content
     if (this.currentTab === `${source}-tab`) {
       console.log('On matching tab, checking view state...');
@@ -707,6 +1086,11 @@ class CrybotWeb {
         // Reload voice conversation
         this.loadVoiceConversation();
       }
+
+      // Mark as seen since we're viewing it
+      if (isCurrentChat) {
+        this.markChatAsSeen(fullChatId);
+      }
     } else {
       console.log(`Not on ${source} tab (on ${this.currentTab}), skipping refresh`);
     }
@@ -725,6 +1109,60 @@ class CrybotWeb {
     }
   }
 
+  async reloadSessionFromBackend(sessionId) {
+    try {
+      const response = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}`);
+      const data = await response.json();
+
+      // Determine which container this session belongs to
+      let containerId = null;
+      if (sessionId.startsWith('web_')) {
+        containerId = 'chat-messages';
+      } else if (sessionId.startsWith('telegram_')) {
+        containerId = 'telegram-messages';
+      } else if (sessionId === 'voice') {
+        containerId = 'voice-messages';
+      }
+
+      if (!containerId) return;
+
+      // Only reload if this session is currently displayed in this container
+      if (this.currentViewSessions[containerId] !== sessionId) {
+        // This session is not currently visible, don't reload
+        // Just update the session list to show there's new activity
+        if (containerId === 'chat-messages') {
+          this.loadSessionsList();
+        } else if (containerId === 'telegram-messages') {
+          this.loadTelegramConversations();
+        }
+        return;
+      }
+
+      // Clear and reload the messages
+      const container = document.getElementById(containerId);
+      if (!container) return;
+
+      container.innerHTML = '';
+
+      if (!data.messages || data.messages.length === 0) {
+        container.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">No messages yet. Start a conversation!</p>';
+        return;
+      }
+
+      // Display messages
+      data.messages.forEach(msg => {
+        if (msg.content && (msg.role === 'user' || msg.role === 'assistant')) {
+          this.addMessage(msg.content, msg.role, containerId);
+        }
+      });
+
+      // Scroll to bottom
+      this.scrollToBottom(containerId);
+    } catch (error) {
+      console.error('Failed to reload session:', error);
+    }
+  }
+
   sendChatMessage(context) {
     const formId = context === 'chat' ? 'chat-form' :
                     context === 'telegram' ? 'telegram-form' : 'voice-form';
@@ -734,14 +1172,28 @@ class CrybotWeb {
 
     if (!content) return;
 
+    // Mark current chat as seen when user sends a message
+    this.markCurrentChatAsSeen();
+
     // For telegram, send to the telegram-specific endpoint
     if (context === 'telegram' && this.currentTelegramChat) {
       this.sendToTelegram(content);
       return;
     }
 
+    // For voice, send to the voice-specific endpoint
+    if (context === 'voice') {
+      this.sendToVoice(content);
+      return;
+    }
+
     this.addMessage(content, 'user', this.getCurrentContainer());
     input.value = '';
+
+    // Track that we're expecting a response for this session
+    if (this.sessionId) {
+      this.pendingResponses.set(this.sessionId, context);
+    }
 
     // Send via WebSocket
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
@@ -788,6 +1240,38 @@ class CrybotWeb {
     }
   }
 
+  async sendToVoice(content) {
+    const form = document.getElementById('voice-form');
+    const input = form.querySelector('.message-input');
+
+    this.addMessage(content, 'user', 'voice-messages');
+    input.value = '';
+
+    // Show typing indicator
+    this.showTypingIndicator('voice-messages');
+
+    try {
+      const response = await fetch('/api/voice/message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content }),
+      });
+
+      const data = await response.json();
+      if (data.error) {
+        this.hideTypingIndicator('voice-messages');
+        this.addMessage(`Error: ${data.error}`, 'system', 'voice-messages');
+      }
+      // Note: We don't manually add the assistant message here because
+      // the WebSocket broadcast will handle displaying the response
+      // The broadcast will also hide the typing indicator
+    } catch (error) {
+      this.hideTypingIndicator('voice-messages');
+      console.error('Failed to send to voice:', error);
+      this.addMessage('Failed to send message to Voice', 'system', 'voice-messages');
+    }
+  }
+
   async sendViaAPI(content) {
     try {
       const response = await fetch('/api/chat', {
@@ -823,10 +1307,10 @@ class CrybotWeb {
     const avatar = role === 'user' ? 'U' : role === 'assistant' ? 'C' : '!';
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-    // Parse markdown for assistant messages, escape HTML for user messages
+    // Parse markdown for both user and assistant messages
     let renderedContent;
-    if (role === 'assistant') {
-      // Parse markdown for assistant messages
+    if (role === 'user' || role === 'assistant') {
+      // Parse markdown for both user and assistant messages
       renderedContent = typeof marked !== 'undefined' ? marked.parse(content) : this.escapeHtml(content);
     } else {
       renderedContent = this.escapeHtml(content);
@@ -879,6 +1363,9 @@ class CrybotWeb {
   async openTelegramChat(chatId) {
     console.log('openTelegramChat called with:', chatId);
     this.currentTelegramChat = chatId;
+
+    // Track which session is being viewed
+    this.currentViewSessions['telegram-messages'] = `telegram_${chatId}`;
 
     const listContainer = document.getElementById('telegram-list');
     const chatView = document.getElementById('telegram-chat-view');
@@ -963,6 +1450,9 @@ class CrybotWeb {
   }
 
   async loadVoiceConversation() {
+    // Track which session is being viewed
+    this.currentViewSessions['voice-messages'] = 'voice';
+
     const messagesContainer = document.getElementById('voice-messages');
     messagesContainer.innerHTML = '<p style="color: #666;">Loading voice conversation...</p>';
 
@@ -1110,60 +1600,27 @@ class CrybotWeb {
     return div.innerHTML;
   }
 
-  async activatePushToTalk() {
-    if (this.pushToTalkActive) return;
-
-    try {
-      const response = await fetch('/api/voice/push-to-talk', {
-        method: 'POST',
-      });
-
-      if (response.ok) {
-        this.pushToTalkActive = true;
-        const pttBtn = document.querySelector('.push-to-talk-btn');
-        if (pttBtn) {
-          pttBtn.textContent = 'Listening...';
-          pttBtn.style.backgroundColor = '#27ae60';
-        }
-      }
-    } catch (error) {
-      console.error('Failed to activate push-to-talk:', error);
-    }
-  }
-
-  async deactivatePushToTalk() {
-    if (!this.pushToTalkActive) return;
-
-    try {
-      const response = await fetch('/api/voice/push-to-talk', {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        this.pushToTalkActive = false;
-        const pttBtn = document.querySelector('.push-to-talk-btn');
-        if (pttBtn) {
-          pttBtn.textContent = 'Push to talk';
-          pttBtn.style.backgroundColor = '';
-        }
-      }
-    } catch (error) {
-      console.error('Failed to deactivate push-to-talk:', error);
-    }
-  }
-
   async loadSessionsList() {
+    // Prevent concurrent loads
+    if (this.isLoadingSessions) {
+      console.log('Already loading sessions, skipping...');
+      return;
+    }
+
+    this.isLoadingSessions = true;
+
     try {
       const response = await fetch('/api/sessions');
       const data = await response.json();
 
       const listContainer = document.getElementById('chat-list');
-      if (!listContainer) return;
+      const itemsContainer = document.querySelector('.chat-list-items');
+      if (!listContainer || !itemsContainer) return;
 
-      listContainer.innerHTML = '';
+      itemsContainer.innerHTML = '';
 
       if (!data.sessions || data.sessions.length === 0) {
-        listContainer.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">No conversations yet. Start chatting!</p>';
+        itemsContainer.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">No conversations yet. Start chatting!</p>';
         return;
       }
 
@@ -1176,7 +1633,7 @@ class CrybotWeb {
       );
 
       if (chatSessions.length === 0) {
-        listContainer.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">No conversations yet. Start chatting!</p>';
+        itemsContainer.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">No conversations yet. Start chatting!</p>';
         return;
       }
 
@@ -1206,7 +1663,7 @@ class CrybotWeb {
       }
 
       if (sessionsWithMessages.length === 0) {
-        listContainer.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">No conversations yet. Start chatting!</p>';
+        itemsContainer.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">No conversations yet. Start chatting!</p>';
         return;
       }
 
@@ -1250,10 +1707,12 @@ class CrybotWeb {
           this.deleteSession(session.id);
         });
 
-        listContainer.appendChild(item);
+        itemsContainer.appendChild(item);
       });
     } catch (error) {
       console.error('Failed to load sessions:', error);
+    } finally {
+      this.isLoadingSessions = false;
     }
   }
 
@@ -1316,6 +1775,9 @@ class CrybotWeb {
   async openChatSession(sessionId) {
     // Show chat view
     this.showChatView();
+
+    // Track which session is being viewed
+    this.currentViewSessions['chat-messages'] = sessionId;
 
     // Load messages for this session
     try {

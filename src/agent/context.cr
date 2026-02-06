@@ -37,11 +37,18 @@ module Crybot
         parts.compact.join("\n\n")
       end
 
-      def build_messages(user_message : String, history : Array(Providers::Message)) : Array(Providers::Message)
+      def build_messages(user_message : String, history : Array(Providers::Message), session_key : String? = nil) : Array(Providers::Message)
         messages = [] of Providers::Message
 
         # System prompt
         system_content = build_system_prompt
+
+        # Add voice-friendly instructions if this is a voice session
+        if session_key == "voice"
+          puts "[Context] Adding voice instructions for session_key: #{session_key}"
+          system_content += "\n\n" + build_voice_instructions
+        end
+
         messages << Providers::Message.new("system", system_content)
 
         # Add history
@@ -176,6 +183,40 @@ module Crybot
         parts << legacy_summary unless legacy_summary.empty?
 
         parts.empty? ? "" : "# Available Skills\n\n#{parts.join("\n\n")}"
+      end
+
+      private def build_voice_instructions : String
+        <<-TEXT
+        # Voice Output Instructions
+
+        Your response will be read aloud using text-to-speech. Follow these guidelines:
+
+        **Important:**
+        - DO NOT introduce yourself or say your name
+        - DO NOT say things like "I'm Crybot" or "I am your assistant"
+        - Just answer the user's question directly without preamble
+        - Get straight to the point - no greetings, no sign-offs
+
+        **Format for Speech:**
+        - NO emojis - they don't work well in speech
+        - NO markdown formatting - use plain, natural language
+        - Write numbers as words (e.g., "five" instead of "5", "one thousand" instead of "1000")
+        - Avoid abbreviations - spell out words instead
+        - Use natural, conversational phrasing that sounds good when spoken
+        - Keep sentences relatively short and easy to follow
+        - Avoid bullet points and lists - use flowing paragraphs instead
+        - Don't use visual formatting like "**bold**" or "`code`"
+        - For code snippets, describe what the code does rather than reading it character by character
+        - Avoid URLs and web addresses - describe the resource instead
+        - Use contractions naturally (e.g., "don't", "can't", "you're")
+        - Write dates and times in spoken format (e.g., "January fifth" instead of "1/5")
+
+        **Example:**
+        Instead of: "Here are 5 steps: 1. Download the file 2. Run `./install.sh`"
+        Write: "Here are the five steps you need to follow. First, download the installation file. Then run the install script."
+
+        Remember: Your response is being spoken, not read. Make it sound natural and conversational. NO self-introductions!
+        TEXT
       end
     end
   end

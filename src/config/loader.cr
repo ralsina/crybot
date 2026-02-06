@@ -157,11 +157,11 @@ module Crybot
         web:
           enabled: false
           host: "127.0.0.1"
-          port: 3000
+          port: 3003
           path_prefix: ""
           auth_token: ""  # Set to enable authentication
           allowed_origins:
-            - "http://localhost:3000"
+            - "http://localhost:3003"
           enable_cors: true
         YAML
 
