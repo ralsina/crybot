@@ -16,16 +16,38 @@ module Crybot
 
       def chat(messages : Array(Message), tools : Array(ToolDef)?, model : String?) : Response
         request_body = build_request_body(messages, tools, model)
-
         headers = build_headers
 
-        response = HTTP::Client.post(endpoint_url, headers, request_body.to_json)
+        # Exponential backoff for rate limits (429) and server errors (5xx)
+        max_retries = 5
+        base_delay = 1.0  # seconds
 
-        unless response.success?
-          raise "API request failed: #{response.status_code} - #{response.body}"
+        max_retries.times do |attempt|
+          response = HTTP::Client.post(endpoint_url, headers, request_body.to_json)
+
+          # Success - return response
+          if response.success?
+            return parse_response(response.body)
+          end
+
+          # Check if it's a rate limit (429) or server error (5xx)
+          status = response.status_code
+          if status == 429 || status >= 500
+            if attempt < max_retries - 1
+              # Calculate exponential backoff with jitter
+              delay = base_delay * (2 ** attempt) + (rand * 0.5)
+              puts "[Provider] Rate limited (#{status}), retrying in #{delay.round(2)}s (attempt #{attempt + 1}/#{max_retries})"
+              sleep delay.seconds
+              next
+            end
+          end
+
+          # Other error or max retries exceeded
+          raise "API request failed: #{status} - #{response.body}"
         end
 
-        parse_response(response.body)
+        # Should not reach here, but compiler needs a return
+        raise "Max retries exceeded"
       end
 
       private def endpoint_url : String
