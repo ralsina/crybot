@@ -106,11 +106,13 @@ module Crybot
     class Loop
       @config : Config::ConfigFile
       @provider : Providers::LLMProvider
+      @provider_name : String
       @context_builder : ContextBuilder
       @session_manager : Session::Manager
       @max_iterations : Int32
       @mcp_manager : MCP::Manager?
       @skill_manager : SkillManager
+      @tools_enabled : Bool
 
       getter skill_manager
       getter mcp_manager
@@ -120,20 +122,30 @@ module Crybot
         @mcp_manager = MCP::Manager.new(@config.mcp)
 
         @skill_manager = SkillManager.new(Config::Loader.skills_dir, @mcp_manager)
-        @provider = create_provider
+        @provider, @provider_name = create_provider
         @context_builder = ContextBuilder.new(@config, @skill_manager)
         @session_manager = Session::Manager.instance
         @max_iterations = @config.agents.defaults.max_tool_iterations
+        @tools_enabled = tools_enabled?
 
         # Register built-in tools
         register_tools
       end
 
-      private def create_provider : Providers::LLMProvider
+      private def tools_enabled? : Bool
+        case @provider_name
+        when "groq"
+          @config.providers.groq.tools
+        else
+          true  # Tools enabled by default for other providers
+        end
+      end
+
+      private def create_provider : Tuple(Providers::LLMProvider, String)
         provider_name = @config.agents.defaults.provider
         model = @config.agents.defaults.model
 
-        case provider_name
+        provider = case provider_name
         when "openai"
           api_key = @config.providers.openai.api_key
           raise "OpenAI API key not configured" if api_key.empty?
@@ -160,6 +172,8 @@ module Crybot
           raise "Zhipu API key not configured" if api_key.empty?
           Providers::ZhipuProvider.new(api_key, model)
         end
+
+        {provider, provider_name}
       end
 
       def process(session_key : String, user_message : String) : AgentResponse
@@ -179,7 +193,7 @@ module Crybot
           iteration += 1
 
           # Call LLM
-          tools_schemas = Tools::Registry.to_schemas
+          tools_schemas = @tools_enabled ? Tools::Registry.to_schemas : nil
           response = @provider.chat(messages, tools_schemas, @config.agents.defaults.model)
 
           # Add assistant message to history

@@ -71,12 +71,13 @@ Groq offers free access to open-source models with incredibly fast inference.
 providers:
   groq:
     api_key: "your_groq_api_key"
+    tools: false  # Required for free tier (6000 TPM limit)
 
 agents:
   defaults:
     provider: groq
-    model: "llama-3.3-70b-versatile"
-    # model: "llama-3.1-8b-instant"
+    model: "llama-3.1-8b-instant"  # Smaller model for free tier
+    # model: "llama-3.3-70b-versatile"
     # model: "qwen/qwen3-32b"
 ```
 
@@ -96,7 +97,19 @@ agents:
 - No credit card required
 - Check [Groq's docs](https://console.groq.com/docs/models) for current model list
 
-> **Note:** Groq's free tier has a 6000 tokens-per-minute (TPM) limit. Crybot's system prompt with tools may exceed this limit. For full functionality including tool use, consider Zhipu GLM or upgrading your Groq tier.
+> **Important Limitation:** Groq's free tier has a **6000 tokens-per-minute (TPM)** limit. Crybot's system prompt (skills, memory, instructions) is approximately 8000-9000 tokens, which exceeds this limit.
+>
+> **For Groq free tier to work:**
+> - Set `tools: false` in the Groq provider config
+> - The system will still be too large for the free tier
+> - **Recommended:** Use Groq only if you upgrade to a paid tier, or use Zhipu GLM for free instead
+
+### Paid Tier
+
+Upgrading to Groq's Dev Tier or higher provides:
+- Higher TPM limits (suitable for Crybot's full system prompt)
+- Tool use support (set `tools: true`)
+- Access to more models
 
 ---
 
@@ -260,19 +273,24 @@ agents:
     temperature: 0.7
 ```
 
-### Option 2: Groq (Fastest)
+### Option 2: Groq (Fastest - Paid Tier Recommended)
 
-> **Note:** Groq's free tier (6000 TPM) may be too low for Crybot's full tool use. Best for simple conversations.
+> **Warning:** Groq's free tier (6000 TPM) is **too limited for Crybot**. The system prompt alone exceeds this limit.
+>
+> **Groq is only recommended if:**
+> - You upgrade to Dev Tier or higher ($0.59/million tokens)
+> - You want the fastest inference and don't mind paying
 
 ```yaml
 providers:
   groq:
     api_key: "your_groq_api_key"
+    tools: true  # Enable tools with paid tier
 
 agents:
   defaults:
     provider: groq
-    model: "llama-3.1-8b-instant"
+    model: "llama-3.3-70b-versatile"
 ```
 
 ### Option 3: Local vLLM (No API needed)
