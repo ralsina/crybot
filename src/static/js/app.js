@@ -34,14 +34,14 @@ class CrybotWeb {
     // Track loading state to prevent duplicate loads
     this.isLoadingSessions = false;
 
-    // Message history for input (per container)
+    // Store full message history from backend (per container)
     this.messageHistory = {
-      'chat-form': [],
-      'telegram-form': [],
-      'voice-form': []
+      'chat-messages': [],
+      'telegram-messages': [],
+      'voice-messages': []
     };
 
-    // History navigation state (per container)
+    // History navigation state (per form)
     this.historyPosition = {
       'chat-form': -1,
       'telegram-form': -1,
@@ -1024,8 +1024,13 @@ class CrybotWeb {
 
     if (!messages || messages.length === 0) {
       container.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">No messages yet. Start a conversation!</p>';
+      this.messageHistory['chat-messages'] = [];
       return;
     }
+
+    // Extract user messages for history navigation
+    const userMessages = messages.filter(msg => msg.content && msg.role === 'user').map(msg => msg.content);
+    this.messageHistory['chat-messages'] = userMessages;
 
     messages.forEach((msg) => {
       if (msg.content && (msg.role === 'user' || msg.role === 'assistant')) {
@@ -1243,7 +1248,7 @@ class CrybotWeb {
     input.value = '';
 
     // Save to message history
-    this.addToHistory(formId, content);
+    this.addToHistory(this.getCurrentContainer(), content);
 
     // Reset history position
     this.historyPosition[formId] = -1;
@@ -1275,7 +1280,7 @@ class CrybotWeb {
     input.value = '';
 
     // Save to message history
-    this.addToHistory('telegram-form', content);
+    this.addToHistory('telegram-messages', content);
 
     // Reset history position
     this.historyPosition['telegram-form'] = -1;
@@ -1314,7 +1319,7 @@ class CrybotWeb {
     input.value = '';
 
     // Save to message history
-    this.addToHistory('voice-form', content);
+    this.addToHistory('voice-messages', content);
 
     // Reset history position
     this.historyPosition['voice-form'] = -1;
@@ -1568,15 +1573,14 @@ class CrybotWeb {
     return description;
   }
 
-  addToHistory(formId, content) {
-    const history = this.messageHistory[formId];
+  addToHistory(containerId, content) {
+    if (!this.messageHistory[containerId]) {
+      this.messageHistory[containerId] = [];
+    }
+    const history = this.messageHistory[containerId];
     // Don't add duplicates of the most recent message
     if (history.length === 0 || history[history.length - 1] !== content) {
       history.push(content);
-      // Limit history to 100 messages per form
-      if (history.length > 100) {
-        history.shift();
-      }
     }
   }
 
@@ -1584,7 +1588,16 @@ class CrybotWeb {
     const input = document.querySelector(`#${formId} .message-input`);
     if (!input) return;
 
-    const history = this.messageHistory[formId];
+    // Map form ID to container ID for history lookup
+    const containerMap = {
+      'chat-form': 'chat-messages',
+      'telegram-form': 'telegram-messages',
+      'voice-form': 'voice-messages'
+    };
+    const containerId = containerMap[formId];
+    if (!containerId) return;
+
+    const history = this.messageHistory[containerId] || [];
     let position = this.historyPosition[formId];
 
     if (direction === 'up') {
@@ -1756,10 +1769,16 @@ class CrybotWeb {
       if (!data.messages || data.messages.length === 0) {
         console.log('No messages found in response');
         messagesContainer.innerHTML = '<p style="color: #666;">No messages yet.</p>';
+        this.messageHistory['telegram-messages'] = [];
         return;
       }
 
       console.log('Processing', data.messages.length, 'messages');
+
+      // Extract user messages for history navigation
+      const userMessages = data.messages.filter(msg => msg.content && msg.role === 'user').map(msg => msg.content);
+      this.messageHistory['telegram-messages'] = userMessages;
+
       // Display messages (filter out system messages)
       data.messages.forEach((msg, index) => {
         console.log(`Message ${index}:`, msg);
@@ -1823,8 +1842,13 @@ class CrybotWeb {
 
       if (!data.messages || data.messages.length === 0) {
         messagesContainer.innerHTML = '<p style="color: #666;">No voice conversations yet. Use voice mode to start chatting.</p>';
+        this.messageHistory['voice-messages'] = [];
         return;
       }
+
+      // Extract user messages for history navigation
+      const userMessages = data.messages.filter(msg => msg.content && msg.role === 'user').map(msg => msg.content);
+      this.messageHistory['voice-messages'] = userMessages;
 
       // Display messages (filter out system messages)
       data.messages.forEach(msg => {
