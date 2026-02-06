@@ -311,16 +311,24 @@ body {
   z-index: 10;
 }
 
-/* Position resend button on left side for user messages (since they're right-aligned) */
+/* Position resend button on left side for all messages (appears on hover) */
+.message:hover .resend-btn {
+  display: flex;
+  opacity: 1;
+}
+
+/* For user messages (right-aligned), position button on the left side of the avatar */
 .message.user .resend-btn {
-  left: -40px;
+  right: 100%;
+  margin-right: 8px;
   top: 0;
 }
 
-.message.user:hover .resend-btn {
-  display: flex;
-  opacity: 1;
-  left: -36px;
+/* For assistant messages (left-aligned), position button on the right side of the avatar */
+.message.assistant .resend-btn {
+  left: 100%;
+  margin-left: 8px;
+  top: 0;
 }
 
 .resend-btn:hover {
