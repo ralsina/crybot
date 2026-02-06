@@ -11,7 +11,7 @@ This chapter covers how to use Crybot with **free AI models** and providers that
 
 | Provider | Models | Free Tier | Speed | Tool Support | Free Amount | How to Get |
 |----------|--------|-----------|-------|--------------|-------------|------------|
-| **OpenRouter** ⭐ | GLM, DeepSeek, Qwen, Llama, and more | Yes | Fast | ✅ Excellent | Multiple free options | [openrouter.ai](https://openrouter.ai/) |
+| **OpenRouter** ⭐ | Step-3.5, GLM, DeepSeek, Qwen, Llama | Yes | Very Fast | ✅ Excellent | Multiple free options | [openrouter.ai](https://openrouter.ai/) |
 | **Zhipu GLM** | `glm-4-flash`, `glm-4-plus` | Generous | Fast | ✅ Excellent | High daily limit | [bigmodel.cn](https://open.bigmodel.cn/) |
 | **Groq** | `llama-3.3-70b-versatile` | Yes | Very Fast | ⚠️ Limited* | 12K TPM | [console.groq.com](https://console.groq.com/) |
 | **Google Gemini** | `gemini-2.5-flash` | **100% FREE** | Very Fast | ✅ Excellent | 20 req/day† | [ai.google.dev](https://ai.google.dev/gemini-api/docs) |
@@ -30,7 +30,7 @@ OpenRouter aggregates multiple AI providers and offers several free models, maki
 ### Why OpenRouter?
 
 - **Multiple Free Models**: Access to many free models from different providers
-- **Zhipu GLM via OpenRouter**: Fast, high quality, excellent tool support
+- **Step-3.5 Flash**: Very fast, excellent tool support - ⭐ **Top recommendation**
 - **Variety**: Choose from different models based on your needs
 - **Easy Setup**: Single API key works with all models
 - **No Credit Card Required**: Start using free models immediately
@@ -52,7 +52,8 @@ providers:
 agents:
   defaults:
     provider: openrouter
-    model: "z-ai/glm-4.5-air:free"  # ⭐ Recommended - Fast, excellent tool support!
+    model: "stepfun/step-3.5-flash:free"  # ⭐ Recommended - Very fast, excellent tools!
+    # model: "z-ai/glm-4.5-air:free"  # Alternative - Fast, excellent tool support
     # model: "tngtech/deepseek-r1t2-chimera:free"  # Alternative (slower)
     # model: "arcee-ai/trinity-large-preview:free"  # Fast but NO tool support via OpenRouter
 ```
@@ -61,18 +62,19 @@ agents:
 
 | Model | Provider | Description | Tool Support |
 |-------|----------|-------------|--------------|
-| `z-ai/glm-4.5-air:free` | Zhipu AI | ⭐ **Recommended** - Fast, high quality, excellent tool support | ✅ Yes |
+| `stepfun/step-3.5-flash:free` | StepFun | ⭐ **Recommended** - Very fast, excellent tool support | ✅ Yes |
+| `z-ai/glm-4.5-air:free` | Zhipu AI | Fast, high quality, excellent tool support | ✅ Yes |
 | `tngtech/deepseek-r1t2-chimera:free` | DeepSeek | Free DeepSeek model, good for reasoning | ✅ Yes |
 | `qwen/qwen-2.5-72b-instruct` | Alibaba | Strong instruction following, capable model | ✅ Yes |
 | `arcee-ai/trinity-large-preview:free` | Arcee AI | Fast, high quality for chat | ⚠️ **No tool support via OpenRouter** |
-| `meta-llama/llama-3-8b` | Meta | Open source Llama, some free tier availability | ✅ Yes |
+| `meta-llama/llama-3.3-70b-instruct:free` | Meta | Capable model, often rate-limited | ✅ Yes |
 | `google/gemma-7b-it:free` | Google | Gemma model, lightweight and efficient | ⚠️ Limited |
 
 > **Note:** The `:free` suffix indicates a free tier model. Always check the OpenRouter website for the latest availability of free models.
 
 ### Tool Support
 
-Most free models on OpenRouter support function calling, which means all Crybot tools (file operations, shell commands, web search, memory, etc.) will work properly. However, **Arcee Trinity does not support tool calling via OpenRouter** despite documentation claims - it outputs code blocks instead of calling tools. For full tool support, use `z-ai/glm-4.5-air:free` or `tngtech/deepseek-r1t2-chimera:free`.
+Most free models on OpenRouter support function calling, which means all Crybot tools (file operations, shell commands, web search, memory, etc.) will work properly. **Top recommendations for tool support:** `stepfun/step-3.5-flash:free` (very fast), `z-ai/glm-4.5-air:free` (reliable), and `tngtech/deepseek-r1t2-chimera:free` (good reasoning). Note that **Arcee Trinity does not support tool calling via OpenRouter** - it outputs code blocks instead of calling tools.
 
 ### Free Tier Details
 
@@ -348,12 +350,16 @@ huggingface-cli download meta-llama/Meta-Llama-3-8B-Instruct
 
 | Provider | Setup Difficulty | Speed | Quality | Cost | Daily Limit | Tool Support |
 |----------|-----------------|-------|----------|------|-------------|--------------|
-| **OpenRouter** ⭐ | Easy | Fast | Excellent | Free tiers | Multiple free models | ✅ Excellent |
+| **OpenRouter** ⭐ | Easy | Very Fast | Excellent | Free tiers | Multiple free models | ✅ Excellent |
 | **Zhipu** | Easy | Fast | Excellent | Free tier | High | ✅ Excellent |
 | **Gemini** | Easy | Very Fast | Excellent | **100% Free** | 20 req/day | ✅ Excellent |
 | **Groq** | Easy | Very Fast | Good | Free tier | 12K TPM | ⚠️ Limited* |
 | **Hugging Face** | Easy | Medium | Good | Free tier | Rate limits | ✅ Good |
 | **vLLM** | Complex | Fastest | Varies | Free (hardware) | None | ✅ Good |
+
+*Groq's `llama-3.3-70b-versatile` has 12K TPM but generates malformed tool calls. Use `qwen/qwen3-32b` with `lite: true` for working tools (6K TPM).
+
+> **Note on Arcee Trinity**: While fast and high quality, `arcee-ai/trinity-large-preview:free` does NOT support tool calling via OpenRouter. For tool use, stick with `stepfun/step-3.5-flash:free` or `z-ai/glm-4.5-air:free`.
 
 *Groq's `llama-3.3-70b-versatile` has 12K TPM but generates malformed tool calls. Use `qwen/qwen3-32b` with `lite: true` for working tools (6K TPM).
 
@@ -365,7 +371,7 @@ huggingface-cli download meta-llama/Meta-Llama-3-8B-Instruct
 
 ## Recommended Configuration for Free Use
 
-### Option 1: OpenRouter with Zhipu GLM ⭐ (Recommended for Tool Use)
+### Option 1: OpenRouter with Step-3.5 Flash ⭐ (Recommended)
 
 ```yaml
 providers:
@@ -375,11 +381,11 @@ providers:
 agents:
   defaults:
     provider: openrouter
-    model: "z-ai/glm-4.5-air:free"
+    model: "stepfun/step-3.5-flash:free"
     temperature: 0.7
 ```
 
-### Option 2: Zhipu GLM Direct (Reliable Free Tier)
+### Option 2: OpenRouter with Zhipu GLM (Reliable Alternative)
 
 ```yaml
 providers:
