@@ -200,6 +200,7 @@ body {
 .messages-container {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 20px;
   background-color: var(--bg-base);
 }
@@ -242,6 +243,7 @@ body {
   border-radius: 8px;
   max-width: 70%;
   word-wrap: break-word;
+  overflow-x: hidden;
 }
 
 .message.user .message-bubble {
