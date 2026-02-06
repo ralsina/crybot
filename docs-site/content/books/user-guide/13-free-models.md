@@ -9,7 +9,7 @@ This chapter covers how to use Crybot with **free AI models** and providers that
 | Provider | Model | Free Tier | How to Get |
 |----------|-------|-----------|------------|
 | **Zhipu GLM** | `glm-4-flash`, `glm-4-plus`, `glm-4-alltools` | Yes | [bigmodel.cn](https://open.bigmodel.cn/) |
-| **Groq** | `llama-3.3-70b-versatile`, `llama-3.1-8b-instant` | Yes | [console.groq.com](https://console.groq.com/) |
+| **Groq** | `llama-3.3-70b-versatile` (12K TPM) | Yes | [console.groq.com](https://console.groq.com/) |
 | **OpenRouter** | `deepseek-chat`, `qwen-*` | Yes | [openrouter.ai](https://openrouter.ai/) |
 | **Hugging Face** | Various | Yes | [huggingface.co](https://huggingface.co/) |
 | **Local** | vLLM | Free | Run on your hardware |
@@ -71,49 +71,45 @@ Groq offers free access to open-source models with incredibly fast inference.
 providers:
   groq:
     api_key: "your_groq_api_key"
-    lite: true  # Lite mode for free tier (disables tools/skills)
+    lite: false  # Full mode for models with sufficient TPM
 
 agents:
   defaults:
     provider: groq
-    model: "llama-3.1-8b-instant"  # Smaller model for free tier
-    # model: "llama-3.3-70b-versatile"
-    # model: "qwen/qwen3-32b"
+    model: "llama-3.3-70b-versatile"  # 12K TPM, but tools may be unstable
+    # For working tools with Groq, consider:
+    # model: "qwen/qwen3-32b"  # 6K TPM - working tools, requires lite mode
 ```
 
 ### Available Models
 
-| Model | Parameters | Notes |
-|-------|------------|-------|
-| `llama-3.3-70b-versatile` | 70B | Fast, capable, production-ready |
-| `llama-3.1-8b-instant` | 8B | Very fast, good for simple tasks |
-| `qwen3-32b` | 32B | Strong instruction following |
-| `gpt-oss-120b` | 120B | OpenAI's open-source model |
+| Model | TPM (Free) | TPD (Free) | Notes |
+|-------|------------|------------|-------|
+| `llama-3.3-70b-versatile` | **12K** | 100K | **Recommended** - Fast, capable, 12K TPM enough for Crybot |
+| `llama-3.1-8b-instant` | 6K | 500K | Very fast, requires `lite: true` |
+| `qwen/qwen3-32b` | 6K | 500K | Strong instruction following, requires `lite: true` |
+| `meta-llama/llama-guard-4-12b` | **15K** | 500K | Highest TPM, but specialized for safety |
+| `gpt-oss-120b` | 8K | 200K | OpenAI's open-source model |
+
+See [Groq Rate Limits](https://console.groq.com/docs/rate-limits) for current limits.
 
 ### Free Tier
 
 - Free access to Groq-hosted models
-- Rate limited but very fast
+- Rate limits vary by model (see table above)
 - No credit card required
-- Check [Groq's docs](https://console.groq.com/docs/models) for current model list
+- **Recommended:** Use Zhipu GLM for free instead - more reliable tool use
 
-> **Important Limitation:** Groq's free tier has a **6000 tokens-per-minute (TPM)** limit.
->
-> **For Groq free tier to work:**
-> - Set `lite: true` in the Groq provider config (enables lite mode)
+> **Tool Use Limitations:**
+> - `llama-3.3-70b-versatile`: Has 12K TPM but generates malformed tool calls
+> - `qwen/qwen3-32b`: Working tools, but only 6K TPM (requires `lite: true`)
+> - For reliable tool use on Groq free tier, consider `qwen/qwen3-32b` with `lite: true`
+
+> **For models with 6K TPM** (llama-3.1-8b-instant, qwen/qwen3-32b):
+> - Set `lite: true` to fit within the limit
 > - Lite mode disables tools, skills, bootstrap files, and memory
-> - System prompt reduced to ~150 tokens
 > - You can have short conversations; long sessions will exceed the limit
 > - Clear your session periodically: `rm ~/.crybot/sessions/YOUR_SESSION.jsonl`
->
-> **Recommended:** Use Zhipu GLM for free instead - it has generous limits and full functionality.
-
-### Paid Tier
-
-Upgrading to Groq's Dev Tier or higher provides:
-- Higher TPM limits (suitable for Crybot's full system prompt)
-- Set `lite: false` to enable full functionality
-- Access to more models
 
 ---
 
@@ -277,23 +273,23 @@ agents:
     temperature: 0.7
 ```
 
-### Option 2: Groq (Fastest - Paid Tier Recommended)
+### Option 2: Groq (Fastest - Full Functionality)
 
-> **Free tier:** Set `lite: true` (no tools/skills, limited context)
->
-> **Paid tier:** Set `lite: false` for full functionality
+> **Recommended:** `llama-3.3-70b-versatile` has 12K TPM - supports full Crybot with `lite: false`
 
 ```yaml
 providers:
   groq:
     api_key: "your_groq_api_key"
-    lite: true  # Set to false for paid tier
+    lite: false  # Full mode with llama-3.3-70b-versatile (12K TPM)
 
 agents:
   defaults:
     provider: groq
     model: "llama-3.3-70b-versatile"
 ```
+
+> **Alternative for 6K TPM models:** Use `llama-3.1-8b-instant` with `lite: true` (limited features)
 
 ### Option 3: Local vLLM (No API needed)
 
