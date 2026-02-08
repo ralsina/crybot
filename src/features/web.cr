@@ -7,18 +7,23 @@ module Crybot
       @config : Config::ConfigFile
       @server : Web::Server?
       @server_fiber : Fiber?
+      @agent_loop : Agent::Loop?
 
       def initialize(@config : Config::ConfigFile)
       end
 
-      def start : Nil
+      def start(@agent_loop : Agent::Loop? = nil) : Nil
         return unless validate_config(@config)
+
+        # Use provided agent loop or create a new one
+        agent = @agent_loop || Agent::Loop.new(@config)
+        @agent_loop = agent
 
         puts "[#{Time.local.to_s("%H:%M:%S")}] Starting web feature..."
         puts "[#{Time.local.to_s("%H:%M:%S")}] Listening on http://#{@config.web.host}:#{@config.web.port}"
 
-        # Create server instance
-        @server = Web::Server.new(@config)
+        # Create server instance with existing agent loop
+        @server = Web::Server.new(@config, agent)
 
         # Start Kemal in a fiber
         @server_fiber = spawn do

@@ -9,6 +9,7 @@ Usage:
   crybot onboard
   crybot agent [-m <message>]
   crybot status
+  crybot profile
   crybot [-h | --help]
 
 Options:
@@ -19,6 +20,7 @@ Commands:
   onboard    Initialize configuration and workspace
   agent      Interact with the AI agent directly
   status     Show configuration status
+  profile    Profile startup performance
 
 Running Crybot:
   When run without arguments, crybot starts all enabled features.
@@ -39,6 +41,7 @@ module Crybot
       onboard_val = args["onboard"]
       agent_val = args["agent"]
       status_val = args["status"]
+      profile_val = args["profile"]
 
       # Check if any specific command was given (not nil)
       if onboard_val == true
@@ -49,6 +52,8 @@ module Crybot
         Commands::Agent.execute(message_str)
       elsif status_val == true
         Commands::Status.execute
+      elsif profile_val == true
+        Commands::Profile.execute
       else
         # Default: start the unified command with all enabled features
         Commands::Start.execute

@@ -13,8 +13,7 @@ module Crybot
     class Server
       getter config, agent, sessions
 
-      def initialize(@config : Config::ConfigFile)
-        @agent = Agent::Loop.new(@config)
+      def initialize(@config : Config::ConfigFile, @agent : Agent::Loop)
         @sessions = Session::Manager.instance
       end
 

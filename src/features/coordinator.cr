@@ -85,9 +85,14 @@ module Crybot
 
         # Web feature
         if features_config.web
+          # Agent loop must be initialized before starting web feature
+          unless @agent_loop
+            @agent_loop = Agent::Loop.new(@config)
+          end
+
           feature = WebFeature.new(@config)
           @features << feature
-          feature.start
+          feature.start(@agent_loop.not_nil!)
         end
 
         # Voice feature
@@ -134,7 +139,7 @@ module Crybot
       end
 
       private def start_config_watcher : Nil
-        watcher = Config::Watcher.new(Config::Loader.config_file, ->{ restart })
+        watcher = Config::Watcher.new(Config::Loader.config_file, -> { restart })
         @watcher = watcher
         watcher.start
       end
