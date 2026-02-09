@@ -10,6 +10,9 @@ module Crybot
       File.join(home, ".crybot", "landlock.sock")
     end
 
+    # Stores the actual path to grant access to (parent dir for files)
+    @@pending_access_path : String?
+
     # Message types
     enum MessageType
       RequestAccess # Agent -> Monitor: Request access to a path
@@ -204,6 +207,13 @@ module Crybot
     end
 
     private def self.add_permanent_access(path : String) : Nil
+      # Use the pending access path if set (parent dir for files)
+      actual_path = @@pending_access_path || path
+      @@pending_access_path = nil  # Reset after use
+
+      puts "[LandlockSocket] add_permanent_access called with: #{path}"
+      puts "[LandlockSocket] Using actual_path: #{actual_path}"
+
       home = ENV.fetch("HOME", "")
       monitor_dir = File.join(home, ".crybot", "monitor")
       Dir.mkdir_p(monitor_dir) unless Dir.exists?(monitor_dir)
@@ -213,7 +223,7 @@ module Crybot
       paths = if File.exists?(allowed_paths_file)
                 data = YAML.parse(File.read(allowed_paths_file))
                 if paths_arr = data["paths"]?.try(&.as_a)
-                  paths_arr.map(&.as_s)
+                  paths_arr.map { |p| p.as_s.strip.gsub(/^'''|'''$/, "").gsub(/^'|'$/, "") }
                 else
                   [] of String
                 end
@@ -222,14 +232,19 @@ module Crybot
               end
 
       # Add path if not already present
-      paths << path unless paths.includes?(path)
+      paths << actual_path unless paths.includes?(actual_path)
 
-      # Save
-      data = {
-        "paths"        => paths,
-        "last_updated" => Time.local.to_s,
-      }
-      File.write(allowed_paths_file, data.to_yaml)
+      puts "[LandlockSocket] Final paths list: #{paths.inspect}"
+
+      # Save - use simple YAML without extra quoting
+      yaml_lines = ["---", "paths:"]
+      paths.each do |p|
+        yaml_lines << "  - \"#{p}\""
+      end
+      yaml_lines << "last_updated: \"#{Time.local.to_s}\""
+      File.write(allowed_paths_file, yaml_lines.join("\n") + "\n")
+
+      puts "[LandlockSocket] Added access to: #{actual_path}"
     end
 
     # Prompt user for access (rofi or terminal)
@@ -237,14 +252,21 @@ module Crybot
       home = ENV.fetch("HOME", "")
       display_path = path.starts_with?(home) ? path.sub(home, "~") : path
 
-      # For files, show that parent directory access is being granted
-      parent_note = if File.exists?(path) && !Dir.exists?(path)
-                      parent = File.dirname(path)
-                      parent_display = parent.starts_with?(home) ? parent.sub(home, "~") : parent
-                      " (parent: #{parent_display})"
-                    else
-                      ""
-                    end
+      # For files (existing or not), we grant access to the parent directory
+      # This allows creating new files and avoids issues with non-existent paths
+      target_path = path
+      parent_note = ""
+
+      if !Dir.exists?(path)
+        parent = File.dirname(path)
+        parent_display = parent.starts_with?(home) ? parent.sub(home, "~") : parent
+        target_path = parent
+        parent_note = " (grants RW access to: #{parent_display})"
+      end
+
+      # Store the actual path we'll grant access to (may be parent dir)
+      # This is used by add_permanent_access
+      @@pending_access_path = target_path
 
       # Check for graphical environment
       has_display = ENV.has_key?("DISPLAY") || ENV.has_key?("WAYLAND_DISPLAY")
@@ -260,7 +282,9 @@ module Crybot
 
     # Prompt using rofi
     private def self.prompt_with_rofi(path : String, parent_note : String) : Symbol?
-      prompt = "🔒 Allow access to: #{path}#{parent_note}"
+      prompt = "Allow access?"
+      message = "🔒 Agent requests: #{path}#{parent_note}"
+
       options = [
         "Allow",
         "Deny - Suggest using playground",
@@ -275,6 +299,7 @@ module Crybot
         [
           "-dmenu",
           "-p", prompt,
+          "-mesg", message,
           "-i",
           "-lines", "3",
           "-width", "60",

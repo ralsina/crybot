@@ -222,20 +222,12 @@ module Crybot
             # Expand ~ to home directory if needed
             expanded_path = path.starts_with?("~") ? path.sub("~", home) : path
 
-            # Landlock only works with directories, not files
-            # If path is a file, use its parent directory
-            target_path = if File.exists?(expanded_path) && !Dir.exists?(expanded_path)
-                            File.dirname(expanded_path)
-                          else
-                            expanded_path
-                          end
-
             # Check if path exists before adding rule
-            if Dir.exists?(target_path)
-              add_path_rule(ruleset_fd, target_path, ACCESS_FS_RW)
-              puts "[Landlock]   + #{target_path}"
+            if File.exists?(expanded_path) || Dir.exists?(expanded_path)
+              add_path_rule(ruleset_fd, expanded_path, ACCESS_FS_RW)
+              puts "[Landlock]   + #{expanded_path}"
             else
-              puts "[Landlock]   ! #{target_path} (path does not exist, skipping)"
+              puts "[Landlock]   ! #{expanded_path} (path does not exist, skipping)"
             end
           end
         end

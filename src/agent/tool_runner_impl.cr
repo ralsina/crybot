@@ -104,14 +104,19 @@ module Crybot
       # Common patterns:
       # "sh: line 1: /path/to/file: Permission denied"
       # "tee: /path/to/file: Permission denied"
+      # "'/path/to/file': Permission denied" (with quotes)
       # "/path/to/file: Permission denied"
 
-      match = error_msg.match(/(?:sh:|tee:|echo:)?\s*line\s*\d+:\s*([^\s:]+):\s*Permission\s+denied/i)
-      return match[1] if match
+      match = error_msg.match(/(?:sh:|tee:|echo:)?\s*line\s*\d+:\s*['"]?([^\s'"]+)['"]?:\s*Permission\s+denied/i)
+      if match
+        return match[1]
+      end
 
-      # Try another pattern
-      match = error_msg.match(/([^\s:]+):\s*Permission\s+denied/i)
-      return match[1] if match
+      # Try another pattern (simpler)
+      match = error_msg.match(/['"]?([^\s'"]+)['"]?:\s*Permission\s+denied/i)
+      if match
+        return match[1]
+      end
 
       nil
     end
