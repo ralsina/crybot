@@ -118,34 +118,33 @@ module Crybot
           begin
             # Execute the tool directly in an isolated fiber with Landlock
             result = execute_tool_in_isolated_context(tool_name, arguments, restrictions)
+            return result
+          rescue e : Tools::LandlockDeniedException
+            # Handle Landlock denial - we know the path from the exception
+            path = e.path
 
-            # Check for permission denied in result
-            if result.includes?("Permission denied") || result.includes?("permission denied")
-              path = extract_path_from_error(result)
+            if attempt < max_retries
+              puts "[ToolMonitor] Access denied for: #{path}"
+              puts "[ToolMonitor] Requesting access..."
 
-              if path && attempt < max_retries
-                puts "[ToolMonitor] Access denied for: #{path}"
-                puts "[ToolMonitor] Requesting access..."
+              access_result = LandlockSocket.request_access(path)
 
-                access_result = LandlockSocket.request_access(path)
-
-                case access_result
-                when LandlockSocket::AccessResult::Granted
-                  puts "[ToolMonitor] Access granted, retrying..."
-                  restrictions.add_read_write(path)
-                  next
-                when LandlockSocket::AccessResult::DeniedSuggestPlayground
-                  playground_path = File.join(ENV.fetch("HOME", ""), ".crybot", "playground")
-                  return "Error: Access denied for #{path}. Suggested using playground (#{playground_path})."
-                else
-                  return "Error: Access denied for #{path}."
-                end
-              elsif path
+              case access_result
+              when LandlockSocket::AccessResult::Granted
+                puts "[ToolMonitor] Access granted, retrying..."
+                # Landlock works on directories, not files. Use parent directory.
+                dir_path = File.directory?(path) ? path : File.dirname(path)
+                restrictions.add_read_write(dir_path)
+                next
+              when LandlockSocket::AccessResult::DeniedSuggestPlayground
+                playground_path = File.join(ENV.fetch("HOME", ""), ".crybot", "playground")
+                return "Error: Access denied for #{path}. Suggested using playground (#{playground_path})."
+              else
                 return "Error: Access denied for #{path}."
               end
+            else
+              return "Error: Access denied for #{path}."
             end
-
-            return result
           rescue e : Exception
             # Check if this is a timeout from ToolRunner
             if e.message.try(&.includes?("timed out"))
@@ -199,12 +198,6 @@ module Crybot
         when timeout(30.seconds)
           raise Exception.new("Tool execution timed out")
         end
-      end
-
-      # Extract file path from permission denied error
-      private def self.extract_path_from_error(error_msg : String) : String?
-        match = error_msg.match(/(['"]?)(\/[^\s'\"]+)\1(?=\s*:?\s*Permission\s+denied)/i)
-        match ? match[2] : nil
       end
 
       # Load user-configured allowed paths

@@ -63,6 +63,10 @@ module Crybot
       puts result
       exit 0
     rescue e : Exception
+      # Log the error for debugging
+      STDERR.puts "[ToolRunner] Error executing #{tool_name}: #{e.message}"
+      STDERR.puts e.backtrace.join("\n") if ENV["DEBUG"]?
+
       # Check if this is a Landlock access denial
       if LandlockWrapper.landlock_error?(e.message || "")
         # Extract path from error message if possible

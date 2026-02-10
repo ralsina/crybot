@@ -4,6 +4,15 @@ require "../../providers/base"
 module Crybot
   module Agent
     module Tools
+      # Exception raised when a tool is denied access by Landlock
+      class LandlockDeniedException < Exception
+        getter path : String
+
+        def initialize(@path : String, message : String? = nil)
+          super(message || "Access denied to #{@path}")
+        end
+      end
+
       abstract class Tool
         abstract def name : String
         abstract def description : String

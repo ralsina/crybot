@@ -209,7 +209,7 @@ module Crybot
     private def self.add_permanent_access(path : String) : Nil
       # Use the pending access path if set (parent dir for files)
       actual_path = @@pending_access_path || path
-      @@pending_access_path = nil  # Reset after use
+      @@pending_access_path = nil # Reset after use
 
       puts "[LandlockSocket] add_permanent_access called with: #{path}"
       puts "[LandlockSocket] Using actual_path: #{actual_path}"
@@ -313,10 +313,10 @@ module Crybot
 
       selection = result.to_s.strip
       case selection
-      when "Allow"                then :granted
+      when "Allow"                           then :granted
       when "Deny - Suggest using playground" then :denied_suggest_playground
-      when "Deny"                then :denied
-      else                          nil
+      when "Deny"                            then :denied
+      else                                        nil
       end
     rescue e : Exception
       nil
