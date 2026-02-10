@@ -73,13 +73,19 @@ module Crybot
           return "Error: path is required" if path.empty?
           return "Error: content is required" if content.nil?
 
+          STDERR.puts "[WriteFile] Writing to: #{path}"
+
           begin
             dir = File.dirname(path)
             Dir.mkdir_p(dir) unless Dir.exists?(dir)
             File.write(path, content)
+            STDERR.puts "[WriteFile] Successfully wrote to: #{path}"
             "Successfully wrote to #{path}"
           rescue e : Exception
-            "Error: #{e.message}"
+            STDERR.puts "[WriteFile] Error: #{e.message}"
+            # Don't swallow the exception - let tool_runner_impl handle it
+            # This allows proper Landlock access denied handling
+            raise e
           end
         end
       end

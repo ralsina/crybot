@@ -24,6 +24,8 @@ dependencies:
     github: ralsina/baked_file_handler
   mcp-client:
     github: ralsina/mcp-client
+  tool_runner:
+    path: ./tool_runner
 
 development_dependencies:
   ameba:

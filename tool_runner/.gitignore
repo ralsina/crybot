@@ -1,0 +1,6 @@
+bin/
+demo
+*.demo
+shards
+*.lock
+*.db

@@ -1,17 +1,19 @@
 require "json"
-require "process"
+require "tool_runner"
 require "./tools/registry"
-require "./tool_runner_impl"
+require "./tools/filesystem"
+require "./tools/shell"
+require "./tools/memory"
+require "./tools/web"
+require "./tools/skill_builder"
+require "./tools/web_scraper_skill"
 require "../landlock_socket"
 
 module Crybot
   module Agent
-    # Tool Monitor - Manages tool execution in Landlocked subprocesses
+    # Tool Monitor - Manages tool execution in Landlocked contexts
     #
-    # The monitor runs in the same process as the agent (no Landlock).
-    # When the agent needs to execute a tool, it sends a request to the monitor.
-    # The monitor spawns a landlocked subprocess, handles access denials,
-    # and returns the result.
+    # Uses ToolRunner library to execute tools in isolated threads with Landlock.
     module ToolMonitor
       # Request from agent
       struct ToolRequest
@@ -59,7 +61,7 @@ module Crybot
             if request.tool_name.includes?("/")
               result = execute_directly(request.tool_name, request.arguments)
             else
-              result = execute_in_subprocess(request.tool_name, request.arguments)
+              result = execute_with_landlock(request.tool_name, request.arguments)
             end
 
             response = ToolResponse.new(true, result)
@@ -94,9 +96,18 @@ module Crybot
         response.result
       end
 
-      # Execute tool in a landlocked subprocess
-      private def self.execute_in_subprocess(tool_name : String, arguments : Hash(String, JSON::Any)) : String
-        args_json = arguments.to_json
+      # Execute tool with Landlock using ToolRunner library
+      private def self.execute_with_landlock(tool_name : String, arguments : Hash(String, JSON::Any)) : String
+        # Get default restrictions from ToolRunner
+        restrictions = ::ToolRunner::Landlock::Restrictions.default_crybot
+
+        # Add any user-configured allowed paths
+        if allowed_paths = load_allowed_paths
+          allowed_paths.each do |path|
+            expanded = path.starts_with?("~") ? path.sub("~", ENV.fetch("HOME", "")) : path
+            restrictions.add_read_write(expanded)
+          end
+        end
 
         max_retries = 2 # Allow one retry after access granted
         attempt = 0
@@ -104,63 +115,102 @@ module Crybot
         while attempt < max_retries
           attempt += 1
 
-          # Run tool runner using crybot binary
-          output = IO::Memory.new
-          error = IO::Memory.new
+          begin
+            # Execute the tool directly in an isolated fiber with Landlock
+            result = execute_tool_in_isolated_context(tool_name, arguments, restrictions)
 
-          status = Process.run(
-            PROGRAM_NAME,
-            ["tool-runner", tool_name, args_json],
-            output: output,
-            error: error
-          )
+            # Check for permission denied in result
+            if result.includes?("Permission denied") || result.includes?("permission denied")
+              path = extract_path_from_error(result)
 
-          output_str = output.to_s.strip
-          error_str = error.to_s.strip
-
-          case status.exit_code
-          when 0
-            # Success - return output (might have debug messages mixed in)
-            # Filter out [ToolRunner] debug messages
-            lines = output_str.lines.reject(&.starts_with?("[ToolRunner]"))
-            return lines.join("\n")
-          when 42
-            # Access denied - check error for path
-            if error_str.starts_with?("LANDLOCK_DENIED:")
-              path = error_str.sub("LANDLOCK_DENIED:", "").strip
-
-              if attempt < max_retries
+              if path && attempt < max_retries
                 puts "[ToolMonitor] Access denied for: #{path}"
-                puts "[ToolMonitor] Requesting access through landlock monitor..."
+                puts "[ToolMonitor] Requesting access..."
 
-                # Request access through the landlock monitor (rofi/terminal)
-                result = LandlockSocket.request_access(path)
+                access_result = LandlockSocket.request_access(path)
 
-                case result
+                case access_result
                 when LandlockSocket::AccessResult::Granted
                   puts "[ToolMonitor] Access granted, retrying..."
-                  next # Retry with new Landlock rules
+                  restrictions.add_read_write(path)
+                  next
                 when LandlockSocket::AccessResult::DeniedSuggestPlayground
                   playground_path = File.join(ENV.fetch("HOME", ""), ".crybot", "playground")
-                  return "Error: Access denied for #{path}. The user denied access and suggested using paths within the playground (#{playground_path})."
+                  return "Error: Access denied for #{path}. Suggested using playground (#{playground_path})."
                 else
-                  return "Error: Access denied for #{path}. Please try again or modify allowed paths."
+                  return "Error: Access denied for #{path}."
                 end
-              else
-                return "Error: Access denied for #{path} and retry limit reached."
+              elsif path
+                return "Error: Access denied for #{path}."
               end
-            else
-              # Generic access denied
-              return "Error: #{error_str}"
             end
-          else
-            # Other error - check stderr first, then stdout
-            error_msg = error_str.empty? ? output_str : error_str
-            return "Error: #{error_msg}"
+
+            return result
+          rescue e : Exception
+            # Check if this is a timeout from ToolRunner
+            if e.message.try(&.includes?("timed out"))
+              return "Error: Tool execution timed out"
+            end
+            return "Error: #{e.message}"
           end
         end
 
         "Error: Maximum retries exceeded"
+      end
+
+      # Execute tool in an isolated context with Landlock
+      private def self.execute_tool_in_isolated_context(tool_name : String, arguments : Hash(String, JSON::Any), restrictions : ::ToolRunner::Landlock::Restrictions) : String
+        # Create channels for result and error
+        result_channel = Channel(String).new
+        error_channel = Channel(Exception).new
+
+        # Create isolated execution context
+        _isolated_context = Fiber::ExecutionContext::Isolated.new("ToolExecution", spawn_context: Fiber::ExecutionContext.default) do
+          begin
+            # Apply Landlock restrictions first
+            if restrictions.path_rules.empty? || !::ToolRunner::Landlock.available?
+              # No restrictions to apply or Landlock not available - continue without sandboxing
+            elsif !restrictions.apply
+              error_channel.send(Exception.new("Failed to apply Landlock restrictions"))
+              next
+            end
+
+            # Get the tool from registry
+            tool = Tools::Registry.get(tool_name)
+            if tool.nil?
+              result_channel.send("Error: Tool '#{tool_name}' not found")
+              next
+            end
+
+            # Execute the tool
+            result = tool.execute(arguments)
+            result_channel.send(result)
+          rescue e : Exception
+            error_channel.send(e)
+          end
+        end
+
+        # Wait for result with timeout
+        select
+        when result = result_channel.receive
+          return result
+        when error = error_channel.receive
+          raise error
+        when timeout(30.seconds)
+          raise Exception.new("Tool execution timed out")
+        end
+      end
+
+      # Extract file path from permission denied error
+      private def self.extract_path_from_error(error_msg : String) : String?
+        match = error_msg.match(/(['"]?)(\/[^\s'\"]+)\1(?=\s*:?\s*Permission\s+denied)/i)
+        match ? match[2] : nil
+      end
+
+      # Load user-configured allowed paths
+      private def self.load_allowed_paths : Array(String)?
+        # TODO: Load from config.yml landlock.allowed_paths
+        [] of String
       end
     end
   end

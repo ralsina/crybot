@@ -1,0 +1,19 @@
+name: tool_runner
+version: 0.1.0
+description: Sandboxed command execution using Linux Landlock and Crystal's ExecutionContext::Isolated
+
+authors:
+  - ralsina <me@ralsina.dev>
+
+crystal: 1.13.0
+
+license: MIT
+
+targets:
+  tool_runner:
+    main: src/tool_runner.cr
+
+development_dependencies:
+  ameba:
+    github: crystal-ameba/ameba
+    version: ~> 1.6.0

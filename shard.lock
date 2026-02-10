@@ -64,6 +64,10 @@ shards:
     git: https://github.com/luislavena/radix.git
     version: 0.4.1
 
+  tool_runner:
+    path: ./tool_runner
+    version: 0.1.0
+
   tourmaline:
     git: https://github.com/protoncr/tourmaline.git
     version: 0.28.0
