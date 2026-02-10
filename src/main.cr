@@ -77,58 +77,58 @@ DOC
 module Crybot
   # ameba:disable Metrics/CyclomaticComplexity
   def self.run : Nil
-    begin
-      args = ARGV
+    args = ARGV
 
-      # Debug: print arguments
-      puts "Args: #{args.inspect}"
+    # Debug: print arguments
+    puts "Args: #{args.inspect}"
 
-      # Show help if requested
-      if args.includes?("-h") || args.includes?("--help")
-        puts DOC
-        return
-      end
+    # Show help if requested
+    if args.includes?("-h") || args.includes?("--help")
+      puts DOC
+      return
+    end
 
-      cmd = args[0]?
+    cmd = args[0]?
 
-      # Debug: print command
-      puts "Command: #{cmd.inspect}"
+    # Debug: print command
+    puts "Command: #{cmd.inspect}"
 
-      case cmd
-      when "onboard"
-        Commands::Onboard.execute
-      when "status"
-        Commands::Status.execute
-      when "profile"
-        Commands::Profile.execute
-      when "tool-runner"
-        # Internal tool-runner command for Landlocked subprocess execution
-        tool_name = args[1]?
-        json_args = args[2]?
-        if tool_name && json_args
-          ToolRunnerImpl.run(tool_name, json_args)
-        else
-          STDERR.puts "Usage: crybot tool-runner <tool_name> <json_args>"
-          exit 1
-        end
-      when "agent"
-        # Apply Landlock before agent command
-        LandlockWrapper.ensure_sandbox(args)
-        message_idx = args.index("-m")
-        message = message_idx ? args[message_idx + 1]? : nil
-        Commands::Agent.execute(message)
-      when nil
-        # Default: start the threaded mode with monitor + agent fibers
-        Commands::ThreadedStart.execute
+    case cmd
+    when "onboard"
+      Commands::Onboard.execute
+    when "status"
+      Commands::Status.execute
+    when "profile"
+      Commands::Profile.execute
+    when "tool-runner"
+      # Internal tool-runner command for Landlocked subprocess execution
+      tool_name = args[1]?
+      json_args = args[2]?
+      if tool_name && json_args
+        ToolRunnerImpl.run(tool_name, json_args)
       else
-        STDERR.puts "Unknown command: #{cmd.inspect}"
-        puts "\n" + DOC
+        STDERR.puts "Usage: crybot tool-runner <tool_name> <json_args>"
         exit 1
       end
-    rescue e : Exception
-      puts "Error: #{e.message}"
-      puts e.backtrace.join("\n") if ENV["DEBUG"]?
+    when "agent"
+      # Note: Landlock disabled for agent because it blocks MCP server subprocess creation
+      # MCP servers need to spawn child processes (npx, uvx, etc.)
+      # TODO: Consider running only tools in Landlocked subprocesses, not the agent itself
+      # LandlockWrapper.ensure_sandbox(args)
+      message_idx = args.index("-m")
+      message = message_idx ? args[message_idx + 1]? : nil
+      Commands::Agent.execute(message)
+    when nil
+      # Default: start the threaded mode with monitor + agent fibers
+      Commands::ThreadedStart.execute
+    else
+      STDERR.puts "Unknown command: #{cmd.inspect}"
+      puts "\n" + DOC
+      exit 1
     end
+  rescue e : Exception
+    puts "Error: #{e.message}"
+    puts e.backtrace.join("\n") if ENV["DEBUG"]?
   end
 end
 

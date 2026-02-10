@@ -50,15 +50,15 @@ shards:
 
   http_proxy:
     git: https://github.com/mamantoha/http_proxy.git
-    version: 0.13.1+git.commit.456718949b12e504da60bf823b67dcd9f97e988b
+    version: 0.14.0+git.commit.dc59c8779cb66b171617b030567972ea7661ffa5
 
   kemal:
     git: https://github.com/kemalcr/kemal.git
-    version: 1.9.0+git.commit.669c867482bb9a70e47d4d0683f32e2c101c5c76
+    version: 1.9.0+git.commit.676a35f0893d8d754ece6fc008e937c202872670
 
   mcp-client:
-    path: ../mcp-client
-    version: 0.1.0
+    git: https://github.com/ralsina/mcp-client.git
+    version: 0.1.0+git.commit.fcfae88398c131c58df04f9c87e634dbab632779
 
   radix:
     git: https://github.com/luislavena/radix.git

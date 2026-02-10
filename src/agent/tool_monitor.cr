@@ -53,7 +53,14 @@ module Crybot
         loop do
           begin
             request = request_channel.receive
-            result = execute_in_subprocess(request.tool_name, request.arguments)
+
+            # Check if this is an MCP tool (contains / separator)
+            # MCP tools must execute in the main process to access the MCP client
+            if request.tool_name.includes?("/")
+              result = execute_directly(request.tool_name, request.arguments)
+            else
+              result = execute_in_subprocess(request.tool_name, request.arguments)
+            end
 
             response = ToolResponse.new(true, result)
             request.response_channel.send(response)
@@ -61,6 +68,18 @@ module Crybot
             STDERR.puts "[ToolMonitor] Error: #{e.message}"
             STDERR.puts e.backtrace.join("\n") if ENV["DEBUG"]?
           end
+        end
+      end
+
+      # Execute tool directly in the main process (for MCP tools)
+      private def self.execute_directly(tool_name : String, arguments : Hash(String, JSON::Any)) : String
+        tool = Tools::Registry.get(tool_name)
+        return "Error: Tool '#{tool_name}' not found" if tool.nil?
+
+        begin
+          tool.execute(arguments)
+        rescue e : Exception
+          "Error: #{e.message}"
         end
       end
 

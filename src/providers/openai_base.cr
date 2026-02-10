@@ -75,14 +75,7 @@ module Crybot
           body["tools"] = JSON::Any.new(tools_array)
           # Explicitly set tool_choice to auto (model decides when to use tools)
           body["tool_choice"] = JSON::Any.new("auto")
-          puts "[Provider] Sending #{tools.size} tools to API with tool_choice=auto"
-          tools.each do |tool|
-            puts "[Provider]   - #{tool.name}: #{tool.description}"
-          end
-          # Log first tool schema for debugging
-          unless tools.empty?
-            puts "[Provider] First tool schema: #{tools[0].to_h.to_json}"
-          end
+          puts "[Provider] Sending #{tools.size} tools to API"
         end
 
         body
