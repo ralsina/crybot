@@ -183,6 +183,12 @@ module Crybot
           raise "Failed to add Landlock rule for /etc. Network access will fail without this."
         end
 
+        # /proc - read-only access needed by many tools (node, npm, etc.)
+        add_path_rule(ruleset_fd, "/proc", ACCESS_FS_READ_FILE | ACCESS_FS_READ_DIR)
+
+        # /sys/fs/cgroup - read-only access needed by node for memory/cgroup info
+        add_path_rule(ruleset_fd, "/sys/fs/cgroup", ACCESS_FS_READ_FILE | ACCESS_FS_READ_DIR)
+
         # Home directory - read only
         unless add_path_rule(ruleset_fd, home, ACCESS_FS_READ_FILE | ACCESS_FS_READ_DIR)
           raise "Failed to add Landlock rule for #{home}. Cannot continue."
@@ -217,7 +223,7 @@ module Crybot
 
         # User-configured allowed paths (if any)
         unless allowed_paths.empty?
-          puts "[Landlock] Loading #{allowed_paths.size} user-configured path(s)"
+          STDERR.puts "[Landlock] Loading #{allowed_paths.size} user-configured path(s)"
           allowed_paths.each do |path|
             # Expand ~ to home directory if needed
             expanded_path = path.starts_with?("~") ? path.sub("~", home) : path
@@ -225,9 +231,9 @@ module Crybot
             # Check if path exists before adding rule
             if File.exists?(expanded_path) || Dir.exists?(expanded_path)
               add_path_rule(ruleset_fd, expanded_path, ACCESS_FS_RW)
-              puts "[Landlock]   + #{expanded_path}"
+              STDERR.puts "[Landlock]   + #{expanded_path}"
             else
-              puts "[Landlock]   ! #{expanded_path} (path does not exist, skipping)"
+              STDERR.puts "[Landlock]   ! #{expanded_path} (path does not exist, skipping)"
             end
           end
         end
@@ -250,7 +256,7 @@ module Crybot
 
         # Mark as landlocked
         ENV["CRYBOT_LANDLOCKED"] = "1"
-        puts "[Landlock] Sandbox applied successfully"
+        STDERR.puts "[Landlock] Sandbox applied successfully"
 
         true
       ensure
@@ -337,7 +343,7 @@ module Crybot
           end
         rescue e : Exception
           # If we can't read the config, just continue with empty list
-          puts "[Landlock] Warning: Could not read allowed_paths.yml: #{e.message}"
+          STDERR.puts "[Landlock] Warning: Could not read allowed_paths.yml: #{e.message}"
         end
       end
 

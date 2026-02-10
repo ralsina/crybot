@@ -37,7 +37,7 @@ module Crybot
 
       def stop : Nil
         @running = false
-        if reader = @reader_fiber
+        if @reader_fiber
           # Give the fiber a moment to finish naturally
           sleep 0.1.seconds
         end
@@ -91,20 +91,20 @@ module Crybot
         return unless command
 
         parts = command.split(' ')
-        exec_cmd = parts.first
-        args = parts[1..]
 
-        @process = Process.new(exec_cmd, args,
+        @process = Process.new(parts[0], parts[1..],
           input: Process::Redirect::Pipe,
           output: Process::Redirect::Pipe,
-          error: Process::Redirect::Pipe
+          error: Process::Redirect::Pipe,
+          clear_env: false,
         )
 
         # Give the server a moment to start
         sleep 0.5.seconds
 
         # Check if process is still alive
-        if @process && @process.not_nil!.exists?
+        current_process = @process
+        if current_process && current_process.exists?
           # Process is running
         else
           raise "MCP server process failed to start"
@@ -116,9 +116,9 @@ module Crybot
           buffer = Bytes.new(4096)
           process = @process
 
-          while @running && process && process.exists?
+          while @running && process
             begin
-              bytes_read = process.not_nil!.output.read(buffer)
+              bytes_read = process.output.read(buffer)
               if bytes_read && bytes_read > 0
                 data = String.new(buffer[0, bytes_read])
                 @response_mutex.synchronize do
@@ -139,7 +139,7 @@ module Crybot
 
       private def initialize_mcp : Nil
         send_request("initialize", {
-          "protocolVersion" => "2025-11-25",
+          "protocolVersion" => "2024-11-05",
           "capabilities"    => {
             "tools"     => true,
             "resources" => true,

@@ -1,4 +1,3 @@
-require "docopt"
 require "./config/loader"
 require "./landlock_wrapper"
 require "./agent/tool_monitor"
@@ -79,42 +78,52 @@ module Crybot
   # ameba:disable Metrics/CyclomaticComplexity
   def self.run : Nil
     begin
-      args = Docopt.docopt(DOC)
-    rescue e : Docopt::DocoptExit
-      puts e.message
-      return
-    end
+      args = ARGV
 
-    begin
-      onboard_val = args["onboard"]
-      agent_val = args["agent"]
-      status_val = args["status"]
-      profile_val = args["profile"]
-      tool_runner_val = args["tool-runner"]
+      # Debug: print arguments
+      puts "Args: #{args.inspect}"
 
-      # Check if any specific command was given (not nil)
-      if tool_runner_val == true
-        # Internal tool-runner command for Landlocked subprocess execution
-        tool_name = args["<tool_name>"]
-        json_args = args["<json_args>"]
-        tool_name_str = tool_name.is_a?(String) ? tool_name : ""
-        json_args_str = json_args.is_a?(String) ? json_args : ""
-        ToolRunnerImpl.run(tool_name_str, json_args_str)
-      elsif onboard_val == true
+      # Show help if requested
+      if args.includes?("-h") || args.includes?("--help")
+        puts DOC
+        return
+      end
+
+      cmd = args[0]?
+
+      # Debug: print command
+      puts "Command: #{cmd.inspect}"
+
+      case cmd
+      when "onboard"
         Commands::Onboard.execute
-      elsif agent_val == true
-        # Apply Landlock before agent command
-        LandlockWrapper.ensure_sandbox(ARGV)
-        message = args["-m"]
-        message_str = message.is_a?(String) ? message : nil
-        Commands::Agent.execute(message_str)
-      elsif status_val == true
+      when "status"
         Commands::Status.execute
-      elsif profile_val == true
+      when "profile"
         Commands::Profile.execute
-      else
+      when "tool-runner"
+        # Internal tool-runner command for Landlocked subprocess execution
+        tool_name = args[1]?
+        json_args = args[2]?
+        if tool_name && json_args
+          ToolRunnerImpl.run(tool_name, json_args)
+        else
+          STDERR.puts "Usage: crybot tool-runner <tool_name> <json_args>"
+          exit 1
+        end
+      when "agent"
+        # Apply Landlock before agent command
+        LandlockWrapper.ensure_sandbox(args)
+        message_idx = args.index("-m")
+        message = message_idx ? args[message_idx + 1]? : nil
+        Commands::Agent.execute(message)
+      when nil
         # Default: start the threaded mode with monitor + agent fibers
         Commands::ThreadedStart.execute
+      else
+        STDERR.puts "Unknown command: #{cmd.inspect}"
+        puts "\n" + DOC
+        exit 1
       end
     rescue e : Exception
       puts "Error: #{e.message}"
