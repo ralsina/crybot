@@ -56,6 +56,10 @@ shards:
     git: https://github.com/kemalcr/kemal.git
     version: 1.9.0+git.commit.669c867482bb9a70e47d4d0683f32e2c101c5c76
 
+  mcp-client:
+    path: ../mcp-client
+    version: 0.1.0
+
   radix:
     git: https://github.com/luislavena/radix.git
     version: 0.4.1
