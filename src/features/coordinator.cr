@@ -1,3 +1,4 @@
+require "log"
 require "../config/loader"
 require "../config/watcher"
 require "../agent/loop"
@@ -29,16 +30,16 @@ module Crybot
         create_and_start_features
 
         if @features.empty?
-          puts "No features enabled. Enable features in config.yml under 'features:'"
-          puts "Available features: gateway, web, voice, repl, scheduled_tasks"
+          Log.error { "No features enabled. Enable features in config.yml under 'features:'" }
+          Log.error { "Available features: gateway, web, voice, repl, scheduled_tasks" }
           return
         end
 
         feature_names = @features.map do |feature|
           feature.class.name.gsub(/Crybot::Features::/, "").gsub(/Crybot::ScheduledTasks::/, "").gsub(/Feature$/, "")
         end
-        puts "Started features: #{feature_names.join(", ")}"
-        puts "Press Ctrl+C to stop"
+        Log.info { "Started features: #{feature_names.join(", ")}" }
+        Log.info { "Press Ctrl+C to stop" }
 
         # Start config watcher for reload
         start_config_watcher
@@ -53,15 +54,15 @@ module Crybot
       def stop : Nil
         @running = false
 
-        puts ""
-        puts "Stopping features..."
+        Log.info { "" }
+        Log.info { "Stopping features..." }
 
         # Stop all features in reverse order
         @features.reverse_each do |feature|
           begin
             feature.stop
           rescue e : Exception
-            puts "Error stopping #{feature.class.name}: #{e.message}"
+            Log.error(exception: e) { "Error stopping #{feature.class.name}: #{e.message}" }
           end
         end
 
@@ -70,7 +71,7 @@ module Crybot
           watcher.stop
         end
 
-        puts "All features stopped"
+        Log.info { "All features stopped" }
       end
 
       private def create_and_start_features : Nil
@@ -86,13 +87,12 @@ module Crybot
         # Web feature
         if features_config.web
           # Agent loop must be initialized before starting web feature
-          unless @agent_loop
-            @agent_loop = Agent::Loop.new(@config)
-          end
+          agent_loop = @agent_loop || Agent::Loop.new(@config)
+          @agent_loop ||= agent_loop
 
           feature = WebFeature.new(@config)
           @features << feature
-          feature.start(@agent_loop.not_nil!)
+          feature.start(agent_loop)
         end
 
         # Voice feature

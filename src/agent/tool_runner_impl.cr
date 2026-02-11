@@ -1,3 +1,4 @@
+require "log"
 require "./tools/registry"
 require "./tools/shell"
 require "./tools/filesystem"
@@ -34,7 +35,7 @@ module Crybot
       args = begin
         JSON.parse(args_json).as_h
       rescue
-        STDERR.puts "Error: Invalid JSON arguments"
+        Log.error { "Error: Invalid JSON arguments" }
         exit 43
       end
 
@@ -64,8 +65,8 @@ module Crybot
       exit 0
     rescue e : Exception
       # Log the error for debugging
-      STDERR.puts "[ToolRunner] Error executing #{tool_name}: #{e.message}"
-      STDERR.puts e.backtrace.join("\n") if ENV["DEBUG"]?
+      Log.error(exception: e) { "[ToolRunner] Error executing #{tool_name}: #{e.message}" }
+      Log.debug(exception: e) { e.backtrace.join("\n") } if ENV["DEBUG"]?
 
       # Check if this is a Landlock access denial
       if LandlockWrapper.landlock_error?(e.message || "")
@@ -81,7 +82,7 @@ module Crybot
       end
 
       # Regular error
-      STDERR.puts "Error: #{e.message}"
+      Log.error(exception: e) { "Error: #{e.message}" }
       exit 1
     end
 

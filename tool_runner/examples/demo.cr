@@ -16,13 +16,13 @@ end
 
 # Create restrictions for common shell operations
 restrictions = ToolRunner::Landlock::Restrictions.new
-  .add_read_only("/usr")    # For binaries (many shells link to /usr/bin)
-  .add_read_only("/bin")    # For shell binaries
-  .add_read_only("/lib")    # For shared libraries
-  .add_read_only("/lib64")  # For shared libraries
-  .add_read_only("/dev")    # For /dev/null, /dev/urandom
+  .add_read_only("/usr")   # For binaries (many shells link to /usr/bin)
+  .add_read_only("/bin")   # For shell binaries
+  .add_read_only("/lib")   # For shared libraries
+  .add_read_only("/lib64") # For shared libraries
+  .add_read_only("/dev")   # For /dev/null, /dev/urandom
   .add_path("/dev/null", ToolRunner::Landlock::ACCESS_FS_READ_FILE | ToolRunner::Landlock::ACCESS_FS_WRITE_FILE)
-  .add_read_write("/tmp")   # For temporary files
+  .add_read_write("/tmp") # For temporary files
 
 # Describe the sandbox restrictions
 puts "[ToolRunner] Sandbox restrictions:"

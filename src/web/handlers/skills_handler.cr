@@ -41,7 +41,7 @@ module Crybot
 
                 # Build config hash
                 credentials_array = config.credentials.try do |creds|
-                  creds.map { |c| JSON::Any.new(c.to_h) }
+                  creds.map { |credential| JSON::Any.new(credential.to_h) }
                 end || [] of JSON::Any
 
                 config_hash = {
@@ -70,7 +70,7 @@ module Crybot
                   end
                 end
 
-                missing_creds_array = missing_creds.map { |c| JSON::Any.new(c.to_h) }
+                missing_creds_array = missing_creds.map { |credential| JSON::Any.new(credential.to_h) }
                 skill_info["missing_credentials"] = JSON::Any.new(missing_creds_array)
                 skill_info["cred_status"] = JSON::Any.new(if missing_creds.empty?
                   "ok"
@@ -134,7 +134,7 @@ module Crybot
 
             # Build config hash
             credentials_array = config.credentials.try do |creds|
-              creds.map { |c| JSON::Any.new(c.to_h) }
+              creds.map { |credential| JSON::Any.new(credential.to_h) }
             end || [] of JSON::Any
             config_hash = {
               "name"             => JSON::Any.new(config.name),
@@ -168,6 +168,7 @@ module Crybot
         end
 
         # Create or update a skill
+        # ameba:disable Metrics/CyclomaticComplexity
         def save_skill(env) : String
           skill_name = env.params.url["skill"]?
 
@@ -257,9 +258,9 @@ module Crybot
           new_manager = Agent::SkillManager.new
           results = new_manager.load_all
 
-          loaded_count = results.count { |r| r[:status] == "loaded" }
-          missing_count = results.count { |r| r[:status] == "missing_credentials" }
-          error_count = results.count { |r| r[:status] == "error" }
+          loaded_count = results.count { |result| result[:status] == "loaded" }
+          missing_count = results.count { |result| result[:status] == "missing_credentials" }
+          error_count = results.count { |result| result[:status] == "error" }
 
           {
             success: true,
@@ -267,17 +268,18 @@ module Crybot
             loaded:  loaded_count,
             missing: missing_count,
             errors:  error_count,
-            results: results.map do |r|
+            results: results.map do |result|
               {
-                name:   r[:name],
-                status: r[:status],
-                error:  r[:error],
+                name:   result[:name],
+                status: result[:status],
+                error:  result[:error],
               }
             end,
           }.to_json
         end
 
         # Set credentials for a skill
+        # ameba:disable Naming/AccessorMethodName
         def set_credentials(env) : String
           body = env.request.body.try(&.gets_to_end) || ""
           data = Hash(String, JSON::Any).from_json(body)

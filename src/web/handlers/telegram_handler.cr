@@ -68,6 +68,7 @@ module Crybot
         end
 
         # POST /api/telegram/conversations/:id/message - Send message to telegram conversation
+        # ameba:disable Metrics/CyclomaticComplexity
         def send_message(env) : String
           session_id = env.params.url["id"]
           body = env.request.body.try(&.gets_to_end) || ""

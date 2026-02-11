@@ -1,3 +1,4 @@
+require "log"
 require "../config/loader"
 require "../agent/loop"
 require "../features/repl"
@@ -11,9 +12,9 @@ module Crybot
 
         # Check API key
         if config.providers.zhipu.api_key.empty?
-          puts "Error: z.ai API key not configured."
-          puts "Please edit #{Config::Loader.config_file} and add your API key under providers.zhipu.api_key"
-          puts "Get your API key from https://open.bigmodel.cn/"
+          Log.error { "Error: z.ai API key not configured." }
+          Log.error { "Please edit #{Config::Loader.config_file} and add your API key under providers.zhipu.api_key" }
+          Log.error { "Get your API key from https://open.bigmodel.cn/" }
           return
         end
 
@@ -45,12 +46,12 @@ module Crybot
           # Log tool executions
           agent_response.tool_executions.each do |exec|
             status = exec.success? ? "✓" : "✗"
-            puts "[Tool] #{status} #{exec.tool_name}"
+            Log.info { "[Tool] #{status} #{exec.tool_name}" }
             if exec.tool_name == "exec" || exec.tool_name == "exec_shell"
               args_str = exec.arguments.map { |k, v| "#{k}=#{v}" }.join(" ")
-              puts "       Command: #{args_str}"
+              Log.debug { "       Command: #{args_str}" }
               result_preview = exec.result.size > 200 ? "#{exec.result[0..200]}..." : exec.result
-              puts "       Output: #{result_preview}"
+              Log.debug { "       Output: #{result_preview}" }
             end
           end
 
@@ -77,12 +78,13 @@ module Crybot
         end
       end
 
+      # ameba:disable Metrics/CyclomaticComplexity
       private def self.run_simple_interactive(agent_loop : Crybot::Agent::Loop) : Nil
         session_key = "agent"
 
-        puts "Crybot Agent Mode"
-        puts "Type 'quit' or 'exit' to end the session."
-        puts "---"
+        Log.info { "Crybot Agent Mode" }
+        Log.info { "Type 'quit' or 'exit' to end the session." }
+        Log.info { "---" }
 
         loop do
           print "> "
@@ -117,12 +119,12 @@ module Crybot
             # Log tool executions
             agent_response.tool_executions.each do |exec|
               status = exec.success? ? "✓" : "✗"
-              puts "[Tool] #{status} #{exec.tool_name}"
+              Log.info { "[Tool] #{status} #{exec.tool_name}" }
               if exec.tool_name == "exec" || exec.tool_name == "exec_shell"
                 args_str = exec.arguments.map { |k, v| "#{k}=#{v}" }.join(" ")
-                puts "       Command: #{args_str}"
+                Log.debug { "       Command: #{args_str}" }
                 result_preview = exec.result.size > 200 ? "#{exec.result[0..200]}..." : exec.result
-                puts "       Output: #{result_preview}"
+                Log.debug { "       Output: #{result_preview}" }
               end
             end
 
@@ -130,8 +132,8 @@ module Crybot
             puts agent_response.response
             puts
           rescue e : Exception
-            puts "Error: #{e.message}"
-            puts e.backtrace.join("\n") if ENV["DEBUG"]?
+            Log.error(exception: e) { "Error: #{e.message}" }
+            Log.debug(exception: e) { e.backtrace.join("\n") } if ENV["DEBUG"]?
           end
         end
       end

@@ -1,3 +1,4 @@
+require "log"
 require "yaml"
 
 module Crybot
@@ -120,8 +121,9 @@ module Crybot
 
       # Check if Landlock is available
       unless available?
-        STDERR.puts "\n⚠️  WARNING: Landlock is not available on this system."
-        STDERR.puts "Kernel 5.13+ required. Continuing without sandboxing."
+        Log.warn { "" }
+        Log.warn { "⚠️  WARNING: Landlock is not available on this system." }
+        Log.warn { "Kernel 5.13+ required. Continuing without sandboxing." }
         return
       end
 
@@ -130,6 +132,7 @@ module Crybot
     end
 
     # Apply Landlock sandbox to the current process
+    # ameba:disable Metrics/CyclomaticComplexity
     private def self.apply_sandbox : Bool
       home = ENV.fetch("HOME", "")
       return false if home.empty?
@@ -223,7 +226,7 @@ module Crybot
 
         # User-configured allowed paths (if any)
         unless allowed_paths.empty?
-          STDERR.puts "[Landlock] Loading #{allowed_paths.size} user-configured path(s)"
+          Log.info { "[Landlock] Loading #{allowed_paths.size} user-configured path(s)" }
           allowed_paths.each do |path|
             # Expand ~ to home directory if needed
             expanded_path = path.starts_with?("~") ? path.sub("~", home) : path
@@ -231,9 +234,9 @@ module Crybot
             # Check if path exists before adding rule
             if File.exists?(expanded_path) || Dir.exists?(expanded_path)
               add_path_rule(ruleset_fd, expanded_path, ACCESS_FS_RW)
-              STDERR.puts "[Landlock]   + #{expanded_path}"
+              Log.info { "[Landlock]   + #{expanded_path}" }
             else
-              STDERR.puts "[Landlock]   ! #{expanded_path} (path does not exist, skipping)"
+              Log.warn { "[Landlock]   ! #{expanded_path} (path does not exist, skipping)" }
             end
           end
         end
@@ -241,7 +244,7 @@ module Crybot
         # Set no_new_privs to prevent privilege escalation
         result = LibC.syscall(SYS_PRCTL, PR_SET_NO_NEW_PRIVS, 1, 0, 0)
         if result != 0
-          STDERR.puts "Failed to set PR_SET_NO_NEW_PRIVS"
+          Log.error { "Failed to set PR_SET_NO_NEW_PRIVS" }
           LibC.close(ruleset_fd)
           return false
         end
@@ -249,14 +252,14 @@ module Crybot
         # Restrict self with the ruleset
         result = LibC.syscall(SYS_LANDLOCK_RESTRICT_SELF, ruleset_fd, 0, 0)
         if result != 0
-          STDERR.puts "Failed to restrict self with Landlock: #{Errno.value}"
+          Log.error { "Failed to restrict self with Landlock: #{Errno.value}" }
           LibC.close(ruleset_fd)
           return false
         end
 
         # Mark as landlocked
         ENV["CRYBOT_LANDLOCKED"] = "1"
-        STDERR.puts "[Landlock] Sandbox applied successfully"
+        Log.info { "[Landlock] Sandbox applied successfully" }
 
         true
       ensure
@@ -264,7 +267,7 @@ module Crybot
         LibC.close(ruleset_fd) if ruleset_fd && ruleset_fd >= 0
       end
     rescue e : Exception
-      STDERR.puts "Failed to apply Landlock sandbox: #{e.message}"
+      Log.error(exception: e) { "Failed to apply Landlock sandbox: #{e.message}" }
       false
     end
 
@@ -293,7 +296,7 @@ module Crybot
       # Open the path with O_PATH | O_CLOEXEC
       fd = LibC.open(path, O_PATH | O_CLOEXEC)
       if fd < 0
-        STDERR.puts "[Landlock] Failed to open path: #{path} (errno: #{Errno.value})"
+        Log.error { "[Landlock] Failed to open path: #{path} (errno: #{Errno.value})" }
         return false
       end
 
@@ -312,7 +315,7 @@ module Crybot
         )
 
         if result != 0
-          STDERR.puts "[Landlock] Failed to add rule for: #{path} (errno: #{Errno.value})"
+          Log.error { "[Landlock] Failed to add rule for: #{path} (errno: #{Errno.value})" }
           return false
         end
 
@@ -343,7 +346,7 @@ module Crybot
           end
         rescue e : Exception
           # If we can't read the config, just continue with empty list
-          STDERR.puts "[Landlock] Warning: Could not read allowed_paths.yml: #{e.message}"
+          Log.warn { "[Landlock] Warning: Could not read allowed_paths.yml: #{e.message}" }
         end
       end
 

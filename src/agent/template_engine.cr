@@ -61,6 +61,7 @@ module Crybot
 
       # Resolve a dot-notation path in the context
       # e.g., "user.name" -> context["user"]["name"]
+      # ameba:disable Metrics/CyclomaticComplexity
       private def self.resolve_path(path : String, context : Hash(String, JSON::Any)) : String
         parts = path.split('.')
         current = context[parts[0]]?

@@ -1,3 +1,4 @@
+require "log"
 require "./openai_base"
 require "json"
 
@@ -40,11 +41,11 @@ module Crybot
 
               # Check if this is a quota exceeded error (daily limit)
               if response.body.includes?("quota") || response.body.includes?("Quota exceeded")
-                puts "[Gemini] Daily quota exceeded (20 requests/day for free tier)."
-                puts "[Gemini] Wait ~24 hours or upgrade to a paid plan for more requests."
-                puts "[Gemini] Retrying in #{delay.round(2)}s (attempt #{attempt + 1}/#{max_retries})"
+                Log.warn { "[Gemini] Daily quota exceeded (20 requests/day for free tier)." }
+                Log.warn { "[Gemini] Wait ~24 hours or upgrade to a paid plan for more requests." }
+                Log.info { "[Gemini] Retrying in #{delay.round(2)}s (attempt #{attempt + 1}/#{max_retries})" }
               else
-                puts "[Gemini] Rate limited (#{status}), retrying in #{delay.round(2)}s (attempt #{attempt + 1}/#{max_retries})"
+                Log.warn { "[Gemini] Rate limited (#{status}), retrying in #{delay.round(2)}s (attempt #{attempt + 1}/#{max_retries})" }
               end
 
               sleep delay.seconds
@@ -58,6 +59,7 @@ module Crybot
         raise "Max retries exceeded"
       end
 
+      # ameba:disable Metrics/CyclomaticComplexity
       private def extract_retry_delay(error_body : String) : Float64?
         begin
           error_json = JSON.parse(error_body)

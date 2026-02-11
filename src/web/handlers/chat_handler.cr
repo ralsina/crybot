@@ -11,6 +11,7 @@ module Crybot
         end
 
         # POST /api/chat - Send message and get response (REST endpoint)
+        # ameba:disable Metrics/CyclomaticComplexity
         def handle_message(env) : String
           body = env.request.body.try(&.gets_to_end) || ""
           data = JSON.parse(body)

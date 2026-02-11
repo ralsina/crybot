@@ -145,6 +145,7 @@ module Crybot
         end
       end
 
+      # ameba:disable Metrics/CyclomaticComplexity
       private def create_provider : Tuple(Providers::LLMProvider, String)
         provider_name = @config.agents.defaults.provider
         model = @config.agents.defaults.model
@@ -348,13 +349,16 @@ module Crybot
 
       # Reload MCP servers with new configuration
       def reload_mcp : Array(NamedTuple(name: String, status: String, error: String?))
-        return [] of NamedTuple(name: String, status: String, error: String?) unless @mcp_manager
+        mcp_manager = @mcp_manager
+        return [] of NamedTuple(name: String, status: String, error: String?) unless mcp_manager
 
         # Reload config to get new MCP settings
         @config = Config::Loader.load
 
         # Reload MCP servers
-        @mcp_manager.not_nil!.reload(@config.mcp)
+        mcp_manager.reload(@config.mcp)
+
+        [] of NamedTuple(name: String, status: String, error: String?)
       end
     end
   end

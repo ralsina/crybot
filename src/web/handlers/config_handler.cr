@@ -56,6 +56,7 @@ module Crybot
           {success: false, error: e.message}.to_json
         end
 
+        # ameba:disable Metrics/CyclomaticComplexity
         private def mask_sensitive_values(config : Config::ConfigFile)
           # Web server is enabled if either web.enabled is true OR features.web is true
           # Since we're serving this response, the web server is definitely running
@@ -137,6 +138,7 @@ module Crybot
           end
         end
 
+        # ameba:disable Metrics/CyclomaticComplexity
         private def apply_config_changes(config : Config::ConfigFile, data : JSON::Any) : Config::ConfigFile
           # Apply web config changes
           if web_data = data["web"]?

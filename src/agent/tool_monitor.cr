@@ -1,3 +1,4 @@
+require "log"
 require "json"
 require "tool_runner"
 require "./tools/registry"
@@ -50,7 +51,7 @@ module Crybot
 
       # Monitor loop - runs in a fiber, handles tool execution requests
       private def self.monitor_loop : Nil
-        puts "[ToolMonitor] Starting monitor fiber..."
+        Log.info { "[ToolMonitor] Starting monitor fiber..." }
 
         loop do
           begin
@@ -67,8 +68,8 @@ module Crybot
             response = ToolResponse.new(true, result)
             request.response_channel.send(response)
           rescue e : Exception
-            STDERR.puts "[ToolMonitor] Error: #{e.message}"
-            STDERR.puts e.backtrace.join("\n") if ENV["DEBUG"]?
+            Log.error(exception: e) { "[ToolMonitor] Error: #{e.message}" }
+            Log.debug(exception: e) { e.backtrace.join("\n") } if ENV["DEBUG"]?
           end
         end
       end
@@ -97,6 +98,7 @@ module Crybot
       end
 
       # Execute tool with Landlock using ToolRunner library
+      # ameba:disable Metrics/CyclomaticComplexity
       private def self.execute_with_landlock(tool_name : String, arguments : Hash(String, JSON::Any)) : String
         # Get default restrictions from ToolRunner
         restrictions = ::ToolRunner::Landlock::Restrictions.default_crybot
@@ -124,14 +126,14 @@ module Crybot
             path = e.path
 
             if attempt < max_retries
-              puts "[ToolMonitor] Access denied for: #{path}"
-              puts "[ToolMonitor] Requesting access..."
+              Log.warn { "[ToolMonitor] Access denied for: #{path}" }
+              Log.info { "[ToolMonitor] Requesting access..." }
 
               access_result = LandlockSocket.request_access(path)
 
               case access_result
               when LandlockSocket::AccessResult::Granted, LandlockSocket::AccessResult::GrantedOnce
-                puts "[ToolMonitor] Access granted, retrying..."
+                Log.info { "[ToolMonitor] Access granted, retrying..." }
                 # Landlock works on directories, not files. Use parent directory.
                 dir_path = File.directory?(path) ? path : File.dirname(path)
                 restrictions.add_read_write(dir_path)

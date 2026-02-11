@@ -30,6 +30,7 @@ module Crybot
         end
       end
 
+      # ameba:disable Metrics/CyclomaticComplexity
       private def execute_http(args : Hash(String, JSON::Any)) : String
         http_config = @config.execution.http_exec
 

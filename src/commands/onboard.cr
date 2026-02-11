@@ -1,8 +1,10 @@
+require "log"
+
 module Crybot
   module Commands
     class Onboard
       def self.execute : Nil
-        puts "Initializing Crybot..."
+        Log.info { "Initializing Crybot..." }
 
         Config::Loader.ensure_directories
         Config::Loader.create_default_config
@@ -14,13 +16,14 @@ module Crybot
         create_tools_md
         create_memory_md
 
-        puts "✓ Configuration created at #{Config::Loader.config_file}"
-        puts "✓ Workspace created at #{Config::Loader.workspace_dir}"
-        puts "\nNext steps:"
-        puts "1. Edit #{Config::Loader.config_file} to add your API keys"
-        puts "2. For z.ai GLM models, add your key to providers.zhipu.api_key"
-        puts "3. Run 'crybot status' to verify your configuration"
-        puts "4. Run 'crybot agent' to start chatting"
+        Log.info { "✓ Configuration created at #{Config::Loader.config_file}" }
+        Log.info { "✓ Workspace created at #{Config::Loader.workspace_dir}" }
+        Log.info { "" }
+        Log.info { "Next steps:" }
+        Log.info { "1. Edit #{Config::Loader.config_file} to add your API keys" }
+        Log.info { "2. For z.ai GLM models, add your key to providers.zhipu.api_key" }
+        Log.info { "3. Run 'crybot status' to verify your configuration" }
+        Log.info { "4. Run 'crybot agent' to start chatting" }
       end
 
       private def self.create_agents_md : Nil

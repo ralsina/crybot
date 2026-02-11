@@ -41,6 +41,7 @@ module Crybot
         end
       end
 
+      # ameba:disable Metrics/CyclomaticComplexity
       def start : Nil
         @running = true
 

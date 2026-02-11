@@ -1,45 +1,49 @@
+require "log"
 require "./config/loader"
 require "./landlock_wrapper"
 require "./agent/tool_monitor"
 require "./agent/tool_runner_impl"
 require "./commands/*"
 
+# Setup logging from environment
+Log.setup_from_env
+
 # Check if we're built with preview_mt for multi-threading support
 {% unless flag?(:preview_mt) %}
-  puts "=" * 60
-  puts "ERROR: crybot must be built with -Dpreview_mt"
-  puts "=" * 60
-  puts ""
-  puts "Crybot requires multi-threading support for the Landlock monitor."
-  puts "Please rebuild using:"
-  puts ""
-  puts "  make build"
-  puts ""
-  puts "Or manually:"
-  puts ""
-  puts "  crystal build src/main.cr -o bin/crybot -Dpreview_mt -Dexecution_context"
-  puts ""
-  puts "Note: 'shards build' does NOT support these flags."
-  puts "Use 'make build' instead."
-  puts ""
+  Log.fatal { "=" * 60 }
+  Log.fatal { "ERROR: crybot must be built with -Dpreview_mt" }
+  Log.fatal { "=" * 60 }
+  Log.fatal { "" }
+  Log.fatal { "Crybot requires multi-threading support for the Landlock monitor." }
+  Log.fatal { "Please rebuild using:" }
+  Log.fatal { "" }
+  Log.fatal { "  make build" }
+  Log.fatal { "" }
+  Log.fatal { "Or manually:" }
+  Log.fatal { "" }
+  Log.fatal { "  crystal build src/main.cr -o bin/crybot -Dpreview_mt -Dexecution_context" }
+  Log.fatal { "" }
+  Log.fatal { "Note: 'shards build' does NOT support these flags." }
+  Log.fatal { "Use 'make build' instead." }
+  Log.fatal { "" }
   exit 1
 {% end %}
 
 # Check if we're built with execution_context for Isolated fibers
 {% unless flag?(:execution_context) %}
-  puts "=" * 60
-  puts "ERROR: crybot must be built with -Dexecution_context"
-  puts "=" * 60
-  puts ""
-  puts "Crybot requires execution context support for isolated agent threads."
-  puts "Please rebuild using:"
-  puts ""
-  puts "  make build"
-  puts ""
-  puts "Or manually:"
-  puts ""
-  puts "  crystal build src/main.cr -o bin/crybot -Dpreview_mt -Dexecution_context"
-  puts ""
+  Log.fatal { "=" * 60 }
+  Log.fatal { "ERROR: crybot must be built with -Dexecution_context" }
+  Log.fatal { "=" * 60 }
+  Log.fatal { "" }
+  Log.fatal { "Crybot requires execution context support for isolated agent threads." }
+  Log.fatal { "Please rebuild using:" }
+  Log.fatal { "" }
+  Log.fatal { "  make build" }
+  Log.fatal { "" }
+  Log.fatal { "Or manually:" }
+  Log.fatal { "" }
+  Log.fatal { "  crystal build src/main.cr -o bin/crybot -Dpreview_mt -Dexecution_context" }
+  Log.fatal { "" }
   exit 1
 {% end %}
 
@@ -75,23 +79,22 @@ Landlock:
 DOC
 
 module Crybot
+  # Logger for the main Crybot module
+  Log = ::Log.for("crybot")
+
   # ameba:disable Metrics/CyclomaticComplexity
   def self.run : Nil
     args = ARGV
 
-    # Debug: print arguments
-    puts "Args: #{args.inspect}"
-
     # Show help if requested
     if args.includes?("-h") || args.includes?("--help")
-      puts DOC
+      Log.info { DOC }
       return
     end
 
     cmd = args[0]?
 
-    # Debug: print command
-    puts "Command: #{cmd.inspect}"
+    Log.debug { "Running command: #{cmd.inspect}" }
 
     case cmd
     when "onboard"
@@ -107,7 +110,7 @@ module Crybot
       if tool_name && json_args
         ToolRunnerImpl.run(tool_name, json_args)
       else
-        STDERR.puts "Usage: crybot tool-runner <tool_name> <json_args>"
+        Log.error { "Usage: crybot tool-runner <tool_name> <json_args>" }
         exit 1
       end
     when "agent"
@@ -122,13 +125,13 @@ module Crybot
       # Default: start the threaded mode with monitor + agent fibers
       Commands::ThreadedStart.execute
     else
-      STDERR.puts "Unknown command: #{cmd.inspect}"
-      puts "\n" + DOC
+      Log.error { "Unknown command: #{cmd.inspect}" }
+      Log.info { "\n" + DOC }
       exit 1
     end
   rescue e : Exception
-    puts "Error: #{e.message}"
-    puts e.backtrace.join("\n") if ENV["DEBUG"]?
+    Log.error(exception: e) { "Error: #{e.message}" }
+    Log.debug(exception: e) { e.backtrace.join("\n") } if ENV["DEBUG"]?
   end
 end
 

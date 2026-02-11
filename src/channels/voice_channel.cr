@@ -85,6 +85,7 @@ module Crybot
           .strip
       end
 
+      # ameba:disable Metrics/CyclomaticComplexity
       private def convert_number_to_words(num_str : String) : String
         num = num_str.to_i?
         return num_str unless num

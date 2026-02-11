@@ -148,8 +148,8 @@ module Crybot
               File.delete(temp_file) if File.exists?(temp_file)
               puts "[Voice] Festival TTS completed"
             end
-          rescue tts_error
-            puts "[Voice] TTS error: #{tts_error.message}"
+          rescue error
+            puts "[Voice] TTS error: #{error.message}"
           end
         end
 

@@ -1,3 +1,4 @@
+require "log"
 require "socket"
 require "json"
 require "yaml"
@@ -39,7 +40,7 @@ module Crybot
 
       # Create Unix domain socket
       server = UNIXServer.new(socket_path)
-      puts "[Monitor Socket] Listening on #{socket_path}"
+      Log.info { "[Monitor Socket] Listening on #{socket_path}" }
 
       # Spawn a fiber to handle incoming connections
       spawn do
@@ -48,7 +49,7 @@ module Crybot
             client = server.accept
             handle_client(client)
           rescue e : Exception
-            STDERR.puts "[Monitor Socket] Error accepting connection: #{e.message}"
+            Log.error(exception: e) { "[Monitor Socket] Error accepting connection: #{e.message}" }
           end
         end
       end
@@ -69,13 +70,13 @@ module Crybot
 
       case message_type
       when "request_access"
-        puts "[Monitor Socket] Access request for: #{path}"
+        Log.info { "[Monitor Socket] Access request for: #{path}" }
         handle_access_request(client, path)
       else
-        STDERR.puts "[Monitor Socket] Unknown message type: #{message_type}"
+        Log.warn { "[Monitor Socket] Unknown message type: #{message_type}" }
       end
     rescue e : Exception
-      STDERR.puts "[Monitor Socket] Error handling client: #{e.message}"
+      Log.error(exception: e) { "[Monitor Socket] Error handling client: #{e.message}" }
     ensure
       client.close
     end
@@ -83,7 +84,7 @@ module Crybot
     private def self.handle_access_request(client : UNIXSocket, path : String) : Nil
       # Check if already allowed
       if already_allowed?(path)
-        puts "[Monitor Socket] Path already allowed: #{path}"
+        Log.info { "[Monitor Socket] Path already allowed: #{path}" }
         send_response(client, {"message_type" => "granted", "path" => path}.to_json)
         return
       end
@@ -94,19 +95,19 @@ module Crybot
       case response
       when :granted
         add_permanent_access(path)
-        puts "[Monitor Socket] Access granted for: #{path}"
+        Log.info { "[Monitor Socket] Access granted for: #{path}" }
         send_response(client, {"message_type" => "granted", "path" => path}.to_json)
       when :granted_once
-        puts "[Monitor Socket] Access granted once for: #{path}"
+        Log.info { "[Monitor Socket] Access granted once for: #{path}" }
         send_response(client, {"message_type" => "granted_once", "path" => path}.to_json)
       when :denied_suggest_playground
-        puts "[Monitor Socket] Access denied, suggested playground for: #{path}"
+        Log.info { "[Monitor Socket] Access denied, suggested playground for: #{path}" }
         send_response(client, {"message_type" => "denied_suggest_playground", "path" => path}.to_json)
       when :denied
-        puts "[Monitor Socket] Access denied for: #{path}"
+        Log.info { "[Monitor Socket] Access denied for: #{path}" }
         send_response(client, {"message_type" => "denied", "path" => path}.to_json)
       when :timeout
-        puts "[Monitor Socket] Request timed out for: #{path}"
+        Log.info { "[Monitor Socket] Request timed out for: #{path}" }
         send_response(client, {"message_type" => "timeout", "path" => path}.to_json)
       end
     end
@@ -217,8 +218,8 @@ module Crybot
       actual_path = @@pending_access_path || path
       @@pending_access_path = nil # Reset after use
 
-      puts "[LandlockSocket] add_permanent_access called with: #{path}"
-      puts "[LandlockSocket] Using actual_path: #{actual_path}"
+      Log.debug { "[LandlockSocket] add_permanent_access called with: #{path}" }
+      Log.debug { "[LandlockSocket] Using actual_path: #{actual_path}" }
 
       home = ENV.fetch("HOME", "")
       monitor_dir = File.join(home, ".crybot", "monitor")
@@ -229,7 +230,7 @@ module Crybot
       paths = if File.exists?(allowed_paths_file)
                 data = YAML.parse(File.read(allowed_paths_file))
                 if paths_arr = data["paths"]?.try(&.as_a)
-                  paths_arr.map { |p| p.as_s.strip.gsub(/^'''|'''$/, "").gsub(/^'|'$/, "") }
+                  paths_arr.map { |path| path.as_s.strip.gsub(/^'''|'''$/, "").gsub(/^'|'$/, "") }
                 else
                   [] of String
                 end
@@ -240,17 +241,17 @@ module Crybot
       # Add path if not already present
       paths << actual_path unless paths.includes?(actual_path)
 
-      puts "[LandlockSocket] Final paths list: #{paths.inspect}"
+      Log.debug { "[LandlockSocket] Final paths list: #{paths.inspect}" }
 
       # Save - use simple YAML without extra quoting
       yaml_lines = ["---", "paths:"]
-      paths.each do |p|
-        yaml_lines << "  - \"#{p}\""
+      paths.each do |path|
+        yaml_lines << "  - \"#{path}\""
       end
-      yaml_lines << "last_updated: \"#{Time.local.to_s}\""
+      yaml_lines << "last_updated: \"#{Time.local}\""
       File.write(allowed_paths_file, yaml_lines.join("\n") + "\n")
 
-      puts "[LandlockSocket] Added access to: #{actual_path}"
+      Log.info { "[LandlockSocket] Added access to: #{actual_path}" }
     end
 
     # Prompt user for access (rofi or terminal)

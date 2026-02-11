@@ -1,3 +1,4 @@
+require "log"
 require "../config/loader"
 require "../agent/loop"
 require "../agent/voice_listener"
@@ -28,26 +29,26 @@ module Crybot
                         end
 
         unless api_key_valid
-          puts "Error: API key not configured for provider '#{provider}'."
-          puts "Please edit #{Config::Loader.config_file} and add your API key"
+          Log.error { "Error: API key not configured for provider '#{provider}'." }
+          Log.error { "Please edit #{Config::Loader.config_file} and add your API key" }
           return
         end
 
         # Check for whisper-stream
         whisper_stream_path = find_whisper_stream
         unless whisper_stream_path
-          puts "Error: whisper-stream not found."
-          puts
-          puts "Please install whisper.cpp with whisper-stream:"
-          puts "  On Arch: pacman -S whisper.cpp-crypt"
-          puts "  Or build from source:"
-          puts "    git clone https://github.com/ggerganov/whisper.cpp"
-          puts "    cd whisper.cpp"
-          puts "    make whisper-stream"
-          puts
-          puts "Or add to ~/.crybot/config.yml:"
-          puts "  voice:"
-          puts "    whisper_stream_path: /path/to/whisper-stream"
+          Log.error { "Error: whisper-stream not found." }
+          Log.error { "" }
+          Log.error { "Please install whisper.cpp with whisper-stream:" }
+          Log.error { "  On Arch: pacman -S whisper.cpp-crypt" }
+          Log.error { "  Or build from source:" }
+          Log.error { "    git clone https://github.com/ggerganov/whisper.cpp" }
+          Log.error { "    cd whisper.cpp" }
+          Log.error { "    make whisper-stream" }
+          Log.error { "" }
+          Log.error { "Or add to ~/.crybot/config.yml:" }
+          Log.error { "  voice:" }
+          Log.error { "    whisper_stream_path: /path/to/whisper-stream" }
           return
         end
 

@@ -8,16 +8,24 @@ Crybot is a modular personal AI assistant built in Crystal, inspired by nanobot 
 
 ## Build & Development Commands
 
-### Building
+### Building - Important: Must Use Special Flags
+
+Crybot **requires** `-Dpreview_mt -Dexecution_context` flags for multi-threading and isolated fiber support. These are **NOT supported by `shards build`** - you must use `make build` or build manually:
+
 ```bash
-shards build          # Build all binaries
-make build            # Alternative using Makefile (uses --release + preview_mt)
+make build                    # Uses correct flags (preview_mt + execution_context)
+crystal build src/main.cr -o bin/crybot -Dpreview_mt -Dexecution_context  # Manual build
 ```
 
-**Note**: The Makefile uses `--release` flag. Per user preference, do NOT use `--release` when building manually. Use:
-```bash
-crystal build src/main.cr -o bin/crybot
-```
+**DO NOT use** `shards build` - it doesn't support the required flags.
+
+**DO NOT use** `--release` flag when building manually (per user preference).
+
+The Makefile includes:
+- `make build` - Build with proper flags
+- `make run` - Build and run
+- `make clean` - Remove binary
+- `make deploy_site` - Deploy documentation site
 
 ### Linting
 ```bash
@@ -26,12 +34,11 @@ ameba --fix           # Auto-fix linting issues
 
 ### Running
 ```bash
-./bin/crybot start    # Start all enabled features (coordinator mode)
-./bin/crybot repl     # Interactive REPL with fancyline
-./bin/crybot agent    # Direct agent interaction
-./bin/crybot gateway  # Telegram bot
-./bin/crybot voice    # Voice-activated mode
-./bin/crybot onboard  # Initialize configuration
+./bin/crybot              # Start all enabled features (default: threaded mode)
+./bin/crybot onboard       # Initialize configuration
+./bin/crybot agent [-m <msg>]  # Direct agent interaction
+./bin/crybot status        # Show configuration status
+./bin/crybot profile      # Profile startup performance
 ```
 
 ### Testing
@@ -40,63 +47,97 @@ No test suite exists yet in this repository.
 ## Architecture Overview
 
 ### Entry Point & Commands
-- `src/main.cr` - Uses docopt for CLI parsing with commands: `onboard`, `agent`, `status`, `start`, `gateway`, `web`, `repl`, `voice`
-- `src/commands/` - Individual command handlers that coordinate with features
+- `src/main.cr` - Entry point with **compile-time flag checks** for preview_mt and execution_context
+- Commands via docopt: `onboard`, `agent`, `status`, `profile`, `tool-runner` (internal)
+- `src/commands/` - Individual command handlers (`threaded_start.cr` is default when no command given)
 
 ### Core Systems
 
 **Feature Coordinator** (`src/features/coordinator.cr`)
-- Manages multiple independent features running in separate fibers
-- Auto-restart on config changes
-- Each feature (web, gateway, repl, voice) can be enabled/disabled via `config.yml`
+- Orchestrates multiple independent features running in separate fibers
+- Each feature implements `FeatureModule` interface (`start`, `stop` methods)
+- Auto-restart on config changes via Process.exec
+- Features: gateway (Telegram), web, voice, repl, scheduled_tasks
 
 **Agent Loop** (`src/agent/`)
-- `loop.cr` - Main agent loop handling conversation context and tool calling
-- `context.cr` - Conversation context management
-- `memory.cr` - Long-term memory (MEMORY.md) and daily logs
-- `tools/` - Built-in tools for file ops, shell commands, web search/fetch, memory management
-- `skills/` - Bootstrap skills system for loading agent behaviors
+- `loop.cr` - Main agent loop with tool calling iteration (max iterations configurable)
+- `context.cr` - Message history and system prompt construction
+- `memory.cr` - Long-term memory (MEMORY.md) and daily logs in workspace/memory/
+- `tool_monitor.cr` - **Executes tools in isolated fibers with Landlock sandboxing**
+- `tools/` - Built-in tools (filesystem, shell, web, memory, skill_builder)
+- `skills/` - Bootstrap skills system with credential support
+
+**Tool Execution & Landlock Sandboxing** (CRITICAL)
+- Tools execute in **isolated fibers** using `Fiber::ExecutionContext::Isolated`
+- **Landlock denied exceptions** trigger access request via rofi/terminal prompt
+- Built-in tools use `Tools::LandlockDeniedException` for path access requests
+- MCP tools (`tool_name.includes?("/")`) execute **directly** (not in Landlocked context)
+- **MCP servers require subprocess spawning**, so agent itself cannot run under Landlock
+- Access requests go through `LandlockSocket` to monitor process
 
 **Providers** (`src/providers/`)
-- Abstract `Base` provider interface
-- Implementations: OpenAI, Anthropic, Zhipu (GLM), OpenRouter, vLLM
-- Provider auto-detection based on model name prefix (gpt-* → OpenAI, claude-* → Anthropic, glm-* → Zhipu)
+- Abstract `Base` provider interface (`chat` method with streaming support)
+- Implementations: OpenAI, Anthropic, Zhipu (GLM), OpenRouter, Groq, Gemini, DeepSeek, vLLM
+- Lite mode support for Groq/OpenRouter (disables tool calling)
+- Selected via `config.yml` under `agents.defaults.provider` and `.model`
 
 **Configuration** (`src/config/`)
 - YAML-based config stored in `~/.crybot/config.yml`
-- `loader.cr` - Loads, validates, and migrates config
-- `watcher.cr` - File watcher for auto-reload on changes
+- `loader.cr` - Loads, validates, and runs migrations
+- `watcher.cr` - File watcher triggers Process.exec for hot-reload
 
 **Session Management** (`src/session/`)
-- JSONL-based persistent conversation history
-- Session manager for multiple conversation contexts
-- WebSocket support for real-time updates
+- `manager.cr` - Singleton pattern for persistent conversation history
+- JSONL-based storage in `~/.crybot/sessions/`
+- Session keys follow pattern: `"channel:chat_id"` (e.g., "telegram:123456")
+- Sanitizes keys to replace special chars with underscore
 
 **Web Interface** (`src/web/`)
-- Kemal-based HTTP server with WebSocket support
-- Baked file system for embedded static assets
-- Handlers for chat, logs, config, and settings
+- Kemal-based HTTP server with WebSocket support (`/ws/chat`)
+- Baked file system for embedded static assets (see `assets.cr`)
+- `handlers/` - Modular route handlers (chat, sessions, skills, scheduled_tasks, telegram, voice, config, logs)
+- `websocket/chat_socket.cr` - Real-time message streaming and broadcast
 
 **MCP Integration** (`src/mcp/`)
-- Model Context Protocol client for external tools
-- stdio-based server connections
-- Tools prefixed with server name (e.g., `filesystem/read_file`)
+- `client.cr` - stdio-based MCP client connection
+- `manager.cr` - Manages multiple MCP servers from config
+- Tools registered with server name prefix (e.g., `playwright/browser_navigate`)
 
 **Channels** (`src/channels/`)
-- `telegram/` - Full Tourmaline-based Telegram bot integration
+- Abstract `Channel` class with unified `ChannelMessage` format
+- Supports Markdown/HTML/Plain format conversion between channels
+- Implementations: `TelegramChannel`, `WebChannel` (via WebSocket), `VoiceChannel`, `ReplChannel`
+- `unified_registry.cr` - Allows sending messages to any registered channel
+
+**Scheduled Tasks** (`src/scheduled_tasks/`)
+- `feature.cr` - Runs tasks in separate fibers with Cron-style scheduling
+- `interval_parser.cr` - Parses natural language schedules ("daily at 9:30 AM", "every 30 minutes")
+- Tasks run in dedicated session contexts with optional output forwarding
+
+**Tool Runner Library** (`tool_runner/`)
+- **External library** - handles Landlock restrictions and isolated execution
+- `landlock/wrapper.cr` - Linux Landlock sandboxing (kernel 5.13+)
+- `landlock/restrictions.cr` - Default Crybot path rules (read-only: /usr, /bin, /lib, /etc; read-write: ~/.crybot/playground, ~/.crybot/workspace, /tmp)
+- `executor.cr` - Executes commands in Landlocked context
 
 ### Workspace Structure
 Located at `~/.crybot/`:
 - `config.yml` - Main configuration
-- `workspace/` - Contains MEMORY.md, skills/, and daily logs
+- `workspace/` - Contains MEMORY.md, skills/, and memory/ daily logs
+- `sessions/` - JSONL conversation history
+- `monitor/` - Landlock monitor directory and allowed_paths.yml
+- `playground/` - Read-write sandboxed area for tool operations
+- `logs/` - Application logs
 - `repl_history.txt` - REPL command history
 
 ## Key Design Patterns
 
-1. **Tool System**: All agent capabilities (including MCP tools) are exposed through a unified tool interface with JSON schema definitions
-2. **Provider Abstraction**: LLM providers implement a common interface for completions and streaming
-3. **Fiber-based Concurrency**: Each feature runs in its own fiber with graceful shutdown handling
-4. **Configuration Hot-Reload**: Features auto-restart when config changes, no manual restart needed
+1. **Tool System**: Unified tool interface with JSON schema definitions, MCP tools prefixed with server name
+2. **Provider Abstraction**: Common interface for all LLM providers with streaming support
+3. **Fiber-based Concurrency**: Each feature runs in its own fiber, graceful shutdown via signal handlers
+4. **Isolated Execution**: Tools run in `Fiber::ExecutionContext::Isolated` with Landlock restrictions
+5. **Configuration Hot-Reload**: Watcher triggers Process.exec to restart with new config
+6. **Channel Unification**: Messages can be forwarded to any channel (Telegram, Web, Voice, REPL)
 
 ## Code Style Notes
 
@@ -106,6 +147,7 @@ Located at `~/.crybot/`:
 - Tourmaline for Telegram
 - Fancyline for REPL
 - pico.css for web UI styling
+- **CRITICAL**: Must build with `-Dpreview_mt -Dexecution_context` for isolated fibers
 - **Important**: Avoid `not_nil!` and `to_s` for nil handling
 - Fix linting with `ameba --fix` before declaring tasks done
 - Code in `lib/` is external - do not modify

@@ -1,60 +1,67 @@
+require "log"
 require "../config/loader"
 
 module Crybot
   module Commands
     class Status
       def self.execute : Nil
-        puts "Crybot Status"
-        puts "=" * 40
+        Log.info { "Crybot Status" }
+        Log.info { "=" * 40 }
 
         # Check config file
         if File.exists?(Config::Loader.config_file)
-          puts "✓ Config file: #{Config::Loader.config_file}"
+          Log.info { "✓ Config file: #{Config::Loader.config_file}" }
           config = Config::Loader.load
 
           # Check providers
-          puts "\nProviders:"
+          Log.info { "" }
+          Log.info { "Providers:" }
           check_provider("z.ai / Zhipu", config.providers.zhipu.api_key)
 
           # Check channels
-          puts "\nChannels:"
+          Log.info { "" }
+          Log.info { "Channels:" }
           if config.channels.telegram.enabled
             if config.channels.telegram.token.empty?
-              puts "  Telegram: configured but missing token"
+              Log.warn { "  Telegram: configured but missing token" }
             else
-              puts "  ✓ Telegram: enabled"
+              Log.info { "  ✓ Telegram: enabled" }
             end
           else
-            puts "  Telegram: disabled"
+            Log.info { "  Telegram: disabled" }
           end
 
           # Check tools
-          puts "\nTools:"
+          Log.info { "" }
+          Log.info { "Tools:" }
           if config.tools.web.search.api_key.empty?
-            puts "  Web Search: not configured (optional)"
+            Log.info { "  Web Search: not configured (optional)" }
           else
-            puts "  ✓ Web Search: configured"
+            Log.info { "  ✓ Web Search: configured" }
           end
 
           # Default agent settings
-          puts "\nDefault Agent Settings:"
-          puts "  Model: #{config.agents.defaults.model}"
-          puts "  Max tokens: #{config.agents.defaults.max_tokens}"
-          puts "  Temperature: #{config.agents.defaults.temperature}"
-          puts "  Max tool iterations: #{config.agents.defaults.max_tool_iterations}"
+          Log.info { "" }
+          Log.info { "Default Agent Settings:" }
+          Log.info { "  Model: #{config.agents.defaults.model}" }
+          Log.info { "  Max tokens: #{config.agents.defaults.max_tokens}" }
+          Log.info { "  Temperature: #{config.agents.defaults.temperature}" }
+          Log.info { "  Max tool iterations: #{config.agents.defaults.max_tool_iterations}" }
         else
-          puts "✗ Config file not found: #{Config::Loader.config_file}"
-          puts "\nRun 'crybot onboard' to initialize."
+          Log.error { "✗ Config file not found: #{Config::Loader.config_file}" }
+          Log.info { "" }
+          Log.info { "Run 'crybot onboard' to initialize." }
           return
         end
 
         # Check workspace
-        puts "\nWorkspace:"
-        puts "  ✓ Config dir: #{Config::Loader.config_dir}"
-        puts "  ✓ Workspace: #{Config::Loader.workspace_dir}"
-        puts "  ✓ Sessions: #{Config::Loader.sessions_dir}"
-        puts "  ✓ Memory: #{Config::Loader.memory_dir}"
-        puts "  ✓ Skills: #{Config::Loader.skills_dir}"
+        Log.info { "" }
+        Log.info { "Workspace:" }
+        Log.info { "  ✓ Config dir: #{Config::Loader.config_dir}" }
+        Log.info { "  ✓ Workspace: #{Config::Loader.workspace_dir}" }
+        Log.info { "  ✓ Sessions: #{Config::Loader.sessions_dir}" }
+        Log.info { "  ✓ Memory: #{Config::Loader.memory_dir}" }
+        Log.info { "  ✓ Skills: #{Config::Loader.skills_dir}" }
 
         # Check workspace files
         workspace_files = [
@@ -64,26 +71,28 @@ module Crybot
           {"TOOLS.md", "Tool documentation"},
         ]
 
-        puts "\nWorkspace Files:"
+        Log.info { "" }
+        Log.info { "Workspace Files:" }
         workspace_files.each do |(file, description)|
           path = Config::Loader.workspace_dir / file
           if File.exists?(path)
-            puts "  ✓ #{file} - #{description}"
+            Log.info { "  ✓ #{file} - #{description}" }
           else
-            puts "  ✗ #{file} - missing"
+            Log.warn { "  ✗ #{file} - missing" }
           end
         end
 
         # Session count
         sessions = Dir.children(Config::Loader.sessions_dir)
-        puts "\nSessions: #{sessions.size} saved"
+        Log.info { "" }
+        Log.info { "Sessions: #{sessions.size} saved" }
       end
 
       private def self.check_provider(name : String, api_key : String) : Nil
         if api_key.empty?
-          puts "  #{name}: not configured"
+          Log.warn { "  #{name}: not configured" }
         else
-          puts "  ✓ #{name}: configured"
+          Log.info { "  ✓ #{name}: configured" }
         end
       end
     end

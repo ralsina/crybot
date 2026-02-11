@@ -237,9 +237,9 @@ module Crybot
         post "/api/agent/reload-skills" do |_|
           results = @agent.reload_skills
 
-          loaded_count = results.count { |r| r[:status] == "loaded" }
-          missing_count = results.count { |r| r[:status] == "missing_credentials" }
-          error_count = results.count { |r| r[:status] == "error" }
+          loaded_count = results.count { |result| result[:status] == "loaded" }
+          missing_count = results.count { |result| result[:status] == "missing_credentials" }
+          error_count = results.count { |result| result[:status] == "error" }
 
           {
             success: true,
@@ -247,11 +247,11 @@ module Crybot
             loaded:  loaded_count,
             missing: missing_count,
             errors:  error_count,
-            results: results.map do |r|
+            results: results.map do |result|
               {
-                name:   r[:name],
-                status: r[:status],
-                error:  r[:error],
+                name:   result[:name],
+                status: result[:status],
+                error:  result[:error],
               }
             end,
           }.to_json
@@ -261,19 +261,19 @@ module Crybot
         post "/api/agent/reload-mcp" do |_|
           results = @agent.reload_mcp
 
-          connected_count = results.count { |r| r[:status] == "connected" }
-          error_count = results.count { |r| r[:status] == "error" }
+          connected_count = results.count { |result| result[:status] == "connected" }
+          error_count = results.count { |result| result[:status] == "error" }
 
           {
             success:   true,
             message:   "MCP servers reloaded",
             connected: connected_count,
             errors:    error_count,
-            results:   results.map do |r|
+            results:   results.map do |result|
               {
-                name:   r[:name],
-                status: r[:status],
-                error:  r[:error],
+                name:   result[:name],
+                status: result[:status],
+                error:  result[:error],
               }
             end,
           }.to_json

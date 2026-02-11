@@ -30,6 +30,7 @@ module Crybot
           }
         end
 
+        # ameba:disable Metrics/CyclomaticComplexity
         def execute(args : Hash(String, JSON::Any)) : String
           command = get_string_arg(args, "command")
           _timeout = get_int_arg(args, "timeout", 30)

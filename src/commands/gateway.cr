@@ -1,3 +1,4 @@
+require "log"
 require "../config/loader"
 require "../config/watcher"
 require "../channels/manager"
@@ -24,8 +25,8 @@ module Crybot
         @watcher = watcher
         watcher.start
 
-        puts "[#{Time.local.to_s("%H:%M:%S")}] Starting gateway..."
-        puts "[#{Time.local.to_s("%H:%M:%S")}] Watching for config changes (restarts automatically)..."
+        Log.info { "[#{Time.local.to_s("%H:%M:%S")}] Starting gateway..." }
+        Log.info { "[#{Time.local.to_s("%H:%M:%S")}] Watching for config changes (restarts automatically)..." }
         # TODO: Fix logging
         # Crybot::Web::Handlers::LogsHandler.log("INFO", "Gateway started")
 
@@ -38,14 +39,15 @@ module Crybot
       private def validate_config(config : Config::ConfigFile) : Bool
         # Check if any channels are enabled
         unless config.channels.telegram.enabled
-          puts "Error: No channels enabled."
-          puts "Enable channels in #{Config::Loader.config_file}"
-          puts "\nExample for Telegram:"
-          puts "  channels:"
-          puts "    telegram:"
-          puts "      enabled: true"
-          puts "      token: \"YOUR_BOT_TOKEN\""
-          puts "      allow_from: [\"123456789\"]  # Optional: restrict to specific users"
+          Log.error { "Error: No channels enabled." }
+          Log.error { "Enable channels in #{Config::Loader.config_file}" }
+          Log.error { "" }
+          Log.error { "Example for Telegram:" }
+          Log.error { "  channels:" }
+          Log.error { "    telegram:" }
+          Log.error { "      enabled: true" }
+          Log.error { "      token: \"YOUR_BOT_TOKEN\"" }
+          Log.error { "      allow_from: [\"123456789\"]  # Optional: restrict to specific users" }
           return false
         end
 
@@ -56,41 +58,42 @@ module Crybot
         case provider
         when "openai"
           if config.providers.openai.api_key.empty?
-            puts "Error: OpenAI API key not configured."
-            puts "Please edit #{Config::Loader.config_file} and add your API key"
+            Log.error { "Error: OpenAI API key not configured." }
+            Log.error { "Please edit #{Config::Loader.config_file} and add your API key" }
             return false
           end
         when "anthropic"
           if config.providers.anthropic.api_key.empty?
-            puts "Error: Anthropic API key not configured."
-            puts "Please edit #{Config::Loader.config_file} and add your API key"
+            Log.error { "Error: Anthropic API key not configured." }
+            Log.error { "Please edit #{Config::Loader.config_file} and add your API key" }
             return false
           end
         when "openrouter"
           if config.providers.openrouter.api_key.empty?
-            puts "Error: OpenRouter API key not configured."
-            puts "Please edit #{Config::Loader.config_file} and add your API key"
+            Log.error { "Error: OpenRouter API key not configured." }
+            Log.error { "Please edit #{Config::Loader.config_file} and add your API key" }
             return false
           end
         when "vllm"
           if config.providers.vllm.api_base.empty?
-            puts "Error: vLLM api_base not configured."
-            puts "Please edit #{Config::Loader.config_file} and add api_base"
+            Log.error { "Error: vLLM api_base not configured." }
+            Log.error { "Please edit #{Config::Loader.config_file} and add api_base" }
             return false
           end
         else # zhipu (default)
           if config.providers.zhipu.api_key.empty?
-            puts "Error: z.ai API key not configured."
-            puts "Please edit #{Config::Loader.config_file} and add your API key"
+            Log.error { "Error: z.ai API key not configured." }
+            Log.error { "Please edit #{Config::Loader.config_file} and add your API key" }
             return false
           end
         end
 
         # Check Telegram token
         if config.channels.telegram.enabled && config.channels.telegram.token.empty?
-          puts "Error: Telegram enabled but token not configured."
-          puts "Please edit #{Config::Loader.config_file} and add your bot token"
-          puts "\nGet a bot token from @BotFather on Telegram"
+          Log.error { "Error: Telegram enabled but token not configured." }
+          Log.error { "Please edit #{Config::Loader.config_file} and add your bot token" }
+          Log.error { "" }
+          Log.error { "Get a bot token from @BotFather on Telegram" }
           return false
         end
 
@@ -112,7 +115,7 @@ module Crybot
       end
 
       private def restart : Nil
-        puts "[#{Time.local.to_s("%H:%M:%S")}] Config file changed, restarting gateway..."
+        Log.info { "[#{Time.local.to_s("%H:%M:%S")}] Config file changed, restarting gateway..." }
 
         # Stop the watcher
         if watcher = @watcher

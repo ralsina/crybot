@@ -37,6 +37,7 @@ module Crybot
           }
         end
 
+        # ameba:disable Metrics/CyclomaticComplexity
         def execute(args : Hash(String, JSON::Any)) : String
           command = args["command"]?.try(&.as_s) || ""
           skill_name = args["name"]?.try(&.as_s) || command
@@ -203,11 +204,12 @@ module Crybot
             end
           end
 
-          usage = buffer.join(" ") if buffer.any?
+          usage = buffer.join(" ") unless buffer.empty?
 
           {description, usage, examples}
         end
 
+        # ameba:disable Metrics/CyclomaticComplexity
         private def parse_help_output(output : String, command : String) : Tuple(String?, String?, Array(String))
           lines = output.split('\n')
 
@@ -267,7 +269,7 @@ module Crybot
           })
 
           yaml_params = build_yaml_params(properties, required)
-          required_yaml = required.map { |r| "      - \"#{r}\"" }.join("\n")
+          required_yaml = required.map { |req| "      - \"#{req}\"" }.join("\n")
 
           skill_yml = <<-YAML
 name: #{name}

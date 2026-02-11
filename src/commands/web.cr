@@ -1,3 +1,4 @@
+require "log"
 require "../config/loader"
 require "../web/server"
 require "../web/handlers/logs_handler"
@@ -18,8 +19,8 @@ module Crybot
           config = config.with_web(config.web.with_port(port_override))
         end
 
-        puts "[#{Time.local.to_s("%H:%M:%S")}] Starting Crybot Web Server..."
-        puts "[#{Time.local.to_s("%H:%M:%S")}] Listening on http://#{config.web.host}:#{config.web.port}"
+        Log.info { "[#{Time.local.to_s("%H:%M:%S")}] Starting Crybot Web Server..." }
+        Log.info { "[#{Time.local.to_s("%H:%M:%S")}] Listening on http://#{config.web.host}:#{config.web.port}" }
         # TODO: Fix logging - commented out for now
         # Crybot::Web::Handlers::LogsHandler.log("INFO", "Web server started on http://#{config.web.host}:#{config.web.port}")
 
@@ -36,30 +37,30 @@ module Crybot
         case provider
         when "openai"
           if config.providers.openai.api_key.empty?
-            puts "Warning: OpenAI API key not configured."
+            Log.warn { "Warning: OpenAI API key not configured." }
           end
         when "anthropic"
           if config.providers.anthropic.api_key.empty?
-            puts "Warning: Anthropic API key not configured."
+            Log.warn { "Warning: Anthropic API key not configured." }
           end
         when "openrouter"
           if config.providers.openrouter.api_key.empty?
-            puts "Warning: OpenRouter API key not configured."
+            Log.warn { "Warning: OpenRouter API key not configured." }
           end
         when "vllm"
           if config.providers.vllm.api_base.empty?
-            puts "Warning: vLLM api_base not configured."
+            Log.warn { "Warning: vLLM api_base not configured." }
           end
         else # zhipu (default)
           if config.providers.zhipu.api_key.empty?
-            puts "Warning: z.ai API key not configured."
+            Log.warn { "Warning: z.ai API key not configured." }
           end
         end
 
         # Warn if no auth token configured
         if config.web.auth_token.empty?
-          puts "Warning: No auth_token configured. Web UI will be accessible without authentication."
-          puts "Set web.auth_token in #{Config::Loader.config_file} to enable authentication."
+          Log.warn { "Warning: No auth_token configured. Web UI will be accessible without authentication." }
+          Log.warn { "Set web.auth_token in #{Config::Loader.config_file} to enable authentication." }
         end
 
         true

@@ -21,6 +21,7 @@ module Crybot
         end
 
         # Create a new task
+        # ameba:disable Metrics/CyclomaticComplexity
         def create_task(env) : String
           body = env.request.body.try(&.gets_to_end) || ""
           data = Hash(String, JSON::Any).from_json(body)
@@ -88,6 +89,7 @@ module Crybot
         end
 
         # Update an existing task
+        # ameba:disable Metrics/CyclomaticComplexity
         def update_task(env) : String
           task_id = env.params.url["id"]
 

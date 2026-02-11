@@ -54,6 +54,7 @@ module Crybot
           }
         end
 
+        # ameba:disable Metrics/CyclomaticComplexity
         def execute(args : Hash(String, JSON::Any)) : String
           name = args["name"]?.try(&.as_s) || ""
           description = args["description"]?.try(&.as_s) || ""
@@ -110,7 +111,7 @@ module Crybot
           # Generate SKILL.md
           generate_skill_md(skill_dir, name, description, urls, use_playwright, mcp_server, selector, extract)
 
-          urls_list = urls.map { |u| "  - #{u}" }.join("\n")
+          urls_list = urls.map { |url| "  - #{url}" }.join("\n")
 
           "Successfully created web reader skill '#{name}'!\n\n" \
           "Skill location: #{skill_dir}\n" \
@@ -126,8 +127,8 @@ module Crybot
           "- \"Get the latest #{name}\"\n" \
           "- \"Read #{name} articles\"\n" \
           "- \"What's on #{urls.first}?\""
-        rescue e : Exception
-          "Error creating web reader skill: #{e.message} #{e.backtrace?.try(&.first).try { |s| "\n  #{s}" } || ""}"
+        rescue error : Exception
+          "Error creating web reader skill: #{error.message} #{error.backtrace?.try(&.first).try { |stack| "\n  #{stack}" } || ""}"
         end
 
         private def should_use_playwright?(urls : Array(String)) : Bool
@@ -151,7 +152,7 @@ module Crybot
           # Generate CSS selector based on common patterns if not provided
           css_selector = selector.empty? ? suggest_selector(urls[0]) : selector
 
-          urls_list = urls.map_with_index { |u, _| "      - \"#{u}\"" }.join("\n")
+          urls_list = urls.map_with_index { |url, _| "      - \"#{url}\"" }.join("\n")
 
           skill_yml = <<-YAML
 name: #{name}
@@ -273,7 +274,7 @@ YAML
         end
 
         private def generate_skill_md(dir : Path, name : String, description : String, urls : Array(String), use_playwright : Bool, mcp_server : String, selector : String, extract : String) : Nil
-          urls_list = urls.map { |u| "- #{u}" }.join("\n  ")
+          urls_list = urls.map { |url| "- #{url}" }.join("\n  ")
 
           method_note = use_playwright ? "This skill uses **browser automation** (#{mcp_server}) for dynamic content." : "This skill uses **HTTP client** for simple HTML sites."
 

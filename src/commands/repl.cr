@@ -1,3 +1,4 @@
+require "log"
 require "../config/loader"
 require "../agent/loop"
 require "fancyline"
@@ -27,8 +28,8 @@ module Crybot
                         end
 
         unless api_key_valid
-          puts "Error: API key not configured for provider '#{provider}'."
-          puts "Please edit #{Config::Loader.config_file} and add your API key"
+          Log.error { "Error: API key not configured for provider '#{provider}'." }
+          Log.error { "Please edit #{Config::Loader.config_file} and add your API key" }
           return
         end
 
@@ -70,10 +71,10 @@ module Crybot
 
       # ameba:disable Metrics/CyclomaticComplexity
       def run : Nil
-        puts "Crybot REPL - Model: #{@model}"
-        puts "Type 'quit', 'exit', or press Ctrl+D to end the session."
-        puts "Type 'help' for available commands."
-        puts "---"
+        Log.info { "Crybot REPL - Model: #{@model}" }
+        Log.info { "Type 'quit', 'exit', or press Ctrl+D to end the session." }
+        Log.info { "Type 'help' for available commands." }
+        Log.info { "---" }
 
         begin
           while @running
@@ -112,19 +113,19 @@ module Crybot
                 puts
               rescue e : Exception
                 puts ""
-                puts "Error: #{e.message}"
-                puts e.backtrace.join("\n") if ENV["DEBUG"]?
+                Log.error(exception: e) { "Error: #{e.message}" }
+                Log.debug(exception: e) { e.backtrace.join("\n") } if ENV["DEBUG"]?
                 puts
               end
             rescue e : Fancyline::Interrupt
               # Ctrl+C pressed during input
               puts ""
-              puts "Use 'quit' or 'exit' to exit, or Ctrl+D"
+              Log.info { "Use 'quit' or 'exit' to exit, or Ctrl+D" }
               puts
             rescue e : Exception
               puts ""
-              puts "Error: #{e.message}"
-              puts e.backtrace.join("\n") if ENV["DEBUG"]?
+              Log.error(exception: e) { "Error: #{e.message}" }
+              Log.debug(exception: e) { e.backtrace.join("\n") } if ENV["DEBUG"]?
               puts
             end
           end
@@ -132,7 +133,7 @@ module Crybot
           # Save history before exiting
           save_history
         ensure
-          puts "Goodbye!"
+          Log.info { "Goodbye!" }
         end
       end
 
@@ -195,8 +196,8 @@ module Crybot
           show_help
           return true
         when "model"
-          puts "Current model: #{@model}"
-          puts
+          Log.info { "Current model: #{@model}" }
+          Log.info { "" }
           return true
         end
 
@@ -204,17 +205,17 @@ module Crybot
       end
 
       private def show_help : Nil
-        puts "Available commands:"
-        puts "  help   - Show this help message"
-        puts "  model  - Show current model"
-        puts "  clear  - Clear the screen"
-        puts "  quit   - Exit the REPL"
-        puts "  exit   - Exit the REPL"
-        puts "  Tab    - Autocomplete commands"
-        puts "  Up/Down - Navigate command history"
-        puts "  Ctrl+R - Search history"
-        puts "  Ctrl+L - Clear screen"
-        puts
+        Log.info { "Available commands:" }
+        Log.info { "  help   - Show this help message" }
+        Log.info { "  model  - Show current model" }
+        Log.info { "  clear  - Clear the screen" }
+        Log.info { "  quit   - Exit the REPL" }
+        Log.info { "  exit   - Exit the REPL" }
+        Log.info { "  Tab    - Autocomplete commands" }
+        Log.info { "  Up/Down - Navigate command history" }
+        Log.info { "  Ctrl+R - Search history" }
+        Log.info { "  Ctrl+L - Clear screen" }
+        Log.info { "" }
       end
 
       private def history_file : Path

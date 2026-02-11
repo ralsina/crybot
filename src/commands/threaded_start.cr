@@ -1,3 +1,4 @@
+require "log"
 require "../config/loader"
 require "../landlock_socket"
 require "../agent/tool_monitor"
@@ -18,11 +19,11 @@ module Crybot
 
       def self.execute : Nil
         # Start the Landlock access monitor server (for rofi/terminal prompts)
-        puts "[Crybot] Starting Landlock access monitor..."
+        Log.info { "[Crybot] Starting Landlock access monitor..." }
         LandlockSocket.start_monitor_server
 
         # Start the tool execution monitor fiber
-        puts "[Crybot] Starting tool execution monitor..."
+        Log.info { "[Crybot] Starting tool execution monitor..." }
         ToolMonitor.start_monitor
 
         # Enable monitor mode for tools (routes through tool monitor)
@@ -33,14 +34,14 @@ module Crybot
         config = Config::Loader.migrate_config(config)
 
         # Start the agent loop
-        puts "[Crybot] Starting agent loop..."
+        Log.info { "[Crybot] Starting agent loop..." }
         run_agent_loop(config)
 
         # Setup signal handlers for graceful shutdown
         setup_signal_handlers
 
         # Keep main thread alive while fibers run
-        puts "[Crybot] All fibers started. Press Ctrl+C to stop"
+        Log.info { "[Crybot] All fibers started. Press Ctrl+C to stop" }
         keep_alive
       end
 
@@ -53,7 +54,7 @@ module Crybot
       private def self.spawn_agent_fiber(config : Config::ConfigFile) : Fiber
         spawn do
           begin
-            puts "[Agent] Starting... (tools run in landlocked subprocesses)"
+            Log.info { "[Agent] Starting... (tools run in landlocked subprocesses)" }
 
             # Create agent loop
             agent_loop = AgentLoop.new(config)
@@ -61,10 +62,10 @@ module Crybot
             # Start normal agent features
             start_agent_features(config, agent_loop)
 
-            puts "[Agent] Exiting"
+            Log.info { "[Agent] Exiting" }
           rescue e : Exception
-            STDERR.puts "[Agent] Error: #{e.message}"
-            STDERR.puts e.backtrace.join("\n") if ENV["DEBUG"]?
+            Log.error(exception: e) { "[Agent] Error: #{e.message}" }
+            Log.debug(exception: e) { e.backtrace.join("\n") } if ENV["DEBUG"]?
           end
         end
       end
@@ -74,29 +75,29 @@ module Crybot
         features_config = config.features
 
         if features_config.repl
-          puts "[Agent] Starting REPL feature..."
+          Log.info { "[Agent] Starting REPL feature..." }
           # Start REPL - this will block until REPL exits
           Features::ReplFeature.new(config).start
         elsif features_config.web
-          puts "[Agent] Starting web feature..."
+          Log.info { "[Agent] Starting web feature..." }
           # Start web server
           Features::WebFeature.new(config).start(agent_loop)
         else
-          puts "[Agent] No interactive features enabled."
-          puts "[Agent] Enable 'repl' or 'web' in config.yml"
+          Log.warn { "[Agent] No interactive features enabled." }
+          Log.info { "[Agent] Enable 'repl' or 'web' in config.yml" }
         end
       end
 
       private def self.setup_signal_handlers : Nil
         # Handle SIGINT (Ctrl+C)
         Signal::INT.trap do
-          puts "\n[Crybot] Shutting down..."
+          Log.info { "\n[Crybot] Shutting down..." }
           exit 0
         end
 
         # Handle SIGTERM
         Signal::TERM.trap do
-          puts "\n[Crybot] Received shutdown signal"
+          Log.info { "\n[Crybot] Received shutdown signal" }
           exit 0
         end
       end
