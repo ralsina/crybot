@@ -177,7 +177,14 @@ module HttpProxy
       # Also write to file if configured
       if cfg = @@config
         begin
-          File.open(cfg.log_file, "a") do |file|
+          # Expand ~ in log file path
+          log_path = cfg.log_file.starts_with?("~") ? cfg.log_file.sub("~", ENV.fetch("HOME", "")) : cfg.log_file
+
+          # Ensure log directory exists
+          log_dir = File.dirname(log_path)
+          Dir.mkdir_p(log_dir) unless Dir.exists?(log_dir)
+
+          File.open(log_path, "a") do |file|
             @@access_log.each do |entry|
               file.puts("#{entry.timestamp} #{entry.action} #{entry.domain} - #{entry.details}")
             end
