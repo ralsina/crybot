@@ -338,7 +338,7 @@ Crybot includes a built-in HTTP/HTTPS proxy server that controls which domains t
 2. **Domain whitelist** - Pre-approved domains bypass prompts
 3. **User prompts** - Non-whitelisted domains trigger rofi/terminal prompts
 4. **Access logging** - All network access attempts logged
-5. **Landlock integration** - Network restrictions controlled via unified access system
+5. **Mandatory network enforcement** (Linux 6.7+) - When proxy is enabled, **Landlock kernel-level restrictions** force ALL tool network traffic through the proxy, preventing bypass
 
 ### Configuration
 

@@ -235,10 +235,13 @@ proxy:
 ### How Network Access Control Works
 
 1. Tools execute with `http_proxy` and `https_proxy` environment variables set
-2. Proxy intercepts all HTTP/HTTPS requests
-3. Domain whitelist checked first
-4. Non-whitelisted domains trigger user prompt (rofi/terminal)
-5. Access decisions logged to `~/.crybot/logs/proxy_access.log`
+2. **Landlock network restrictions** (Linux 6.7+) force ALL network connections to proxy port only
+3. Proxy intercepts all HTTP/HTTPS requests
+4. Domain whitelist checked first
+5. Non-whitelisted domains trigger user prompt (rofi/terminal)
+6. Access decisions logged to `~/.crybot/logs/proxy_access.log`
+
+**Security Guarantee**: Even if a tool ignores environment variables or is compromised, it cannot bypass the proxy because Landlock enforces network restrictions at the kernel level.
 
 ### Access Request Flow
 
@@ -294,11 +297,24 @@ Example log entries:
 
 The proxy provides:
 
+- ✅ **Kernel-level enforcement** (Linux 6.7+) - Landlock blocks all network access except proxy port
 - ✅ **Domain-level control** - Block or allow specific domains
 - ✅ **User prompts** - Approve network access in real-time
 - ✅ **Audit logging** - Track all network access attempts
 - ✅ **Session vs permanent** - Grant temporary or permanent access
 - ✅ **HTTPS tunneling** - Full CONNECT method support for HTTPS
+- ✅ **Cannot be bypassed** - Tools must use proxy even if they ignore environment variables
+
+### Kernel Requirements
+
+Network Landlock enforcement requires:
+- **Linux 6.7 or later** for network access control support
+- Falls back gracefully on older kernels (proxy still works via environment variables)
+
+Check your kernel version:
+```bash
+uname -r
+```
 
 ### Testing the Proxy
 
