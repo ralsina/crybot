@@ -95,7 +95,7 @@ module Crybot
           @fancy = Fancyline.new
 
           # Setup display widgets
-          setup_display
+          self.setup_display
 
           # Setup autocompletion
           setup_autocompletion
@@ -111,116 +111,201 @@ module Crybot
           puts "Type 'help' for available commands."
           puts "---"
 
-          begin
-            while @running_check.call
-              begin
-                input = @fancy.readline(prompt_string)
+          while @running_check.call
+            begin
+              input = @fancy.readline(prompt_string)
 
-                if input.nil?
-                  # Ctrl+D pressed
-                  puts ""
-                  break
-                end
+              if input.nil?
+                # Ctrl+D pressed
+                puts ""
+                break
+              end
 
-                input = input.to_s.strip
-                next if input.empty?
+              input_string = input.to_s.strip
+              next if input_string.empty?
 
-                # Handle built-in commands
-                if handle_command(input)
-                  next
-                end
+              # Handle built-in commands
+              if handle_command(input_string)
+                next
+              end
 
-                # Process the message
-                # Show animated spinner while thinking
-                spinner = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
-                spinner_idx = 0
-                spinning = true
-                spinner_fiber = spawn do
-                  while spinning
-                    print "\r#{spinner[spinner_idx % spinner.size]} Thinking... (Ctrl+K to cancel)"
-                    spinner_idx += 1
-                    sleep 0.1.seconds
-                  end
-                end
+              # Process the message
+              # Show animated spinner while thinking
+              spinner = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+              spinner_idx = 0
 
-                # Check for cancellation during processing
-                cancel_check = spawn do
-                  # Check for cancellation every 0.1s
-                  loop do
-                    sleep 0.1.seconds
-                    if spinning && Agent::CancellationManager.cancelled?
-                      print "\r" + " " * 50 + "\r"  # Clear spinner line
-                      puts "⚠ Cancelling request..."
-                      break
-                    end
-                  end
-                end
+              # Channels for fiber communication
+              response_channel = Channel(Agent::AgentResponse?).new
+              cancel_channel = Channel(Nil).new
 
+              # Spawn the agent request in a background fiber
+              spawn do
                 begin
-                  agent_response = @agent_loop.process(@session_key, input)
+                  response = @agent_loop.process(@session_key, input_string)
+                  response_channel.send(response)
+                rescue e : Exception
+                  # Send nil on error
+                  response_channel.send(nil)
+                end
+              end
 
-                  # Stop spinner
-                  spinning = false
-                  sleep 0.15.seconds # Let the spinner finish one more cycle
-
-                  # Log tool executions
-                  agent_response.tool_executions.each do |exec|
-                    status = exec.success? ? "✓" : "✗"
-                    puts "[Tool] #{status} #{exec.tool_name}"
-                    if exec.tool_name == "exec" || exec.tool_name == "exec_shell"
-                      args_str = exec.arguments.map { |k, v| "#{k}=#{v}" }.join(" ")
-                      puts "       Command: #{args_str}"
-                      result_preview = exec.result.size > 200 ? "#{exec.result[0..200]}..." : exec.result
-                      puts "       Output: #{result_preview}"
-                    end
+              # Spawn input reader fiber to catch Ctrl+K during request
+              spawn do
+                begin
+                  # Set terminal to raw mode for non-blocking input
+                  if STDIN.tty?
+                    system("stty raw -echo 2>/dev/null")
                   end
 
-                  # Clear the spinner line
-                  print "\r" + " " * 30 + "\r"
+                  loop do
+                    # Check if request is done
+                    has_response = false
+                    select
+                    when _ = response_channel.receive?
+                      has_response = true
+                      break
+                    when timeout(0.01.seconds)
+                      # Continue checking for input
+                    end
+                    break if has_response
 
-                  # Print response with formatting
-                  puts
-                  puts agent_response.response
-                  puts
-                rescue e : Fancyline::Interrupt
-                  # Stop spinner
-                  spinning = false
-                  sleep 0.15.seconds
-                  # Ctrl+C/Esc pressed during input - cancel any pending request
-                  Agent::CancellationManager.cancel_current
-                  puts ""
-                  puts "Use 'quit' or 'exit' to exit, or Ctrl+D"
-                  puts
-                rescue e : Exception
-                  # Stop spinner
-                  spinning = false
-                  sleep 0.15.seconds
-                  puts ""
-                  puts "Error: #{e.message}"
-                  puts e.backtrace.join("\n") if ENV["DEBUG"]?
-                  puts
+                    # Try to read a byte non-blocking
+                    begin
+                      byte = STDIN.read_byte
+                      if byte == 11 # Ctrl+K (ASCII 11, VT character)
+                        Agent::CancellationManager.cancel_current
+                        print "\r" + " " * 50 + "\r"
+                        puts "⚠ Cancelling..."
+                        # Send twice: once for spinner, once for main fiber
+                        cancel_channel.send(nil)
+                        cancel_channel.send(nil)
+                        break
+                      end
+                    rescue
+                      # No input available, continue
+                    end
+
+                    sleep 0.05.seconds
+                  end
+                ensure
+                  # Restore terminal settings
+                  system("stty sane 2>/dev/null")
                 end
-              rescue e : Fancyline::Interrupt
-                # Ctrl+C pressed during input
-                puts ""
-                puts "Use 'quit' or 'exit' to exit, or Ctrl+D"
+              end
+
+              # Spawn spinner fiber
+              spawn do
+                loop do
+                  print "\r#{spinner[spinner_idx % spinner.size]} Thinking... (Ctrl+K to cancel)"
+                  spinner_idx += 1
+                  sleep 0.1.seconds
+
+                  # Check if request is done or cancelled
+                  done = false
+                  cancelled = false
+                  select
+                  when _ = response_channel.receive?
+                    done = true
+                  when _ = cancel_channel.receive?
+                    cancelled = true
+                  when timeout(0.05.seconds)
+                    # just timeout
+                  end
+                  break if done || cancelled
+                end
+              end
+
+              # Main fiber waits for either response or cancellation
+              agent_response = nil
+              cancelled = false
+
+              select
+              when r = response_channel.receive
+                agent_response = r
+              when cancel_channel.receive
+                cancelled = true
+              end
+
+              # Ensure terminal is restored
+              system("stty sane 2>/dev/null")
+
+              if cancelled
+                # Request was cancelled - wait for response to arrive but discard it
+                spawn do
+                  response_channel.receive?
+                end
                 puts
-              rescue e : Exception
+                puts "Request cancelled."
+                puts
+                next
+              end
+
+              if agent_response
+                # Log tool executions
+                agent_response.tool_executions.each do |exec|
+                  status = exec.success? ? "✓" : "✗"
+                  puts "[Tool] #{status} #{exec.tool_name}"
+                  if exec.tool_name == "exec" || exec.tool_name == "exec_shell"
+                    args_str = exec.arguments.map { |k, v| "#{k}=#{v}" }.join(" ")
+                    puts "       Command: #{args_str}"
+                    result_preview = exec.result.size > 200 ? "#{exec.result[0..200]}..." : exec.result
+                    puts "       Output: #{result_preview}"
+                  end
+                end
+
+                # Clear the spinner line
+                print "\r" + " " * 30 + "\r"
+
+                # Print response with formatting
+                puts
+                puts agent_response.response
+                puts
+              else
                 puts ""
-                puts "Error: #{e.message}"
-                puts e.backtrace.join("\n") if ENV["DEBUG"]?
+                puts "Error: No response from agent."
                 puts
               end
+            rescue e : Fancyline::Interrupt
+              # Ensure terminal mode is restored
+              puts
+            rescue e : Exception
+              # Ensure terminal mode is restored
+              system("stty sane 2>/dev/null")
+              # Signal completion to fibers
+              puts ""
+              puts "Error: #{e.message}"
+              puts e.backtrace.join("\n") if ENV["DEBUG"]?
+              puts
+            rescue e : Fancyline::Interrupt
+              # Ctrl+C pressed during input
+              puts ""
+              puts "Use 'quit' or 'exit' to exit, or Ctrl+D"
+              puts
+            rescue e : Exception
+              puts ""
+              puts "Error: #{e.message}"
+              puts e.backtrace.join("\n") if ENV["DEBUG"]?
+              puts
             end
-
-            # Save history before exiting
-            save_history
-          ensure
-            puts "REPL terminated"
           end
+        rescue e : Fancyline::Interrupt
+          # Ctrl+C pressed during input
+          puts ""
+          puts "Use 'quit' or 'exit' to exit, or Ctrl+D"
+          puts
+        rescue e : Exception
+          puts ""
+          puts "Error: #{e.message}"
+          puts e.backtrace.join("\n") if ENV["DEBUG"]?
+          puts
+
+          # Save history before exiting
+          save_history
+        ensure
+          puts "REPL terminated"
         end
 
-        private def setup_display : Nil
+        protected def setup_display : Nil
           # Add syntax highlighting for the input
           @fancy.display.add do |ctx, line, yielder|
             # Colorize built-in commands

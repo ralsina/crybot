@@ -49,7 +49,7 @@ module Crybot
             if attempt < max_retries - 1
               # Calculate exponential backoff with jitter
               delay = base_delay * (2 ** attempt) + (rand * 0.5)
-              puts "[Provider] Rate limited (#{status}), retrying in #{delay.round(2)}s (attempt #{attempt + 1}/#{max_retries})"
+              Log.warn { "Rate limited (#{status}), retrying in #{delay.round(2)}s (attempt #{attempt + 1}/#{max_retries})" }
 
               # Sleep in smaller increments to check for cancellation
               sleep_time = 0

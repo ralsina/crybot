@@ -1,6 +1,7 @@
 require "../agent/tools/registry"
 require "../agent/tools/base"
 require "./client"
+require "log"
 
 module Crybot
   module MCP
@@ -17,9 +18,9 @@ module Crybot
             client.start
             @clients[server_config.name] = client
 
-            puts "[MCP] Connected to server '#{server_config.name}' - #{client.list_tools.size} tools available"
+            ::Log.info { "[MCP] Connected to server '#{server_config.name}' - #{client.list_tools.size} tools available" }
           rescue e : Exception
-            puts "[MCP] Failed to connect to server '#{server_config.name}': #{e.message}"
+            ::Log.error { "[MCP] Failed to connect to server '#{server_config.name}': #{e.message}" }
           end
         end
       end

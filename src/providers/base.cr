@@ -3,6 +3,7 @@ require "log"
 module Crybot
   module Providers
     Log = ::Log.for("crybot.providers")
+
     struct Message
       property role : String # "system", "user", "assistant", "tool"
       property content : String?

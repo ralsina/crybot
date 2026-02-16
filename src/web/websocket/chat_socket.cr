@@ -13,6 +13,8 @@ module Crybot
 
       @@connections = Array(HTTP::WebSocket).new
       @@mutex = Mutex.new
+      @@cancel_channels = Hash(String, Channel(Nil)).new
+      @@cancel_mutex = Mutex.new
 
       def initialize(@agent : Agent::Loop, @sessions : Session::Manager)
         @socket_id = ""
@@ -133,34 +135,78 @@ module Crybot
           status: "processing",
         }.to_json)
 
-        # Process with agent (this blocks until complete)
-        agent_response = @agent.process(session_id, content)
+        # Spawn agent request in a background fiber
+        response_channel = Channel(Agent::AgentResponse?).new
+        cancel_channel = Channel(Nil).new
 
-        # Log response (truncated if long)
-        response_preview = agent_response.response.size > 200 ? "#{agent_response.response[0..200]}..." : agent_response.response
-        puts "[Web] [Chat] Assistant: #{response_preview}"
+        # Register cancel channel for this session
+        @@cancel_mutex.synchronize do
+          @@cancel_channels[session_id] = cancel_channel
+        end
 
-        # Log tool executions
-        agent_response.tool_executions.each do |exec|
-          status = exec.success? ? "✓" : "✗"
-          puts "[Web] [Tool] #{status} #{exec.tool_name}"
-          if exec.tool_name == "exec" || exec.tool_name == "exec_shell"
-            args_str = exec.arguments.map { |k, v| "#{k}=#{v}" }.join(" ")
-            puts "[Web]       Command: #{args_str}"
-            result_preview = exec.result.size > 200 ? "#{exec.result[0..200]}..." : exec.result
-            puts "[Web]       Output: #{result_preview}"
+        spawn do
+          begin
+            response = @agent.process(session_id, content)
+            response_channel.send(response)
+          rescue e : Exception
+            response_channel.send(nil)
           end
         end
 
-        # Send response with tool executions
-        tool_executions_json = agent_response.tool_executions.map(&.to_h).map { |hash| JSON::Any.new(hash) }
-        socket.send({
-          type:            "response",
-          session_id:      session_id,
-          content:         agent_response.response,
-          tool_executions: JSON::Any.new(tool_executions_json),
-          timestamp:       Time.local.to_s("%Y-%m-%dT%H:%M:%S%:z"),
-        }.to_json)
+        # Wait for either response or cancellation
+        agent_response = nil
+        cancelled = false
+
+        select
+        when r = response_channel.receive
+          agent_response = r
+        when cancel_channel.receive
+          cancelled = true
+        end
+
+        # If cancelled, discard the response when it arrives
+        if cancelled
+          spawn { response_channel.receive? }
+          puts "[Web] [Chat] Request cancelled"
+          socket.send({
+            type:    "cancelled",
+            message: "Request was cancelled by user",
+          }.to_json)
+          return
+        end
+
+        # Log response (truncated if long)
+        if agent_response
+          response_preview = agent_response.response.size > 200 ? "#{agent_response.response[0..200]}..." : agent_response.response
+          puts "[Web] [Chat] Assistant: #{response_preview}"
+
+          # Log tool executions
+          agent_response.tool_executions.each do |exec|
+            status = exec.success? ? "✓" : "✗"
+            puts "[Web] [Tool] #{status} #{exec.tool_name}"
+            if exec.tool_name == "exec" || exec.tool_name == "exec_shell"
+              args_str = exec.arguments.map { |k, v| "#{k}=#{v}" }.join(" ")
+              puts "[Web]       Command: #{args_str}"
+              result_preview = exec.result.size > 200 ? "#{exec.result[0..200]}..." : exec.result
+              puts "[Web]       Output: #{result_preview}"
+            end
+          end
+
+          # Send response with tool executions
+          tool_executions_json = agent_response.tool_executions.map(&.to_h).map { |hash| JSON::Any.new(hash) }
+          socket.send({
+            type:            "response",
+            session_id:      session_id,
+            content:         agent_response.response,
+            tool_executions: JSON::Any.new(tool_executions_json),
+            timestamp:       Time.local.to_s("%Y-%m-%dT%H:%M:%S%:z"),
+          }.to_json)
+        else
+          socket.send({
+            type:    "error",
+            message: "No response from agent",
+          }.to_json)
+        end
       end
 
       private def send_history(socket, session_id : String) : Nil
@@ -198,10 +244,22 @@ module Crybot
 
       private def handle_cancel_request(socket) : Nil
         puts "[Web] [Chat] Cancel request received"
+
+        # Cancel at the agent level
         Agent::CancellationManager.cancel_current
 
+        # Signal the cancel channel for this session
+        session_id = @session_id
+        cancel_channel = @@cancel_mutex.synchronize { @@cancel_channels[session_id]? }
+
+        if cancel_channel
+          # Send twice: once for spinner, once for main fiber
+          cancel_channel.send(nil)
+          cancel_channel.send(nil)
+        end
+
         socket.send({
-          type:   "cancel_acknowledged",
+          type: "cancel_acknowledged",
         }.to_json)
       end
     end

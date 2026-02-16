@@ -22,6 +22,7 @@ require "./cancellation"
 require "../session/manager"
 require "../mcp/manager"
 require "json"
+require "log"
 
 module Crybot
   module Agent
@@ -198,7 +199,7 @@ module Crybot
         history = @session_manager.get_or_create(session_key)
 
         # Build messages with session_key for voice detection
-        puts "[Agent] Processing message for session_key: #{session_key}"
+        ::Log.debug { "Processing message for session_key: #{session_key}" }
         messages = @context_builder.build_messages(user_message, history, session_key)
 
         # Reset cancellation token for new request
@@ -221,7 +222,7 @@ module Crybot
           rescue ex : Exception
             # Check if this was a cancellation
             if ex.message.try(&.includes?("cancelled"))
-              puts "[Agent] Request cancelled by user"
+              Log.info { "Request cancelled by user" }
               final_response = "[Request cancelled by user]"
               break
             end

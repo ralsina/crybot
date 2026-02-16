@@ -47,7 +47,7 @@ module Crybot
             if attempt < max_retries - 1
               # Calculate exponential backoff with jitter
               delay = base_delay * (2 ** attempt) + (rand * 0.5)
-              puts "[Provider] Rate limited (#{status}), retrying in #{delay.round(2)}s (attempt #{attempt + 1}/#{max_retries})"
+              Log.warn { "Rate limited (#{status}), retrying in #{delay.round(2)}s (attempt #{attempt + 1}/#{max_retries})" }
 
               # Sleep in smaller increments to check for cancellation
               sleep_time = 0
@@ -88,13 +88,13 @@ module Crybot
 
         # Add tools if present
         if tools.nil? || tools.empty?
-          puts "[Provider] No tools being sent (tools nil or empty)"
+          Log.debug { "No tools being sent (tools nil or empty)" }
         else
           tools_array = tools.map(&.to_h).map { |hash| JSON::Any.new(hash) }
           body["tools"] = JSON::Any.new(tools_array)
           # Explicitly set tool_choice to auto (model decides when to use tools)
           body["tool_choice"] = JSON::Any.new("auto")
-          puts "[Provider] Sending #{tools.size} tools to API"
+          Log.debug { "Sending #{tools.size} tools to API" }
         end
 
         body

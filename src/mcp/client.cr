@@ -1,5 +1,6 @@
 require "mcp-client"
 require "../agent/tools/registry"
+require "log"
 
 module Crybot
   module MCP
@@ -22,7 +23,7 @@ module Crybot
         cmd = parts.first
         args = parts[1..] || [] of String
 
-        puts "[MCP] Starting client for '#{@server_name}': #{cmd} #{args.join(' ')}"
+        ::Log.info { "[MCP] Starting client for '#{@server_name}': #{cmd} #{args.join(' ')}" }
 
         @client = ::MCP::Client.new(cmd, args,
           client_name: "crybot",
@@ -34,16 +35,16 @@ module Crybot
 
         begin
           server_info = client.connect
-          puts "[MCP] Connected to '#{@server_name}': #{server_info.name} v#{server_info.version}"
+          ::Log.info { "[MCP] Connected to '#{@server_name}': #{server_info.name} v#{server_info.version}" }
         rescue e : Exception
-          puts "[MCP] Failed to connect to '#{@server_name}': #{e.message}"
-          puts "[MCP] Error: #{e.class.name}"
+          ::Log.error { "[MCP] Failed to connect to '#{@server_name}': #{e.message}" }
+          ::Log.debug { "[MCP] Error: #{e.class.name}" }
           return
         end
 
         # Cache tools
         @tools = client.list_tools
-        puts "[MCP] Found #{@tools.size} tools from '#{@server_name}'"
+        ::Log.info { "[MCP] Found #{@tools.size} tools from '#{@server_name}'" }
 
         # Register tools with Crybot's registry
         register_tools
@@ -79,13 +80,13 @@ module Crybot
       end
 
       private def register_tools : Nil
-        puts "[MCP] Registering #{@tools.size} tools from '#{@server_name}'"
+        ::Log.info { "[MCP] Registering #{@tools.size} tools from '#{@server_name}'" }
         @tools.each do |tool|
           # Create a Crybot tool that wraps the MCP tool
           crybot_tool = MCPToolWrapper.new(@server_name, tool, self)
           tool_name = crybot_tool.name
           Tools::Registry.register(crybot_tool)
-          puts "[MCP] Registered tool: #{tool_name}"
+          ::Log.debug { "[MCP] Registered tool: #{tool_name}" }
         end
       end
 

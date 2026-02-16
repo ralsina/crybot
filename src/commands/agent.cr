@@ -7,6 +7,17 @@ module Crybot
   module Commands
     class Agent
       def self.execute(message : String?) : Nil
+        # Configure logging to file for agent mode to avoid UI interference
+        # Only errors and fatal messages go to terminal
+        log_file = File.open("#{Config::Loader.config_dir}/logs/agent.log", "a")
+        file_backend = ::Log::IOBackend.new(log_file)
+        terminal_backend = ::Log::IOBackend.new(STDOUT)
+
+        # Configure: warnings/errors to terminal, info/debug to file
+        ::Log.setup(:warn, terminal_backend)
+        ::Log.setup(:info, file_backend)
+        ::Log.setup(:debug, file_backend)
+
         # Load config
         config = Config::Loader.load
 
