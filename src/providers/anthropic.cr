@@ -1,6 +1,7 @@
 require "http"
 require "json"
 require "./base"
+require "./async_http"
 
 module Crybot
   module Providers
@@ -29,7 +30,13 @@ module Crybot
           # Check for cancellation before making request
           check_cancellation(cancellation_token)
 
-          response = HTTP::Client.post(API_BASE, headers, request_body.to_json)
+          # Use async HTTP to allow cancellation during the request
+          response = AsyncHTTP.post_with_cancellation(
+            API_BASE,
+            headers,
+            request_body.to_json,
+            cancellation_token
+          )
 
           # Success - return response
           if response.success?

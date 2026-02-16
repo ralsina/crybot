@@ -1,5 +1,6 @@
 require "log"
 require "./openai_base"
+require "./async_http"
 require "json"
 
 module Crybot
@@ -26,7 +27,13 @@ module Crybot
           # Check for cancellation before making request
           check_cancellation(cancellation_token)
 
-          response = HTTP::Client.post(endpoint_url, headers, request_body.to_json)
+          # Use async HTTP to allow cancellation during the request
+          response = AsyncHTTP.post_with_cancellation(
+            endpoint_url,
+            headers,
+            request_body.to_json,
+            cancellation_token
+          )
 
           if response.success?
             return parse_response(response.body)
