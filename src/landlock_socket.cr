@@ -169,9 +169,9 @@ module Crybot
 
     # Access response result
     enum AccessResult
-      Granted          # Permanent access
-      GrantedSession   # Session-scoped access
-      GrantedOnce      # Single-use access
+      Granted        # Permanent access
+      GrantedSession # Session-scoped access
+      GrantedOnce    # Single-use access
       Denied
       DeniedSuggestPlayground
       Timeout
@@ -407,22 +407,22 @@ module Crybot
 
       # Load existing sessions
       sessions = if File.exists?(sessions_file)
-                    data = YAML.parse(File.read(sessions_file))
-                    if sessions_hash = data["sessions"]?.try(&.as_h)
-                      # Convert YAML::Any keys to String
-                      result = {} of String => Array(String)
-                      sessions_hash.each do |k, v|
-                        sess_id = k.as_s
-                        paths = v.as_a.map(&.as_s)
-                        result[sess_id] = paths
-                      end
-                      result
-                    else
-                      {} of String => Array(String)
-                    end
-                  else
-                    {} of String => Array(String)
-                  end
+                   data = YAML.parse(File.read(sessions_file))
+                   if sessions_hash = data["sessions"]?.try(&.as_h)
+                     # Convert YAML::Any keys to String
+                     result = {} of String => Array(String)
+                     sessions_hash.each do |k, v|
+                       sess_id = k.as_s
+                       paths = v.as_a.map(&.as_s)
+                       result[sess_id] = paths
+                     end
+                     result
+                   else
+                     {} of String => Array(String)
+                   end
+                 else
+                   {} of String => Array(String)
+                 end
 
       # Add path to this session
       sessions[session_id] ||= [] of String
@@ -486,7 +486,10 @@ module Crybot
           sessions_hash = sessions_hash.transform_values(&.as_a.map(&.as_s))
           active_hash = sessions_hash.select { |sess_id, _paths| active_sessions.includes?(sess_id) }
 
-          unless active_hash.empty?
+          if active_hash.empty?
+            # No active sessions, remove file
+            File.delete(sessions_file) if File.exists?(sessions_file)
+          else
             yaml_lines = ["---", "sessions:"]
             active_hash.each do |sess_id, paths|
               yaml_lines << "  \"#{sess_id}\":"
@@ -496,9 +499,6 @@ module Crybot
             end
             yaml_lines << "last_updated: \"#{Time.local}\""
             File.write(sessions_file, yaml_lines.join("\n") + "\n")
-          else
-            # No active sessions, remove file
-            File.delete(sessions_file) if File.exists?(sessions_file)
           end
 
           Log.info { "[LandlockSocket] Cleaned up expired sessions" }
@@ -576,9 +576,9 @@ module Crybot
 
       selection = result.to_s.strip
       case selection
-      when "Always"                           then :granted
+      when "Always"                          then :granted
       when "This Session"                    then :granted_session
-      when "Once"                             then :granted_once
+      when "Once"                            then :granted_once
       when "Deny - Suggest using playground" then :denied_suggest_playground
       when "Deny"                            then :denied
       else                                        nil

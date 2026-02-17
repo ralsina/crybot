@@ -40,6 +40,7 @@ module Crybot
     def self.clear_current_session : Nil
       @@session_store.delete(Fiber.current.object_id)
     end
+
     # Struct to track individual tool execution
     struct ToolExecution
       property tool_name : String

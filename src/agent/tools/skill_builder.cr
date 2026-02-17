@@ -326,11 +326,11 @@ YAML
           lines = [] of String
           properties.each do |key, prop|
             prop_h = prop.as_h
-            lines << "    #{key}:"           # 4 spaces (properties: is at 4, so +2 = 6 total)
-            lines << "      type: #{prop_h["type"].as_s}"    # 6 spaces (2 more)
+            lines << "    #{key}:"                        # 4 spaces (properties: is at 4, so +2 = 6 total)
+            lines << "      type: #{prop_h["type"].as_s}" # 6 spaces (2 more)
             if desc = prop_h["description"]?
               safe_desc = escape_yaml_string(desc.as_s)
-              lines << "      description: #{safe_desc}"     # 6 spaces (2 more)
+              lines << "      description: #{safe_desc}" # 6 spaces (2 more)
             end
           end
           lines.join("\n")

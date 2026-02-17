@@ -144,7 +144,6 @@ module Crybot
               # Get current session_id from Agent module's session store
               session_id = Crybot::Agent.get_current_session
 
-
               access_result = LandlockSocket.request_access(path, session_id)
 
               case access_result

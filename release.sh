@@ -9,15 +9,15 @@ echo "Creating release for $PKGNAME v$VERSION..."
 # Update version in shard.yml
 sed "s/^version:.*$/version: $VERSION/g" -i shard.yml
 
-# Build static binaries
-echo "Building static binaries..."
-./build_static.sh
-
-# Run tests (you can customize this)
+# Run lint check FIRST (fast operation)
 echo "Running lint check..."
 ameba --fix src/
 
-echo "All checks passed!"
+echo "✓ Lint checks passed"
+
+# Build static binaries (slow operation, done after lint)
+echo "Building static binaries..."
+./build_static.sh
 
 # Create commit
 git add shard.yml
