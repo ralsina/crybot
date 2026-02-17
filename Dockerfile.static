@@ -1,4 +1,4 @@
-FROM --platform=${TARGETPLATFORM:-linux/amd64} alpine:3.20 AS build
+FROM --platform=${TARGETPLATFORM:-linux/amd64} alpine:3.23 AS build
 
 # Install Crystal and static libraries
 RUN apk add --no-cache \
@@ -33,5 +33,5 @@ COPY lib ./lib
 # Install dependencies
 RUN shards install
 
-# Build static binary
-RUN shards build --without-development --release --static "crybot"
+# Build static binary with required flags
+RUN shards build --without-development --release --static --no-debug "-Dpreview_mt" "-Dexecution_context" "crybot"

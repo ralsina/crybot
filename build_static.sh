@@ -18,7 +18,7 @@ docker run -ti --rm \
   -v "$PWD":/app \
   --user="$(id -u):$(id -g)" \
   crybot-builder-amd64 \
-  /bin/sh -c "cd /app && shards build --without-development --release --static"
+  /bin/sh -c "cd /app && shards build --without-development --release --static --no-debug '-Dpreview_mt' '-Dexecution_context' 'crybot'"
 
 # Copy and rename the AMD64 binary
 mkdir -p dist
@@ -35,7 +35,7 @@ docker run -ti --rm \
   -v "$PWD":/app \
   --user="$(id -u):$(id -g)" \
   crybot-builder-arm64 \
-  /bin/sh -c "cd /app && shards build --without-development --release --static"
+  /bin/sh -c "cd /app && shards build --without-development --release --static --no-debug '-Dpreview_mt' '-Dexecution_context' 'crybot'"
 
 # Copy and rename the ARM64 binary
 cp bin/crybot dist/crybot-linux-arm64
