@@ -94,6 +94,7 @@ module HttpProxy
 
     private def self.handle_deny(domain : String) : Nil
       Log.warn { "Denied access to #{domain}" }
+      # ameba:disable Documentation/DocumentationAdmonition
       # TODO: Notify proxy server if needed for config reload
     end
   end

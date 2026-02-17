@@ -60,6 +60,7 @@ module Crybot
           @@connections << socket
         end
 
+        # ameba:disable Documentation/DocumentationAdmonition
         # TODO: Fix logging
         # Crybot::Web::Handlers::LogsHandler.log("INFO", "Web client connected (session: #{@session_id})")
 

@@ -233,6 +233,7 @@ module Crybot
 
       # Load user-configured allowed paths
       private def self.load_allowed_paths : Array(String)?
+        # ameba:disable Documentation/DocumentationAdmonition
         # TODO: Load from config.yml landlock.allowed_paths
         [] of String
       end

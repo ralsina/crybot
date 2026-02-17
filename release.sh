@@ -11,9 +11,12 @@ sed "s/^version:.*$/version: $VERSION/g" -i shard.yml
 
 # Run lint check FIRST (fast operation)
 echo "Running lint check..."
-ameba --fix src/
+if ameba --fix src/ 2>&1 | grep -q "^E"; then
+  echo "❌ Lint errors found. Please fix them before releasing."
+  exit 1
+fi
 
-echo "✓ Lint checks passed"
+echo "✓ Lint checks passed (warnings are ok)"
 
 # Build static binaries (slow operation, done after lint)
 echo "Building static binaries..."

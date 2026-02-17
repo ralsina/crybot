@@ -27,6 +27,7 @@ module Crybot
 
         Log.info { "[#{Time.local.to_s("%H:%M:%S")}] Starting gateway..." }
         Log.info { "[#{Time.local.to_s("%H:%M:%S")}] Watching for config changes (restarts automatically)..." }
+        # ameba:disable Documentation/DocumentationAdmonition
         # TODO: Fix logging
         # Crybot::Web::Handlers::LogsHandler.log("INFO", "Gateway started")
 

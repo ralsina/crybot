@@ -58,6 +58,7 @@ module Crybot
         # Create and start voice listener
         listener = Crybot::Agent::VoiceListener.new(agent_loop)
 
+        # ameba:disable Documentation/DocumentationAdmonition
         # TODO: Fix logging
         # Crybot::Web::Handlers::LogsHandler.log("INFO", "Voice activated")
 

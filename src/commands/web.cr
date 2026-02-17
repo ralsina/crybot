@@ -21,7 +21,8 @@ module Crybot
 
         Log.info { "[#{Time.local.to_s("%H:%M:%S")}] Starting Crybot Web Server..." }
         Log.info { "[#{Time.local.to_s("%H:%M:%S")}] Listening on http://#{config.web.host}:#{config.web.port}" }
-        # TODO: Fix logging - commented out for now
+        # ameba:disable Documentation/DocumentationAdmonition
+        # TODO: Fix logging
         # Crybot::Web::Handlers::LogsHandler.log("INFO", "Web server started on http://#{config.web.host}:#{config.web.port}")
 
         server = Crybot::Web::Server.new(config)

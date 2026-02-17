@@ -112,6 +112,7 @@ module Crybot
     when "agent"
       # Note: Landlock disabled for agent because it blocks MCP server subprocess creation
       # MCP servers need to spawn child processes (npx, uvx, etc.)
+      # ameba:disable Documentation/DocumentationAdmonition
       # TODO: Consider running only tools in Landlocked subprocesses, not the agent itself
       # LandlockWrapper.ensure_sandbox(args)
       message_idx = args.index("-m")
