@@ -1,0 +1,37 @@
+FROM --platform=${TARGETPLATFORM:-linux/amd64} alpine:3.20 AS build
+
+# Install Crystal and static libraries
+RUN apk add --no-cache \
+    crystal \
+    shards \
+    gc-dev \
+    gc-static \
+    pcre2-dev \
+    pcre2-static \
+    yaml-dev \
+    yaml-static \
+    openssl-dev \
+    openssl-libs-static \
+    libxml2-dev \
+    libxml2-static \
+    zlib-dev \
+    zlib-static \
+    xz-dev \
+    xz-static \
+    make \
+    musl-dev \
+    linux-headers
+
+WORKDIR /app
+
+# Copy project files
+COPY shard.yml ./
+COPY src ./src
+COPY tool_runner ./tool_runner
+COPY lib ./lib
+
+# Install dependencies
+RUN shards install
+
+# Build static binary
+RUN shards build --without-development --release --static "crybot"
