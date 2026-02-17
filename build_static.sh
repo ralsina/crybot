@@ -20,10 +20,11 @@ docker run --rm \
   crybot-builder-amd64 \
   /bin/sh -c "cd /app && shards build --without-development --release --static --no-debug '-Dpreview_mt' '-Dexecution_context' 'crybot'"
 
-# Copy and rename the AMD64 binary
+# Copy and compress the AMD64 binary
 mkdir -p dist
 cp bin/crybot dist/crybot-linux-amd64
-echo "✓ Built: dist/crybot-linux-amd64"
+upx --best --lzma dist/crybot-linux-amd64
+echo "✓ Built: dist/crybot-linux-amd64 ($(du -h dist/crybot-linux-amd64 | cut -f1))"
 
 # Build for ARM64
 echo ""
@@ -37,9 +38,10 @@ docker run --rm \
   crybot-builder-arm64 \
   /bin/sh -c "cd /app && shards build --without-development --release --static --no-debug '-Dpreview_mt' '-Dexecution_context' 'crybot'"
 
-# Copy and rename the ARM64 binary
+# Copy and compress the ARM64 binary
 cp bin/crybot dist/crybot-linux-arm64
-echo "✓ Built: dist/crybot-linux-arm64"
+upx --best --lzma dist/crybot-linux-arm64
+echo "✓ Built: dist/crybot-linux-arm64 ($(du -h dist/crybot-linux-arm64 | cut -f1))"
 
 # Show file sizes
 echo ""
