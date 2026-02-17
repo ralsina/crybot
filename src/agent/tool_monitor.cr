@@ -140,12 +140,15 @@ module Crybot
 
             if attempt < max_retries
               Log.warn { "[ToolMonitor] Access denied for: #{path}" }
-              Log.info { "[ToolMonitor] Requesting access..." }
 
-              access_result = LandlockSocket.request_access(path)
+              # Get current session_id from Agent module's session store
+              session_id = Crybot::Agent.get_current_session
+
+
+              access_result = LandlockSocket.request_access(path, session_id)
 
               case access_result
-              when LandlockSocket::AccessResult::Granted, LandlockSocket::AccessResult::GrantedOnce
+              when LandlockSocket::AccessResult::Granted, LandlockSocket::AccessResult::GrantedSession, LandlockSocket::AccessResult::GrantedOnce
                 Log.info { "[ToolMonitor] Access granted, retrying..." }
                 # Landlock works on directories, not files. Use parent directory.
                 dir_path = File.directory?(path) ? path : File.dirname(path)

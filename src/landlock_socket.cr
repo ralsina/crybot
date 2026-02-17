@@ -26,9 +26,10 @@ module Crybot
     struct AccessRequest
       property message_type : MessageType
       property path : String
+      property session_id : String?
       property response_channel : Channel(String)?
 
-      def initialize(@path : String)
+      def initialize(@path : String, @session_id : String? = nil)
         @message_type = MessageType::RequestAccess
         @response_channel = Channel(String).new
       end
@@ -100,6 +101,9 @@ module Crybot
     end
 
     private def self.handle_access_request(client : UNIXSocket, path : String) : Nil
+      # Get session_id from request
+      # We'll get it from the request JSON
+
       # Check if already allowed
       if already_allowed?(path)
         Log.info { "[Monitor Socket] Path already allowed: #{path}" }
@@ -115,6 +119,10 @@ module Crybot
         add_permanent_access(path)
         Log.info { "[Monitor Socket] Access granted for: #{path}" }
         send_response(client, {"message_type" => "granted", "path" => path}.to_json)
+      when :granted_session
+        add_session_access(path, get_current_session_id)
+        Log.info { "[Monitor Socket] Access granted for session: #{path}" }
+        send_response(client, {"message_type" => "granted_session", "path" => path}.to_json)
       when :granted_once
         Log.info { "[Monitor Socket] Access granted once for: #{path}" }
         send_response(client, {"message_type" => "granted_once", "path" => path}.to_json)
@@ -161,14 +169,15 @@ module Crybot
 
     # Access response result
     enum AccessResult
-      Granted
-      GrantedOnce
+      Granted          # Permanent access
+      GrantedSession   # Session-scoped access
+      GrantedOnce      # Single-use access
       Denied
       DeniedSuggestPlayground
       Timeout
     end
 
-    def self.request_access(path : String, timeout : Time::Span = 5.minutes) : AccessResult
+    def self.request_access(path : String, session_id : String? = nil, timeout : Time::Span = 5.minutes) : AccessResult
       # Connect to monitor socket
       client = UNIXSocket.new(socket_path)
 
@@ -176,6 +185,7 @@ module Crybot
       request = {
         "message_type" => "request_access",
         "path"         => path,
+        "session_id"   => session_id,
       }.to_json
 
       client.puts(request)
@@ -221,6 +231,8 @@ module Crybot
       case message_type
       when "granted"
         AccessResult::Granted
+      when "granted_session"
+        AccessResult::GrantedSession
       when "granted_once"
         AccessResult::GrantedOnce
       when "denied"
@@ -308,20 +320,29 @@ module Crybot
       monitor_dir = File.join(home, ".crybot", "monitor")
       allowed_paths_file = File.join(monitor_dir, "allowed_paths.yml")
 
-      return false unless File.exists?(allowed_paths_file)
-
-      begin
-        data = YAML.parse(File.read(allowed_paths_file))
-        if data["paths"]?
-          paths = data["paths"].as_a.map(&.as_s)
-          # Expand ~ in stored paths
-          paths.any? { |allowed_path| allowed_path == path || allowed_path == "~/#{File.basename(path)}" }
-        else
-          false
+      # Check permanent permissions
+      if File.exists?(allowed_paths_file)
+        begin
+          data = YAML.parse(File.read(allowed_paths_file))
+          if data["paths"]?
+            paths = data["paths"].as_a.map(&.as_s)
+            # Expand ~ in stored paths
+            if paths.any? { |allowed_path| allowed_path == path || allowed_path == "~/#{File.basename(path)}" }
+              return true
+            end
+          end
+        rescue e : Exception
+          # Continue to session check
         end
-      rescue e : Exception
-        false
       end
+
+      # Check session permissions
+      session_id = get_current_session_id
+      if session_id && session_allowed?(path, session_id)
+        return true
+      end
+
+      false
     end
 
     private def self.add_permanent_access(path : String) : Nil
@@ -362,7 +383,129 @@ module Crybot
       yaml_lines << "last_updated: \"#{Time.local}\""
       File.write(allowed_paths_file, yaml_lines.join("\n") + "\n")
 
-      Log.info { "[LandlockSocket] Added access to: #{actual_path}" }
+      Log.info { "[LandlockSocket] Added permanent access to: #{actual_path}" }
+    end
+
+    # Get current session_id from Agent module's session store
+    private def self.get_current_session_id : String?
+      # This is set by the agent loop before calling tools
+      Crybot::Agent.get_current_session
+    end
+
+    # Add session-scoped access
+    private def self.add_session_access(path : String, session_id : String?) : Nil
+      return unless session_id
+
+      # Use the pending access path if set (parent dir for files)
+      actual_path = @@pending_access_path || path
+      @@pending_access_path = nil # Reset after use
+
+      home = ENV.fetch("HOME", "")
+      monitor_dir = File.join(home, ".crybot", "monitor")
+      Dir.mkdir_p(monitor_dir) unless Dir.exists?(monitor_dir)
+      sessions_file = File.join(monitor_dir, "session_permissions.yml")
+
+      # Load existing sessions
+      sessions = if File.exists?(sessions_file)
+                    data = YAML.parse(File.read(sessions_file))
+                    if sessions_hash = data["sessions"]?.try(&.as_h)
+                      # Convert YAML::Any keys to String
+                      result = {} of String => Array(String)
+                      sessions_hash.each do |k, v|
+                        sess_id = k.as_s
+                        paths = v.as_a.map(&.as_s)
+                        result[sess_id] = paths
+                      end
+                      result
+                    else
+                      {} of String => Array(String)
+                    end
+                  else
+                    {} of String => Array(String)
+                  end
+
+      # Add path to this session
+      sessions[session_id] ||= [] of String
+      sessions[session_id] << actual_path unless sessions[session_id].includes?(actual_path)
+
+      # Save with timestamp
+      yaml_lines = ["---", "sessions:"]
+      sessions.each do |sess_id, paths|
+        yaml_lines << "  \"#{sess_id}\":"
+        paths.each do |p|
+          yaml_lines << "    - \"#{p}\""
+        end
+      end
+      yaml_lines << "last_updated: \"#{Time.local}\""
+      File.write(sessions_file, yaml_lines.join("\n") + "\n")
+
+      Log.info { "[LandlockSocket] Added session access to: #{actual_path} for session: #{session_id}" }
+    end
+
+    # Check if path is allowed for current session
+    private def self.session_allowed?(path : String, session_id : String?) : Bool
+      return false unless session_id
+
+      home = ENV.fetch("HOME", "")
+      monitor_dir = File.join(home, ".crybot", "monitor")
+      sessions_file = File.join(monitor_dir, "session_permissions.yml")
+
+      return false unless File.exists?(sessions_file)
+
+      begin
+        data = YAML.parse(File.read(sessions_file))
+        if sessions_hash = data["sessions"]?.try(&.as_h)
+          session_paths = sessions_hash[session_id]?.try(&.as_a.map(&.as_s))
+          if session_paths
+            # Check if path or any parent is in session permissions
+            session_paths.any? { |allowed_path| path.starts_with?(allowed_path) }
+          else
+            false
+          end
+        else
+          false
+        end
+      rescue e : Exception
+        Log.debug { "[LandlockSocket] Error checking session permissions: #{e.message}" }
+        false
+      end
+    end
+
+    # Clean up expired session permissions (call this periodically or on session end)
+    def self.cleanup_expired_sessions(active_sessions : Array(String)) : Nil
+      home = ENV.fetch("HOME", "")
+      monitor_dir = File.join(home, ".crybot", "monitor")
+      sessions_file = File.join(monitor_dir, "session_permissions.yml")
+
+      return unless File.exists?(sessions_file)
+
+      begin
+        data = YAML.parse(File.read(sessions_file))
+        if sessions_hash = data["sessions"]?.try(&.as_h)
+          # Remove sessions not in active_sessions list
+          sessions_hash = sessions_hash.transform_values(&.as_a.map(&.as_s))
+          active_hash = sessions_hash.select { |sess_id, _paths| active_sessions.includes?(sess_id) }
+
+          unless active_hash.empty?
+            yaml_lines = ["---", "sessions:"]
+            active_hash.each do |sess_id, paths|
+              yaml_lines << "  \"#{sess_id}\":"
+              paths.each do |p|
+                yaml_lines << "    - \"#{p}\""
+              end
+            end
+            yaml_lines << "last_updated: \"#{Time.local}\""
+            File.write(sessions_file, yaml_lines.join("\n") + "\n")
+          else
+            # No active sessions, remove file
+            File.delete(sessions_file) if File.exists?(sessions_file)
+          end
+
+          Log.info { "[LandlockSocket] Cleaned up expired sessions" }
+        end
+      rescue e : Exception
+        Log.error(exception: e) { "[LandlockSocket] Error cleaning up sessions: #{e.message}" }
+      end
     end
 
     # Prompt user for access (rofi or terminal)
@@ -404,8 +547,9 @@ module Crybot
       message = "🔒 Agent requests: #{path}#{parent_note}"
 
       options = [
-        "Allow",
-        "Once Only",
+        "Always",
+        "This Session",
+        "Once",
         "Deny - Suggest using playground",
         "Deny",
       ]
@@ -432,8 +576,9 @@ module Crybot
 
       selection = result.to_s.strip
       case selection
-      when "Allow"                           then :granted
-      when "Once Only"                       then :granted_once
+      when "Always"                           then :granted
+      when "This Session"                    then :granted_session
+      when "Once"                             then :granted_once
       when "Deny - Suggest using playground" then :denied_suggest_playground
       when "Deny"                            then :denied
       else                                        nil
@@ -450,22 +595,25 @@ module Crybot
       puts "The agent wants to access: #{path}#{parent_note}"
       puts ""
       puts "Options:"
-      puts "  1) Allow"
-      puts "  2) Once Only"
-      puts "  3) Deny - Suggest using playground"
-      puts "  4) Deny"
-      print "Choice [1-4]: "
+      puts "  1) Always"
+      puts "  2) This Session"
+      puts "  3) Once"
+      puts "  4) Deny - Suggest using playground"
+      puts "  5) Deny"
+      print "Choice [1-5]: "
 
       response = gets.try(&.strip) || ""
 
       case response
-      when "1", "allow", "Allow"
+      when "1", "always", "Always"
         :granted
-      when "2", "once", "Once Only"
+      when "2", "session", "This Session"
+        :granted_session
+      when "3", "once", "Once"
         :granted_once
-      when "3", "playground", "Deny - Suggest using playground"
+      when "4", "playground", "Deny - Suggest using playground"
         :denied_suggest_playground
-      when "4", "deny", "Deny"
+      when "5", "deny", "Deny"
         :denied
       else
         :denied

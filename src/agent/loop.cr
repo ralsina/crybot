@@ -26,6 +26,20 @@ require "log"
 
 module Crybot
   module Agent
+    # Store session_id per fiber for Landlock access requests
+    @@session_store = Hash(UInt64, String).new
+
+    def self.set_current_session(session_id : String) : Nil
+      @@session_store[Fiber.current.object_id] = session_id
+    end
+
+    def self.get_current_session : String?
+      @@session_store[Fiber.current.object_id]?
+    end
+
+    def self.clear_current_session : Nil
+      @@session_store.delete(Fiber.current.object_id)
+    end
     # Struct to track individual tool execution
     struct ToolExecution
       property tool_name : String
@@ -236,6 +250,9 @@ module Crybot
           # Check for tool calls
           calls = response.tool_calls
           if calls && !calls.empty?
+            # Store session_id in module-level store for Landlock access requests
+            Crybot::Agent.set_current_session(session_key)
+
             # Execute each tool call
             calls.each do |tool_call|
               result = Tools::Registry.execute(tool_call.name, tool_call.arguments)
