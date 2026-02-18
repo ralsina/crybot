@@ -33,7 +33,7 @@ module ToolRunner
 
     # Network access rights (ABI v3 - Linux 6.7+)
     ACCESS_NET_CONNECT_TCP = 1_u64 << 0
-    ACCESS_NET_BIND_TCP   = 1_u64 << 1
+    ACCESS_NET_BIND_TCP    = 1_u64 << 1
 
     # All network rights we want to control
     ACCESS_NET_TCP = ACCESS_NET_CONNECT_TCP | ACCESS_NET_BIND_TCP

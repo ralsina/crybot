@@ -92,7 +92,7 @@ module Crybot
             },
             "channels" => {
               "telegram" => {
-                "enabled"    => JSON::Any.new(config.channels.telegram.enabled),
+                "enabled"    => JSON::Any.new(config.channels.telegram.enabled?),
                 "token"      => mask_value(config.channels.telegram.token),
                 "allow_from" => JSON::Any.new(config.channels.telegram.allow_from.map { |v| JSON::Any.new(v) }),
               },

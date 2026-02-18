@@ -26,7 +26,7 @@ module Crybot
         agent_loop = @agent_loop
         if agent_loop
           model = @config.agents.defaults.model
-          @repl_instance = ReplInstance.new(agent_loop, model, "repl", ->{ @running })
+          @repl_instance = ReplInstance.new(agent_loop, model, "repl", -> { @running })
 
           @repl_fiber = spawn do
             @repl_instance.try(&.run)
@@ -91,7 +91,7 @@ module Crybot
         @fancy : Fancyline
         @running_check : Proc(Bool)
 
-        def initialize(@agent_loop : Crybot::Agent::Loop, @model : String, @session_key : String = "repl", @running_check : Proc(Bool) = ->{ true })
+        def initialize(@agent_loop : Crybot::Agent::Loop, @model : String, @session_key : String = "repl", @running_check : Proc(Bool) = -> { true })
           @fancy = Fancyline.new
 
           # Setup display widgets
@@ -159,7 +159,6 @@ module Crybot
 
                   loop do
                     # Check if request is done
-                    has_response = false
                     select
                     when _ = response_channel.receive?
                       has_response = true
@@ -201,8 +200,6 @@ module Crybot
                   sleep 0.1.seconds
 
                   # Check if request is done or cancelled
-                  done = false
-                  cancelled = false
                   select
                   when _ = response_channel.receive?
                     done = true
@@ -216,9 +213,6 @@ module Crybot
               end
 
               # Main fiber waits for either response or cancellation
-              agent_response = nil
-              cancelled = false
-
               select
               when r = response_channel.receive
                 agent_response = r

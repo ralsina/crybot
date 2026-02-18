@@ -155,9 +155,6 @@ module Crybot
         end
 
         # Wait for either response or cancellation
-        agent_response = nil
-        cancelled = false
-
         select
         when r = response_channel.receive
           agent_response = r

@@ -98,7 +98,7 @@ module Crybot
 
       property name : String        # e.g., "api_key"
       property description : String # e.g., "OpenWeatherMap API Key"
-      property required : Bool = true
+      property? required : Bool = true
       property placeholder : String? # e.g., "your_api_key_here"
 
       def to_h : Hash(String, JSON::Any)
@@ -230,7 +230,7 @@ module Crybot
 
         @credentials.try do |creds|
           creds.each do |cred|
-            if cred.required && @credential_values[cred.name]?.nil?
+            if cred.required? && @credential_values[cred.name]?.nil?
               missing << cred
             end
           end

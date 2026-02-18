@@ -25,7 +25,7 @@ module ToolRunner
     command : String,
     restrictions : Landlock::Restrictions,
     timeout : Time::Span? = nil,
-    env : Hash(String, String)? = nil
+    env : Hash(String, String)? = nil,
   ) : ExecutionResult
     Executor.execute(command, restrictions, timeout, env)
   end

@@ -85,7 +85,7 @@ module Crybot
         end
 
         # Check Telegram token
-        if config.channels.telegram.enabled && config.channels.telegram.token.empty?
+        if config.channels.telegram.enabled? && config.channels.telegram.token.empty?
           puts "Error: Telegram enabled but token not configured."
           puts "Please edit #{Config::Loader.config_file} and add your bot token"
           puts "\nGet a bot token from @BotFather on Telegram"

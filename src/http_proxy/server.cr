@@ -169,7 +169,7 @@ module HttpProxy
       config = Crybot::Config::Loader.load
       proxy_config = config.proxy
 
-      unless proxy_config.enabled
+      unless proxy_config.enabled?
         Log.info { "HTTP proxy not enabled in config, skipping startup" }
         return
       end

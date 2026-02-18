@@ -11,7 +11,7 @@ module Crybot
         url : String,
         headers : HTTP::Headers,
         body : String,
-        cancellation_token : Agent::CancellationToken?
+        cancellation_token : Agent::CancellationToken?,
       ) : HTTP::Client::Response
         # Create channels for result and cancellation
         response_channel = Channel(HTTP::Client::Response).new

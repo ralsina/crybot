@@ -65,7 +65,7 @@ module HttpProxy
 
         # Update config with new whitelist
         updated_proxy = Crybot::Config::ProxyConfig.new(
-          enabled: proxy_config.enabled,
+          enabled: proxy_config.enabled?,
           host: proxy_config.host,
           port: proxy_config.port,
           domain_whitelist: whitelist,

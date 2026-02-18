@@ -8,7 +8,7 @@ module ToolRunner
       command : String,
       restrictions : Landlock::Restrictions,
       timeout : Time::Span?,
-      env : Hash(String, String)?
+      env : Hash(String, String)?,
     ) : ExecutionResult
       # Create channels for result and error
       result_channel = Channel(ExecutionResult).new

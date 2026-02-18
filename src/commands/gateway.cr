@@ -21,7 +21,7 @@ module Crybot
         return unless validate_config(config)
 
         # Start config watcher before starting channels
-        watcher = Config::Watcher.new(Config::Loader.config_file, ->{ restart })
+        watcher = Config::Watcher.new(Config::Loader.config_file, -> { restart })
         @watcher = watcher
         watcher.start
 
@@ -39,7 +39,7 @@ module Crybot
       # ameba:disable Metrics/CyclomaticComplexity
       private def validate_config(config : Config::ConfigFile) : Bool
         # Check if any channels are enabled
-        unless config.channels.telegram.enabled
+        unless config.channels.telegram.enabled?
           Log.error { "Error: No channels enabled." }
           Log.error { "Enable channels in #{Config::Loader.config_file}" }
           Log.error { "" }
@@ -90,7 +90,7 @@ module Crybot
         end
 
         # Check Telegram token
-        if config.channels.telegram.enabled && config.channels.telegram.token.empty?
+        if config.channels.telegram.enabled? && config.channels.telegram.token.empty?
           Log.error { "Error: Telegram enabled but token not configured." }
           Log.error { "Please edit #{Config::Loader.config_file} and add your bot token" }
           Log.error { "" }

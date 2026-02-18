@@ -70,7 +70,7 @@ module Crybot
         new_features = config.features
 
         # Migrate old channels.telegram.enabled to features.gateway
-        if config.channels.telegram.enabled && !config.features.gateway
+        if config.channels.telegram.enabled? && !config.features.gateway
           new_features = new_features.with_gateway(true)
           needs_migration = true
         end

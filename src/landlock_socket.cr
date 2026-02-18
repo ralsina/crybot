@@ -120,7 +120,7 @@ module Crybot
         Log.info { "[Monitor Socket] Access granted for: #{path}" }
         send_response(client, {"message_type" => "granted", "path" => path}.to_json)
       when :granted_session
-        add_session_access(path, get_current_session_id)
+        add_session_access(path, current_session_id)
         Log.info { "[Monitor Socket] Access granted for session: #{path}" }
         send_response(client, {"message_type" => "granted_session", "path" => path}.to_json)
       when :granted_once
@@ -337,7 +337,7 @@ module Crybot
       end
 
       # Check session permissions
-      session_id = get_current_session_id
+      session_id = current_session_id
       if session_id && session_allowed?(path, session_id)
         return true
       end
@@ -362,7 +362,7 @@ module Crybot
       paths = if File.exists?(allowed_paths_file)
                 data = YAML.parse(File.read(allowed_paths_file))
                 if paths_arr = data["paths"]?.try(&.as_a)
-                  paths_arr.map { |path| path.as_s.strip.gsub(/^'''|'''$/, "").gsub(/^'|'$/, "") }
+                  paths_arr.map { |path_| path_.as_s.strip.gsub(/^'''|'''$/, "").gsub(/^'|'$/, "") }
                 else
                   [] of String
                 end
@@ -377,8 +377,8 @@ module Crybot
 
       # Save - use simple YAML without extra quoting
       yaml_lines = ["---", "paths:"]
-      paths.each do |path|
-        yaml_lines << "  - \"#{path}\""
+      paths.each do |path_|
+        yaml_lines << "  - \"#{path_}\""
       end
       yaml_lines << "last_updated: \"#{Time.local}\""
       File.write(allowed_paths_file, yaml_lines.join("\n") + "\n")
@@ -387,9 +387,9 @@ module Crybot
     end
 
     # Get current session_id from Agent module's session store
-    private def self.get_current_session_id : String?
+    private def self.current_session_id : String?
       # This is set by the agent loop before calling tools
-      Crybot::Agent.get_current_session
+      Crybot::Agent.current_session
     end
 
     # Add session-scoped access
@@ -432,8 +432,8 @@ module Crybot
       yaml_lines = ["---", "sessions:"]
       sessions.each do |sess_id, paths|
         yaml_lines << "  \"#{sess_id}\":"
-        paths.each do |p|
-          yaml_lines << "    - \"#{p}\""
+        paths.each do |path_|
+          yaml_lines << "    - \"#{path_}\""
         end
       end
       yaml_lines << "last_updated: \"#{Time.local}\""
@@ -493,8 +493,8 @@ module Crybot
             yaml_lines = ["---", "sessions:"]
             active_hash.each do |sess_id, paths|
               yaml_lines << "  \"#{sess_id}\":"
-              paths.each do |p|
-                yaml_lines << "    - \"#{p}\""
+              paths.each do |path|
+                yaml_lines << "    - \"#{path}\""
               end
             end
             yaml_lines << "last_updated: \"#{Time.local}\""
@@ -640,7 +640,7 @@ module Crybot
 
       # Update config with new whitelist
       updated_proxy = Crybot::Config::ProxyConfig.new(
-        enabled: proxy_config.enabled,
+        enabled: proxy_config.enabled?,
         host: proxy_config.host,
         port: proxy_config.port,
         domain_whitelist: whitelist,

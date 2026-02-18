@@ -28,7 +28,7 @@ module Crybot
         config = Config::Loader.migrate_config(config)
 
         # Start HTTP proxy if enabled
-        if config.proxy.enabled
+        if config.proxy.enabled?
           Log.info { "[Crybot] Starting HTTP proxy..." }
           HttpProxy::Server.start
         end

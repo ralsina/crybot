@@ -93,7 +93,7 @@ module Crybot
         include YAML::Serializable
 
         property api_key : String = ""
-        property lite : Bool = false
+        property? lite : Bool = false
 
         def initialize(@api_key = "", @lite = false)
         end
@@ -112,9 +112,8 @@ module Crybot
       struct GroqConfig
         include YAML::Serializable
 
-        # ameba:disable Naming/QueryBoolMethods
         property api_key : String = ""
-        property lite : Bool = false
+        property? lite : Bool = false
 
         def initialize(@api_key = "", @lite = false)
         end
@@ -148,7 +147,7 @@ module Crybot
         include YAML::Serializable
 
         # ameba:disable Naming/QueryBoolMethods
-        property enabled : Bool = false
+        property? enabled : Bool = false
         property token : String = ""
         property allow_from : Array(String) = [] of String
       end
@@ -286,7 +285,7 @@ module Crybot
     struct ProxyConfig
       include YAML::Serializable
 
-      property enabled : Bool = false
+      property? enabled : Bool = false
       property host : String = "127.0.0.1"
       property port : Int32 = 3004
       property domain_whitelist : Array(String) = [] of String

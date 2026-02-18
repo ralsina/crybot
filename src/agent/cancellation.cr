@@ -6,7 +6,7 @@ module Crybot
 
     # Cancellation token for interruptible operations
     class CancellationToken
-      getter cancelled : Bool
+      getter? cancelled : Bool
 
       def initialize
         @cancelled = false

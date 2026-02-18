@@ -21,7 +21,7 @@ module Crybot
           # Check channels
           Log.info { "" }
           Log.info { "Channels:" }
-          if config.channels.telegram.enabled
+          if config.channels.telegram.enabled?
             if config.channels.telegram.token.empty?
               Log.warn { "  Telegram: configured but missing token" }
             else

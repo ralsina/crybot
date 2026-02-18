@@ -47,7 +47,7 @@ module Crybot
         @scheduler_fiber = spawn run_scheduler
 
         @running = true
-        task_count = @tasks.count(&.enabled)
+        task_count = @tasks.count(&.enabled?)
         puts "[#{Time.local.to_s("%H:%M:%S")}] Scheduled tasks started with #{task_count} enabled tasks"
       end
 
@@ -59,7 +59,7 @@ module Crybot
       def reload : Nil
         puts "[#{Time.local.to_s("%H:%M:%S")}] Reloading scheduled tasks..."
         load_tasks
-        task_count = @tasks.count(&.enabled)
+        task_count = @tasks.count(&.enabled?)
         puts "[#{Time.local.to_s("%H:%M:%S")}] Scheduled tasks reloaded (#{@tasks.size} total, #{task_count} enabled)"
       end
 
@@ -72,7 +72,7 @@ module Crybot
       end
 
       def add_task(task : TaskConfig) : Nil
-        puts "[ScheduledTask] Adding new task '#{task.name}' (enabled: #{task.enabled}, forward_to: #{task.forward_to || "none"})"
+        puts "[ScheduledTask] Adding new task '#{task.name}' (enabled: #{task.enabled?}, forward_to: #{task.forward_to || "none"})"
         @tasks << task
         save_tasks
       end

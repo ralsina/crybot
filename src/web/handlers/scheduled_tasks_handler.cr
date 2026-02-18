@@ -108,7 +108,7 @@ module Crybot
             prompt = data["prompt"]?.try(&.as_s) || existing_task.prompt
             interval = data["interval"]?.try(&.as_s) || existing_task.interval
             description = data["description"]?.try(&.as_s)
-            enabled = data["enabled"]?.try(&.as_bool) || existing_task.enabled
+            enabled = data["enabled"]?.try(&.as_bool) || existing_task.enabled?
             forward_to = data["forward_to"]?.try(&.as_s) || existing_task.forward_to
             memory_expiration = data["memory_expiration"]?.try(&.as_s)
 

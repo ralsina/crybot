@@ -10,8 +10,7 @@ module Crybot
       property description : String?
       property prompt : String
       property interval : String
-      # ameba:disable Naming/QueryBoolMethods
-      property enabled : Bool = true
+      property? enabled : Bool = true
       property last_run : Time?
       property next_run : Time?
       property forward_to : String?        # e.g., "telegram:chat_id" or "web"

@@ -265,7 +265,7 @@ module Crybot
       end
 
       # Get all credential definitions
-      def get_credentials : Array(CredentialRequirement)
+      def credentials : Array(CredentialRequirement)
         @config.credentials || [] of CredentialRequirement
       end
     end

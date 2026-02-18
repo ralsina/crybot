@@ -27,9 +27,8 @@ module Crybot
       end
 
       # Response from monitor
-      # ameba:disable Naming/QueryBoolMethods
       struct ToolResponse
-        property success : Bool
+        property? success : Bool
         property result : String
 
         def initialize(@success : Bool, @result : String)
@@ -115,7 +114,7 @@ module Crybot
         proxy_config = load_proxy_config
 
         # If proxy is enabled, apply network Landlock restrictions
-        if proxy_config && proxy_config.enabled
+        if proxy_config && proxy_config.enabled?
           # Allow TCP connections ONLY to the proxy port
           # This forces all HTTP/HTTPS traffic through the proxy
           restrictions.allow_tcp_connect(proxy_config.port.to_u16)
@@ -142,7 +141,7 @@ module Crybot
               Log.warn { "[ToolMonitor] Access denied for: #{path}" }
 
               # Get current session_id from Agent module's session store
-              session_id = Crybot::Agent.get_current_session
+              session_id = Crybot::Agent.current_session
 
               access_result = LandlockSocket.request_access(path, session_id)
 
@@ -184,7 +183,7 @@ module Crybot
         _isolated_context = Fiber::ExecutionContext::Isolated.new("ToolExecution", spawn_context: Fiber::ExecutionContext.default) do
           begin
             # Set proxy environment variables if proxy is enabled
-            if proxy_config && proxy_config.enabled
+            if proxy_config && proxy_config.enabled?
               proxy_url = "http://#{proxy_config.host}:#{proxy_config.port}"
               ENV["http_proxy"] = proxy_url
               ENV["https_proxy"] = proxy_url
@@ -213,7 +212,7 @@ module Crybot
             error_channel.send(e)
           ensure
             # Clean up proxy environment variables
-            if proxy_config && proxy_config.enabled
+            if proxy_config && proxy_config.enabled?
               ENV.delete("http_proxy")
               ENV.delete("https_proxy")
             end

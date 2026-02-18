@@ -29,11 +29,11 @@ module Crybot
     # Store session_id per fiber for Landlock access requests
     @@session_store = Hash(UInt64, String).new
 
-    def self.set_current_session(session_id : String) : Nil
+    def self.current_session=(session_id : String) : Nil
       @@session_store[Fiber.current.object_id] = session_id
     end
 
-    def self.get_current_session : String?
+    def self.current_session : String?
       @@session_store[Fiber.current.object_id]?
     end
 
@@ -154,9 +154,9 @@ module Crybot
       private def lite_mode? : Bool
         case @provider_name
         when "groq"
-          @config.providers.groq.lite
+          @config.providers.groq.lite?
         when "openrouter"
-          @config.providers.openrouter.lite
+          @config.providers.openrouter.lite?
         else
           false # Lite mode off by default for other providers
         end
@@ -252,7 +252,7 @@ module Crybot
           calls = response.tool_calls
           if calls && !calls.empty?
             # Store session_id in module-level store for Landlock access requests
-            Crybot::Agent.set_current_session(session_key)
+            Crybot::Agent.current_session = session_key
 
             # Execute each tool call
             calls.each do |tool_call|

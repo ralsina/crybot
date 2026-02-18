@@ -78,7 +78,7 @@ module Crybot
         model = config.agents.defaults.model
         # Create a custom REPL instance with "agent" session key
         # Use ->{ true } as running_check so it continues until user quits
-        repl_instance = Features::ReplFeature::ReplInstance.new(agent_loop, model, "agent", ->{ true })
+        repl_instance = Features::ReplFeature::ReplInstance.new(agent_loop, model, "agent", -> { true })
 
         # Check if stdin is a TTY (interactive terminal)
         if STDIN.tty?
