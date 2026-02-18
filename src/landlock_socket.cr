@@ -532,12 +532,26 @@ module Crybot
       # Check for graphical environment
       has_display = ENV.has_key?("DISPLAY") || ENV.has_key?("WAYLAND_DISPLAY")
 
+      # Priority 1: rofi for GUI sessions
       if has_display && Process.find_executable("rofi")
         result = prompt_with_rofi(display_path, parent_note)
         return result if result
       end
 
-      # Fall back to terminal prompt
+      # Priority 2 & 3: dialog/whiptail for REPL sessions
+      if running_in_repl?
+        if has_dialog? && terminal_sufficient_for_dialog?
+          result = prompt_with_dialog(display_path, parent_note)
+          return result if result
+        end
+
+        if has_whiptail? && terminal_sufficient_for_dialog?
+          result = prompt_with_whiptail(display_path, parent_note)
+          return result if result
+        end
+      end
+
+      # Priority 4: Terminal fallback for all cases
       prompt_with_terminal(display_path, parent_note)
     end
 
@@ -584,6 +598,142 @@ module Crybot
       else                                        nil
       end
     rescue e : Exception
+      nil
+    end
+
+    # Check if running in REPL environment
+    private def self.running_in_repl? : Bool
+      session_id = Crybot::Agent.current_session
+      session_id == "repl"
+    rescue
+      false
+    end
+
+    # Check if terminal is large enough for dialog (min 20 rows x 60 cols)
+    private def self.terminal_sufficient_for_dialog? : Bool
+      return true if ENV["TEST"]? # Allow testing in CI
+      result = `stty size 2>/dev/null`.try(&.strip)
+      return false unless result
+      parts = result.split(' ')
+      return false if parts.size < 2
+      rows = parts[0].to_i?
+      cols = parts[1].to_i?
+      return false unless rows && cols
+      rows >= 20 && cols >= 60
+    rescue
+      false
+    end
+
+    # Check if dialog is available
+    private def self.has_dialog? : Bool
+      !!Process.find_executable("dialog")
+    end
+
+    # Check if whiptail is available
+    private def self.has_whiptail? : Bool
+      !!Process.find_executable("whiptail")
+    end
+
+    # Prompt using dialog
+    private def self.prompt_with_dialog(path : String, parent_note : String) : Symbol?
+      message = "Agent requests access to: #{path}#{parent_note}"
+
+      options = [
+        "Always",
+        "This Session",
+        "Once",
+        "Deny - Suggest playground",
+        "Deny",
+      ]
+
+      # Build dialog command with menu
+      # Exit status: 0 = selected, 1 = cancel/ESC
+      args = [
+        "--title", "Landlock Access Request",
+        "--menu", message,
+        "15", "60", "5", # height, width, menu-height
+      ]
+
+      options.each do |opt|
+        args << opt
+        args << ""
+      end
+
+      result = IO::Memory.new
+      status = Process.run(
+        "dialog",
+        args,
+        output: result,
+        error: Process::Redirect::Close
+      )
+
+      unless status.success?
+        # User cancelled (ESC) or dialog failed
+        return :denied
+      end
+
+      selection = result.to_s.strip
+      case selection
+      when "Always"                    then :granted
+      when "This Session"              then :granted_session
+      when "Once"                      then :granted_once
+      when "Deny - Suggest playground" then :denied_suggest_playground
+      when "Deny"                      then :denied
+      else                                  nil
+      end
+    rescue e : Exception
+      Log.debug { "[LandlockSocket] Dialog prompt failed: #{e.message}" }
+      nil
+    end
+
+    # Prompt using whiptail
+    private def self.prompt_with_whiptail(path : String, parent_note : String) : Symbol?
+      message = "Agent requests access to: #{path}#{parent_note}"
+
+      options = [
+        "Always",
+        "This Session",
+        "Once",
+        "Deny - Suggest playground",
+        "Deny",
+      ]
+
+      # Build whiptail command with menu
+      # Exit status: 0 = selected, 1 = cancel/ESC
+      args = [
+        "--title", "Landlock Access Request",
+        "--menu", message,
+        "15", "60", "5", # height, width, menu-height
+      ]
+
+      options.each do |opt|
+        args << opt
+        args << ""
+      end
+
+      result = IO::Memory.new
+      status = Process.run(
+        "whiptail",
+        args,
+        output: result
+      )
+
+      unless status.success?
+        # User cancelled (ESC) or whiptail failed
+        return :denied
+      end
+
+      selection = result.to_s.strip
+      case selection
+      when "Always"                    then :granted
+      when "This Session"              then :granted_session
+      when "Once"                      then :granted_once
+      when "Deny - Suggest playground" then :denied_suggest_playground
+      when "Deny"                      then :denied
+      else                                  nil
+      end
+    rescue e : Exception
+      Log.debug { "[LandlockSocket] Whiptail prompt failed: #{e.message}" }
       nil
     end
 
@@ -668,13 +818,118 @@ module Crybot
       # Check for graphical environment
       has_display = ENV.has_key?("DISPLAY") || ENV.has_key?("WAYLAND_DISPLAY")
 
+      # Priority 1: rofi for GUI sessions
       if has_display && Process.find_executable("rofi")
         result = prompt_domain_with_rofi(domain)
         return result if result
       end
 
-      # Fall back to terminal prompt
+      # Priority 2 & 3: dialog/whiptail for REPL sessions
+      if running_in_repl?
+        if has_dialog? && terminal_sufficient_for_dialog?
+          result = prompt_domain_with_dialog(domain)
+          return result if result
+        end
+
+        if has_whiptail? && terminal_sufficient_for_dialog?
+          result = prompt_domain_with_whiptail(domain)
+          return result if result
+        end
+      end
+
+      # Priority 4: Terminal fallback for all cases
       prompt_domain_with_terminal(domain)
+    end
+
+    # Prompt using dialog for domain access
+    private def self.prompt_domain_with_dialog(domain : String) : Symbol?
+      message = "Agent requests network access to: #{domain}"
+
+      options = [
+        "Allow",
+        "Once Only",
+        "Deny",
+      ]
+
+      # Build dialog command with menu
+      args = [
+        "--title", "Network Access Request",
+        "--menu", message,
+        "12", "60", "3", # height, width, menu-height
+      ]
+
+      options.each do |opt|
+        args << opt
+        args << ""
+      end
+
+      result = IO::Memory.new
+      status = Process.run(
+        "dialog",
+        args,
+        output: result,
+        error: Process::Redirect::Close
+      )
+
+      unless status.success?
+        return :denied
+      end
+
+      selection = result.to_s.strip
+      case selection
+      when "Allow"     then :granted
+      when "Once Only" then :granted_once
+      when "Deny"      then :denied
+      else                  nil
+      end
+    rescue e : Exception
+      Log.debug { "[LandlockSocket] Dialog domain prompt failed: #{e.message}" }
+      nil
+    end
+
+    # Prompt using whiptail for domain access
+    private def self.prompt_domain_with_whiptail(domain : String) : Symbol?
+      message = "Agent requests network access to: #{domain}"
+
+      options = [
+        "Allow",
+        "Once Only",
+        "Deny",
+      ]
+
+      # Build whiptail command with menu
+      args = [
+        "--title", "Network Access Request",
+        "--menu", message,
+        "12", "60", "3", # height, width, menu-height
+      ]
+
+      options.each do |opt|
+        args << opt
+        args << ""
+      end
+
+      result = IO::Memory.new
+      status = Process.run(
+        "whiptail",
+        args,
+        output: result
+      )
+
+      unless status.success?
+        return :denied
+      end
+
+      selection = result.to_s.strip
+      case selection
+      when "Allow"     then :granted
+      when "Once Only" then :granted_once
+      when "Deny"      then :denied
+      else                  nil
+      end
+    rescue e : Exception
+      Log.debug { "[LandlockSocket] Whiptail domain prompt failed: #{e.message}" }
+      nil
     end
 
     # Prompt using rofi for domain access

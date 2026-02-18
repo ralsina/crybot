@@ -25,10 +25,22 @@ module Crybot
           {
             session_id: session_id,
             messages:   messages.map do |msg|
-              {
-                role:    msg.role,
-                content: msg.content,
-              }
+              msg_hash = Hash(String, JSON::Any).new
+              msg_hash["role"] = JSON::Any.new(msg.role)
+              msg_hash["content"] = JSON::Any.new(msg.content) if msg.content
+
+              # Include tool_calls if present
+              calls = msg.tool_calls
+              if calls && !calls.empty?
+                msg_hash["tool_calls"] = JSON::Any.new(calls.map(&.to_h).map { |hash| JSON::Any.new(hash) })
+              end
+
+              # Include tool_call_id if present
+              if tool_id = msg.tool_call_id
+                msg_hash["tool_call_id"] = JSON::Any.new(tool_id)
+              end
+
+              msg_hash
             end,
           }.to_json
         end

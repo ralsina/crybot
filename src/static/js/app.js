@@ -1041,16 +1041,23 @@ class CrybotWeb {
           this.displayToolExecutions(data.tool_executions, this.getCurrentContainer());
         }
 
-        // Reload the current session from backend to get the complete state
-        // This ensures frontend is just a reflection of backend truth
+        // Add the assistant's response message
+        // We add it directly instead of reloading to preserve tool executions
+        if (data.content) {
+          this.addMessage(data.content, 'assistant', this.getCurrentContainer());
+          this.scrollToBottom(this.getCurrentContainer());
+        }
+
+        // Update session list to reflect the new message
+        if (this.currentTab === 'chat-tab') {
+          this.loadSessionsList();
+        }
+
+        // Update local session ID if provided
         if (data.session_id) {
-          this.reloadSessionFromBackend(data.session_id).catch(err => {
-            console.error('Failed to reload session:', err);
-          });
-        } else if (this.sessionId) {
-          this.reloadSessionFromBackend(this.sessionId).catch(err => {
-            console.error('Failed to reload session:', err);
-          });
+          this.sessionId = data.session_id;
+          localStorage.setItem('crybotChatSession', data.session_id);
+          this.currentViewSessions['chat-messages'] = data.session_id;
         }
         break;
       case 'telegram_message':
@@ -1096,8 +1103,23 @@ class CrybotWeb {
     this.messageHistory['chat-messages'] = userMessages;
 
     messages.forEach((msg) => {
-      if (msg.content && (msg.role === 'user' || msg.role === 'assistant')) {
-        this.addMessage(msg.content, msg.role, 'chat-messages');
+      if (msg.role === 'user' || msg.role === 'assistant') {
+        // If assistant message has tool_calls, display them first
+        if (msg.role === 'assistant' && msg.tool_calls && Array.isArray(msg.tool_calls) && msg.tool_calls.length > 0) {
+          // Convert tool_calls format to match tool_executions format
+          const toolExecutions = msg.tool_calls.map(tc => ({
+            tool_name: tc.name,
+            arguments: tc.arguments || {},
+            result: 'Result not available in history',
+            success: true
+          }));
+          this.displayToolExecutions(toolExecutions, 'chat-messages');
+        }
+
+        // Then display the message content if present
+        if (msg.content) {
+          this.addMessage(msg.content, msg.role, 'chat-messages');
+        }
       }
     });
 
@@ -1271,8 +1293,23 @@ class CrybotWeb {
 
       // Display messages
       data.messages.forEach(msg => {
-        if (msg.content && (msg.role === 'user' || msg.role === 'assistant')) {
-          this.addMessage(msg.content, msg.role, containerId);
+        if (msg.role === 'user' || msg.role === 'assistant') {
+          // If assistant message has tool_calls, display them first
+          if (msg.role === 'assistant' && msg.tool_calls && Array.isArray(msg.tool_calls) && msg.tool_calls.length > 0) {
+            // Convert tool_calls format to match tool_executions format
+            const toolExecutions = msg.tool_calls.map(tc => ({
+              tool_name: tc.name,
+              arguments: tc.arguments || {},
+              result: 'Result not available in history',
+              success: true
+            }));
+            this.displayToolExecutions(toolExecutions, containerId);
+          }
+
+          // Then display the message content if present
+          if (msg.content) {
+            this.addMessage(msg.content, msg.role, containerId);
+          }
         }
       });
 
@@ -2244,8 +2281,23 @@ class CrybotWeb {
 
       // Display messages (filter out system messages)
       data.messages.forEach(msg => {
-        if (msg.content && (msg.role === 'user' || msg.role === 'assistant')) {
-          this.addMessage(msg.content, msg.role, 'chat-messages');
+        if (msg.role === 'user' || msg.role === 'assistant') {
+          // If assistant message has tool_calls, display them first
+          if (msg.role === 'assistant' && msg.tool_calls && Array.isArray(msg.tool_calls) && msg.tool_calls.length > 0) {
+            // Convert tool_calls format to match tool_executions format
+            const toolExecutions = msg.tool_calls.map(tc => ({
+              tool_name: tc.name,
+              arguments: tc.arguments || {},
+              result: 'Result not available in history',
+              success: true
+            }));
+            this.displayToolExecutions(toolExecutions, 'chat-messages');
+          }
+
+          // Then display the message content if present
+          if (msg.content) {
+            this.addMessage(msg.content, msg.role, 'chat-messages');
+          }
         }
       });
 
