@@ -114,6 +114,7 @@ module Crybot
         "sock_#{Random::Secure.hex(8)}"
       end
 
+      # ameba:disable Metrics/CyclomaticComplexity
       private def handle_chat_message(socket, data : JSON::Any) : Nil
         session_id = data["session_id"]?.try(&.as_s) || @session_id
         content = data["content"]?.try(&.as_s) || ""
