@@ -13,9 +13,9 @@ Crybot is a modular personal AI assistant built in Crystal. It provides multiple
 - **Skills System**: Create and manage reusable AI behaviors as markdown files
 - **Scheduled Tasks**: Automate recurring AI tasks with natural language scheduling
 - **Session Management**: Persistent conversation history with multiple concurrent sessions
-- **Multiple Interfaces**: REPL, Web UI, Telegram bot, Voice interaction, and Slack (experimental)
+- **Multiple Interfaces**: REPL, Web UI, Telegram bot, Voice interaction, Slack (experimental), and WhatsApp (experimental)
 - **Real-time Updates**: WebSocket support for live message streaming in web UI
-- **Unified Channels**: Forward messages to any channel (Telegram, Web, Voice, REPL, Slack)
+- **Unified Channels**: Forward messages to any channel (Telegram, Web, Voice, REPL, Slack, WhatsApp)
 - **Secure Proxy**: HTTP/HTTPS proxy with domain whitelisting and user access control for network requests
 
 ## Installation
@@ -96,6 +96,7 @@ features:
   repl: false            # Advanced REPL
   scheduled_tasks: true  # Automated tasks
   slack: false           # Slack integration (experimental)
+  whatsapp: false       # WhatsApp integration (experimental)
 ```
 
 ### Web UI
@@ -226,6 +227,37 @@ export SLACK_API_TOKEN="xoxb-..."
 - Scheduled task forwarding
 
 **See the [Slack Integration documentation](https://crybot.ralsina.me/books/user-guide/15-slack/) for detailed setup instructions.**
+
+### WhatsApp Integration (Experimental)
+
+**Note:** This feature is experimental and has not been extensively tested. Feedback and improvements are welcome!
+
+Requires a public HTTPS server for webhook support (or use ngrok for testing).
+
+Configure in `config.yml`:
+
+```yaml
+features:
+  web: true      # Required for webhooks
+  whatsapp: true
+
+channels:
+  whatsapp:
+    enabled: true
+    phone_number_id: "YOUR_PHONE_NUMBER_ID"
+    access_token: "YOUR_ACCESS_TOKEN"
+    webhook_verify_token: "YOUR_VERIFY_TOKEN"
+    app_secret: "YOUR_APP_SECRET"
+```
+
+**Features:**
+- Meta WhatsApp Cloud API integration
+- Webhook-based message receiving
+- Template message support (required for first message)
+- Channel-specific sessions (whatsapp:PHONE_NUMBER)
+- Scheduled task forwarding
+
+**See the [WhatsApp Integration documentation](https://crybot.ralsina.me/books/user-guide/16-whatsapp/) for detailed setup instructions.**
 
 ## Skills System
 

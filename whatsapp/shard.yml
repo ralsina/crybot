@@ -1,0 +1,20 @@
+name: whatsapp
+version: 0.1.0
+
+authors:
+  - ralsina <ralsina@kth.se>
+
+description: |
+  Crystal shard for WhatsApp Cloud API integration. Send and receive messages via Meta's WhatsApp Business API.
+
+targets:
+  whatsapp:
+    main: src/whatsapp.cr
+
+crystal: 1.13.0
+
+license: MIT
+
+development_dependencies:
+  ameba:
+    github: crystal-ameba/ameba

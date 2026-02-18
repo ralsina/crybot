@@ -18,3 +18,4 @@
 - [Free AI Models](13-free-models.md)
 - [Security and Landlock Sandbox](14-security.md)
 - [Slack Integration (Experimental)](15-slack.md)
+- [WhatsApp Integration (Experimental)](16-whatsapp.md)

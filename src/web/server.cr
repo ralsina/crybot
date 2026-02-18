@@ -322,6 +322,41 @@ module Crybot
           handler = Handlers::ScheduledTasksHandler.new
           handler.reload_tasks(env)
         end
+
+        # Webhook: WhatsApp (Meta Cloud API)
+        # Note: These must be public-facing for Meta to reach them
+        # You'll need to configure the URL in Meta's WhatsApp dashboard
+        # e.g., https://your-domain.com/webhook/whatsapp
+        get "/webhook/whatsapp" do |env|
+          # WhatsApp webhook verification (GET request from Meta)
+          if whatsapp_channel = get_whatsapp_channel
+            handler = Handlers::WhatsAppHandler.new
+            handler.channel = whatsapp_channel
+            handler.verify_webhook(env)
+          else
+            env.response.status_code = 404
+            "WhatsApp feature not enabled"
+          end
+        end
+
+        post "/webhook/whatsapp" do |env|
+          # WhatsApp webhook payload (POST request from Meta)
+          if whatsapp_channel = get_whatsapp_channel
+            handler = Handlers::WhatsAppHandler.new
+            handler.channel = whatsapp_channel
+            handler.handle_webhook(env)
+          else
+            env.response.status_code = 404
+            "WhatsApp feature not enabled"
+          end
+        end
+      end
+
+      private def get_whatsapp_channel : Channels::WhatsAppChannel?
+        # Try to get the WhatsApp channel from unified registry
+        Channels::UnifiedRegistry.all.find do |channel|
+          channel.is_a?(Channels::WhatsAppChannel)
+        end.as?(Channels::WhatsAppChannel)
       end
 
       private def handle_chat_websocket(socket) : Nil

@@ -143,6 +143,7 @@ module Crybot
 
       property telegram : TelegramConfig
       property slack : SlackConfig = SlackConfig.new
+      property whatsapp : WhatsAppConfig = WhatsAppConfig.new
 
       struct TelegramConfig
         include YAML::Serializable
@@ -162,6 +163,19 @@ module Crybot
         property app_level_token : String = ""
 
         def initialize(@enabled = false, @socket_token = "", @api_token = "", @signing_secret = "", @app_level_token = "")
+        end
+      end
+
+      struct WhatsAppConfig
+        include YAML::Serializable
+
+        property? enabled : Bool = false
+        property phone_number_id : String = ""
+        property access_token : String = ""
+        property webhook_verify_token : String = ""
+        property app_secret : String = ""
+
+        def initialize(@enabled = false, @phone_number_id = "", @access_token = "", @webhook_verify_token = "", @app_secret = "")
         end
       end
     end
@@ -272,8 +286,10 @@ module Crybot
       property scheduled_tasks : Bool = false
       # ameba:disable Naming/QueryBoolMethods
       property slack : Bool = false
+      # ameba:disable Naming/QueryBoolMethods
+      property whatsapp : Bool = false
 
-      def initialize(@gateway = false, @web = false, @voice = false, @repl = false, @scheduled_tasks = false, @slack = false)
+      def initialize(@gateway = false, @web = false, @voice = false, @repl = false, @scheduled_tasks = false, @slack = false, @whatsapp = false)
       end
 
       def with_gateway(@gateway : Bool) : FeaturesConfig
@@ -297,6 +313,10 @@ module Crybot
       end
 
       def with_slack(@slack : Bool) : FeaturesConfig
+        self
+      end
+
+      def with_whatsapp(@whatsapp : Bool) : FeaturesConfig
         self
       end
     end

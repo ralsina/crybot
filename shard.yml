@@ -30,6 +30,8 @@ dependencies:
     github: icyleaf/markd
   slack:
     github: jgaskins/slack
+  whatsapp:
+    path: ./whatsapp
 
 development_dependencies:
   ameba:

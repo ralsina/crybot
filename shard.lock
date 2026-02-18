@@ -80,6 +80,10 @@ shards:
     git: https://github.com/protoncr/tourmaline.git
     version: 0.28.0
 
+  whatsapp:
+    path: ./whatsapp
+    version: 0.1.0
+
   xpath2:
     git: https://github.com/naqvis/crystal-xpath2.git
     version: 0.1.3
