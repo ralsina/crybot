@@ -13,9 +13,9 @@ Crybot is a modular personal AI assistant built in Crystal. It provides multiple
 - **Skills System**: Create and manage reusable AI behaviors as markdown files
 - **Scheduled Tasks**: Automate recurring AI tasks with natural language scheduling
 - **Session Management**: Persistent conversation history with multiple concurrent sessions
-- **Multiple Interfaces**: REPL, Web UI, Telegram bot, and Voice interaction modes
+- **Multiple Interfaces**: REPL, Web UI, Telegram bot, Voice interaction, and Slack (experimental)
 - **Real-time Updates**: WebSocket support for live message streaming in web UI
-- **Unified Channels**: Forward messages to any channel (Telegram, Web, Voice, REPL)
+- **Unified Channels**: Forward messages to any channel (Telegram, Web, Voice, REPL, Slack)
 - **Secure Proxy**: HTTP/HTTPS proxy with domain whitelisting and user access control for network requests
 
 ## Installation
@@ -95,6 +95,7 @@ features:
   voice: false           # Voice interaction
   repl: false            # Advanced REPL
   scheduled_tasks: true  # Automated tasks
+  slack: false           # Slack integration (experimental)
 ```
 
 ### Web UI
@@ -185,6 +186,46 @@ Get a bot token from [@BotFather](https://t.me/BotFather) on Telegram.
 - Two-way messaging with Crybot
 - Reply from both Telegram and web UI
 - Auto-restart on config changes
+
+### Slack Integration (Experimental)
+
+**Note:** This feature is experimental and has not been extensively tested. Feedback and improvements are welcome!
+
+```bash
+./bin/crybot start  # With slack: true in config.yml
+```
+
+Configure in `config.yml`:
+
+```yaml
+channels:
+  slack:
+    enabled: true
+    socket_token: "xapp-YOUR-SOCKET-TOKEN"
+    api_token: "xoxb-YOUR-API-TOKEN"
+```
+
+Or use environment variables:
+
+```bash
+export SLACK_SOCKET_TOKEN="xapp-..."
+export SLACK_API_TOKEN="xoxb-..."
+```
+
+**Setup Requirements:**
+1. Create a Slack app at https://api.slack.com/apps
+2. Enable Socket Mode and generate tokens
+3. Add bot scopes: `chat:write`, `channels:history`
+4. Install app and invite bot to channels with `/invite @YourBotName`
+
+**Features:**
+- Socket Mode support (no public server needed)
+- Bidirectional messaging
+- Bot mention support
+- Channel-specific sessions
+- Scheduled task forwarding
+
+**See the [Slack Integration documentation](https://crybot.ralsina.me/books/user-guide/15-slack/) for detailed setup instructions.**
 
 ## Skills System
 

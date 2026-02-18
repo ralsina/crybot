@@ -68,6 +68,10 @@ shards:
     git: https://github.com/luislavena/radix.git
     version: 0.4.1
 
+  slack:
+    git: https://github.com/jgaskins/slack.git
+    version: 0.1.0+git.commit.5cc63945919bba315fb8e1d15044bcd93224b0fa
+
   tool_runner:
     path: ./tool_runner
     version: 0.1.0

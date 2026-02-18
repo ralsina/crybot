@@ -28,6 +28,8 @@ dependencies:
     path: ./tool_runner
   markd:
     github: icyleaf/markd
+  slack:
+    github: jgaskins/slack
 
 development_dependencies:
   ameba:

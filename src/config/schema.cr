@@ -142,6 +142,7 @@ module Crybot
       include YAML::Serializable
 
       property telegram : TelegramConfig
+      property slack : SlackConfig = SlackConfig.new
 
       struct TelegramConfig
         include YAML::Serializable
@@ -149,6 +150,19 @@ module Crybot
         property? enabled : Bool = false
         property token : String = ""
         property allow_from : Array(String) = [] of String
+      end
+
+      struct SlackConfig
+        include YAML::Serializable
+
+        property? enabled : Bool = false
+        property socket_token : String = ""
+        property api_token : String = ""
+        property signing_secret : String = ""
+        property app_level_token : String = ""
+
+        def initialize(@enabled = false, @socket_token = "", @api_token = "", @signing_secret = "", @app_level_token = "")
+        end
       end
     end
 
@@ -256,8 +270,10 @@ module Crybot
       property repl : Bool = false
       # ameba:disable Naming/QueryBoolMethods
       property scheduled_tasks : Bool = false
+      # ameba:disable Naming/QueryBoolMethods
+      property slack : Bool = false
 
-      def initialize(@gateway = false, @web = false, @voice = false, @repl = false, @scheduled_tasks = false)
+      def initialize(@gateway = false, @web = false, @voice = false, @repl = false, @scheduled_tasks = false, @slack = false)
       end
 
       def with_gateway(@gateway : Bool) : FeaturesConfig
@@ -277,6 +293,10 @@ module Crybot
       end
 
       def with_scheduled_tasks(@scheduled_tasks : Bool) : FeaturesConfig
+        self
+      end
+
+      def with_slack(@slack : Bool) : FeaturesConfig
         self
       end
     end

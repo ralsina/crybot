@@ -7,6 +7,7 @@ require "./gateway"
 require "./web"
 require "./voice"
 require "./repl"
+require "./slack"
 require "../scheduled_tasks/feature"
 
 module Crybot
@@ -31,7 +32,7 @@ module Crybot
 
         if @features.empty?
           Log.error { "No features enabled. Enable features in config.yml under 'features:'" }
-          Log.error { "Available features: gateway, web, voice, repl, scheduled_tasks" }
+          Log.error { "Available features: gateway, web, voice, repl, scheduled_tasks, slack" }
           return
         end
 
@@ -117,12 +118,19 @@ module Crybot
           @features << feature
           feature.start
         end
+
+        # Slack feature
+        if features_config.slack
+          feature = SlackFeature.new(@config)
+          @features << feature
+          feature.start
+        end
       end
 
       private def validate_configuration : Bool
         # Check if at least one feature is enabled
         features_config = @config.features
-        unless features_config.gateway || features_config.web || features_config.voice || features_config.repl || features_config.scheduled_tasks
+        unless features_config.gateway || features_config.web || features_config.voice || features_config.repl || features_config.scheduled_tasks || features_config.slack
           puts "Error: No features enabled."
           puts "Enable features in #{Config::Loader.config_file}"
           puts "\nExample:"
@@ -132,6 +140,7 @@ module Crybot
           puts "    voice: false"
           puts "    repl: false"
           puts "    scheduled_tasks: false"
+          puts "    slack: false"
           return false
         end
 
