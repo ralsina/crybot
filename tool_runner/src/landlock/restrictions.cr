@@ -90,9 +90,6 @@ module ToolRunner
         # /sys/fs/cgroup - read-only (needed by node)
         restrictions.add_read_only("/sys/fs/cgroup")
 
-        # Home directory - read-only
-        restrictions.add_read_only(home)
-
         # /tmp - read-write
         restrictions.add_read_write("/tmp")
 
