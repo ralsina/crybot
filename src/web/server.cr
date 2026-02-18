@@ -2,6 +2,8 @@ require "kemal"
 require "../agent/loop"
 require "../session/manager"
 require "../scheduled_tasks/registry"
+require "../channels/unified_registry"
+require "../channels/web_channel"
 require "./handlers/*"
 require "./websocket/*"
 require "./middleware/*"
@@ -20,6 +22,11 @@ module Crybot
       def start : Nil
         # Register config for scheduled tasks lazy initialization
         ScheduledTasks::Registry.instance.config = @config
+
+        # Register WebChannel with UnifiedRegistry for scheduled task forwarding
+        web_channel = Channels::WebChannel.new
+        Channels::UnifiedRegistry.register(web_channel)
+        puts "[#{Time.local.to_s("%H:%M:%S")}] Web channel registered for scheduled task forwarding"
 
         # Setup Kemal configuration
         Kemal.config.port = @config.web.port
