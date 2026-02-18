@@ -27,13 +27,13 @@ module Crybot
           data = Hash(String, JSON::Any).from_json(body)
 
           # Get required fields
-          name = data["name"]?.try(&.as_s)
-          prompt = data["prompt"]?.try(&.as_s)
-          interval = data["interval"]?.try(&.as_s)
-          description = data["description"]?.try(&.as_s)
+          name = data["name"]?.try(&.as_s?)
+          prompt = data["prompt"]?.try(&.as_s?)
+          interval = data["interval"]?.try(&.as_s?)
+          description = data["description"]?.try(&.as_s?)
           enabled = data["enabled"]?.try(&.as_bool) || true
-          forward_to = data["forward_to"]?.try(&.as_s)
-          memory_expiration = data["memory_expiration"]?.try(&.as_s)
+          forward_to = data["forward_to"]?.try(&.as_s?)
+          memory_expiration = data["memory_expiration"]?.try(&.as_s?)
 
           # Validate required fields
           if name.nil? || name.empty?
@@ -104,13 +104,13 @@ module Crybot
             end
 
             # Update fields
-            name = data["name"]?.try(&.as_s) || existing_task.name
-            prompt = data["prompt"]?.try(&.as_s) || existing_task.prompt
-            interval = data["interval"]?.try(&.as_s) || existing_task.interval
-            description = data["description"]?.try(&.as_s)
+            name = data["name"]?.try(&.as_s?) || existing_task.name
+            prompt = data["prompt"]?.try(&.as_s?) || existing_task.prompt
+            interval = data["interval"]?.try(&.as_s?) || existing_task.interval
+            description = data["description"]?.try(&.as_s?)
             enabled = data["enabled"]?.try(&.as_bool) || existing_task.enabled?
-            forward_to = data["forward_to"]?.try(&.as_s) || existing_task.forward_to
-            memory_expiration = data["memory_expiration"]?.try(&.as_s)
+            forward_to = data["forward_to"]?.try(&.as_s?) || existing_task.forward_to
+            memory_expiration = data["memory_expiration"]?.try(&.as_s?)
 
             # Validate interval if changed
             if interval != existing_task.interval
