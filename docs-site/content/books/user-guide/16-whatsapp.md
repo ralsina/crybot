@@ -1,158 +1,334 @@
-Crybot can be accessed through WhatsApp, allowing you to chat with users on WhatsApp.
+# WhatsApp Integration
 
-**⚠️ Experimental Feature**
+Crybot supports WhatsApp through a bridge that connects to WhatsApp using the WhatsApp Web protocol. This is much simpler than setting up Meta's Cloud API and works with your personal WhatsApp account.
 
-This integration is currently **experimental** and has not been extensively tested in production environments. It may contain bugs or incomplete features. Feedback, bug reports, and contributions are welcome!
+## How It Works
+
+Crybot uses a **Node.js bridge** that connects to WhatsApp using the [@whiskeysockets/baileys](https://github.com/WhiskeySockets/Baileys) library. The bridge:
+
+1. Connects to WhatsApp using the WhatsApp Web protocol
+2. Displays a QR code for authentication
+3. Forwards messages between WhatsApp and Crybot via WebSocket
+4. Handles reconnection automatically
+
+**Architecture:**
+```
+WhatsApp ←→ Bridge (Node.js) ←→ WebSocket ←→ Crybot (Crystal)
+```
 
 ## Prerequisites
 
-1. A Meta developer account — If you don't have one, you can [create a Meta developer account here](https://developers.facebook.com/)
-2. A business app — If you don't have one, you can [learn to create a business app here](https://developers.facebook.com/docs/development/create-an-app/)
-3. **Public HTTPS server** — WhatsApp webhooks require a public HTTPS endpoint to receive messages
+- **Node.js 18+** and npm
+- **WhatsApp mobile app** on your phone
+- **Crybot installed**
 
-## Setting Up WhatsApp Cloud API
+## Installation
 
-### 1. Create a WhatsApp Business App
+### Step 1: Install the WhatsApp Bridge
 
-1. Go to https://developers.facebook.com/apps
-2. Click **"Create App"**
-3. Choose **"Business"** type
-4. Add the **WhatsApp** product to your app
-5. Follow the setup wizard
+The bridge is included with Crybot in `src/whatsapp-bridge/`. Install its dependencies:
 
-### 2. Get Your Credentials
+```bash
+cd src/whatsapp-bridge
+npm install --ignore-scripts
+```
 
-1. In your app dashboard, go to **WhatsApp > API Setup**
-2. Copy your **Phone Number ID** (e.g., `123456789`)
-3. Copy your **Access Token** (temporary token is fine for testing)
-4. Go to **Settings > Basic** and copy your **App Secret**
+**Note:** The `--ignore-scripts` flag skips building optional dependencies (like `sharp` for image processing) that aren't needed for text messaging.
 
-### 3. Configure Your Webhook
+This installs:
+- `@whiskeysockets/baileys` - WhatsApp Web protocol library
+- `pino` - Logging
+- `ws` - WebSocket server
 
-You need a public HTTPS endpoint to receive messages:
+### Step 2: Start the Bridge
 
-1. Make sure Crybot's web feature is enabled
-2. Deploy or expose your Crybot instance publicly (using ngrok for testing)
-3. Configure the webhook URL in Meta's dashboard:
-   - Go to **WhatsApp > Configuration**
-   - Click **Edit** next to Webhooks
-   - Enter your webhook URL: `https://your-domain.com/webhook/whatsapp`
-   - Enter a **Verify Token** (choose any string - you'll need to configure this in Crybot)
+Run the bridge:
 
-### 4. Subscribe to Messages
+```bash
+npm start
+```
 
-After configuring the webhook:
-1. Click **Manage** next to Webhook fields
-2. Subscribe to the **messages** field
+Or with a custom port:
 
-## Configure Crybot
+```bash
+npm start 3002
+```
 
-Edit `~/.crybot/workspace/config.yml`:
+The bridge will:
+1. Start a WebSocket server on `ws://localhost:3001`
+2. Display a QR code in your terminal
+3. Wait for you to authenticate
+
+### Step 3: Authenticate with WhatsApp
+
+1. Open WhatsApp on your phone
+2. Go to **Settings > Linked Devices**
+3. Tap **Link a Device**
+4. Scan the QR code displayed in the bridge terminal
+
+Once authenticated, the bridge will save your credentials and reconnect automatically on restart.
+
+### Step 4: Configure Crybot
+
+Edit `~/.crybot/config.yml`:
 
 ```yaml
 features:
-  web: true      # Required for WhatsApp webhooks
   whatsapp: true
 
 channels:
   whatsapp:
     enabled: true
-    phone_number_id: "YOUR_PHONE_NUMBER_ID"        # From WhatsApp > API Setup
-    access_token: "YOUR_ACCESS_TOKEN"              # From WhatsApp > API Setup
-    webhook_verify_token: "YOUR_VERIFY_TOKEN"      # Your chosen string
-    app_secret: "YOUR_APP_SECRET"                  # From Settings > Basic
+    bridge_url: "ws://localhost:3001"
+    allow_from: []
 ```
 
-## Start Crybot
+**Configuration Options:**
+
+- `bridge_url` - WebSocket URL of the bridge (default: `ws://localhost:3001`)
+- `allow_from` - Access control list:
+  - `[]` - Deny all users (secure default)
+  - `["*"]` - Allow all users
+  - `["15551234567", "441234567890"]` - Allow specific phone numbers (international format, no + or spaces)
+
+### Step 5: Start Crybot
 
 ```bash
 ./bin/crybot start
 ```
 
-Make sure both `web` and `whatsapp` features are enabled in your config.
+Crybot will automatically connect to the bridge and start receiving messages.
 
-## Using Crybot on WhatsApp
-
-### Important: First Message Requirement
-
-WhatsApp requires that the **first message** to a user must be a **template message**.
-Templates must be pre-approved in your WhatsApp Business App dashboard.
-
-After the user replies to your template message, you can send regular text messages.
+## Usage
 
 ### Sending Messages
 
-Crybot automatically sends replies when users message your bot.
+Once configured, Crybot can send messages to WhatsApp in response to:
 
-### Testing with ngrok
+- Direct messages from users
+- Scheduled tasks
+- Skills execution
 
-For local testing, use ngrok to expose your local server:
+### Receiving Messages
 
-```bash
-ngrok http 3000
+When someone sends your WhatsApp bot a message:
+
+1. The bridge receives it from WhatsApp
+2. Forwards it to Crybot via WebSocket
+3. Crybot processes it through the agent
+4. Response is sent back through the bridge
+5. Bridge delivers it to WhatsApp
+
+### Access Control
+
+By default, Crybot denies all messages (`allow_from: []`). You must configure allowed users:
+
+```yaml
+channels:
+  whatsapp:
+    enabled: true
+    allow_from: ["15551234567", "441234567890"]
 ```
 
-Use the ngrok URL (e.g., `https://abc123.ngrok-free.app`) in your Meta webhook configuration.
+**Phone Number Format:**
+- Use international format without `+` or spaces
+- ✅ `15551234567`
+- ❌ `+1 (555) 123-4567`
 
-### Template Messages
+### Session Management
 
-Create template messages in your WhatsApp Business App dashboard:
-1. Go to **WhatsApp > Message Templates**
-2. Click **Create New Template**
-3. Choose a template name and language
-4. Add template content
-5. Submit for approval
+Each phone number gets its own conversation session:
 
-## Features
+- **Session Key Pattern:** `whatsapp:PHONE_NUMBER`
+- Example: `whatsapp:15551234567`
+- Messages from different numbers are kept separate
+- Session history persists across restarts
 
-- ✅ **Meta Cloud API** - Official WhatsApp Business API integration
-- ✅ **Webhook support** - Real-time message delivery via webhooks
-- ✅ **Session management** - Each phone number has separate conversation history
-- ✅ **Scheduled task forwarding** - Receive scheduled task outputs in WhatsApp
-- ✅ **Signature verification** - Secure webhook payload verification
+## Running the Bridge
+
+### Development/Testing
+
+Run the bridge in a separate terminal:
+
+```bash
+cd src/whatsapp-bridge
+npm start
+```
+
+Keep this terminal open to see QR codes, connection status, and message logs.
+
+### Production
+
+For production use, consider:
+
+1. **Running as a service** (systemd, supervisord, etc.)
+2. **Using a process manager** (PM2, nodemon, etc.)
+3. **Logging to file** (set `LOG_LEVEL=info`)
+
+Example with PM2:
+
+```bash
+npm install -g pm2
+cd src/whatsapp-bridge
+pm2 start bridge.js --name crybot-whatsapp
+pm2 save
+pm2 startup
+```
+
+### Environment Variables
+
+The bridge supports these environment variables:
+
+- `CRYBOT_WHATSAPP_PORT` - WebSocket port (default: 3001)
+- `CRYBOT_WHATSAPP_AUTH_DIR` - Auth credentials directory (default: `./baileys_auth_info`)
+- `LOG_LEVEL` - Logging level (default: `info`, options: `trace`, `debug`, `info`, `warn`, `error`, `silent`)
+
+Example:
+
+```bash
+CRYBOT_WHATSAPP_PORT=3002 LOG_LEVEL=debug npm start
+```
 
 ## Troubleshooting
 
-### "First message must be a template"
+### Bridge won't start
 
-WhatsApp requires template messages for the first message to a user.
-- Create templates in your WhatsApp Business App dashboard
-- After the user replies, you can send regular text messages
+**Port already in use:**
+```bash
+# Check what's using port 3001
+lsof -ti:3001
 
-### Webhook not receiving messages
+# Kill the process
+lsof -ti:3001 | xargs kill
 
-- Verify webhook URL is publicly accessible (test with curl)
-- Check webhook is subscribed to "messages" field
-- Verify your verify token matches in Crybot config
-- Check Crybot logs for webhook errors
+# Or use a different port
+CRYBOT_WHATSAPP_PORT=3002 npm start
+```
 
-### Invalid signature errors
+**Node.js not found:**
+```bash
+# Install Node.js 18+
+# On Arch: sudo pacman -S nodejs npm
+# On Ubuntu: sudo apt install nodejs npm
+# On macOS: brew install node
+```
 
-- Verify your App Secret is correct in config
-- Make sure the App Secret matches what's in Meta dashboard
+### QR code not appearing
 
-### Template not approved
+Make sure:
+- The bridge is running
+- You're in a terminal that supports QR codes
+- Check the bridge logs for errors
 
-- Templates must be approved by Meta before use
-- Approval can take 1-24 hours
-- Check template status in WhatsApp > Message Templates
+### Can't scan QR code
 
-## Phone Number Format
+1. Make sure WhatsApp is updated on your phone
+2. Try linking a different device (WhatsApp has limits)
+3. Unlink old devices in WhatsApp settings
 
-Always use phone numbers in **international format without + or spaces**:
-- ✅ `"15551234567"`
-- ❌ `"+1 (555) 123-4567"`
+### "Logged out" error
 
-## Session Management
+If you see "WhatsApp logged out - please rescan QR code":
 
-Crybot creates sessions per phone number using the pattern `whatsapp:PHONE_NUMBER`. This means:
+```bash
+cd src/whatsapp-bridge
+rm -rf baileys_auth_info
+npm start
+# Rescan the QR code
+```
 
-- Each phone number has its own conversation history
-- Scheduled tasks can forward results to specific WhatsApp numbers
-- Session history persists across restarts
+### Connection issues
 
-## API Documentation
+1. Check your internet connection
+2. Make sure WhatsApp is working on your phone
+3. Try deleting `baileys_auth_info` and reconnecting
+4. Check the bridge logs for errors
 
-- [WhatsApp Cloud API Getting Started](https://developers.facebook.com/docs/whatsapp/cloud-api/get-started)
-- [Sending Messages](https://developers.facebook.com/docs/whatsapp/cloud-api/guides/send-messages)
-- [Webhooks](https://developers.facebook.com/docs/whatsapp/cloud-api/guides/set-up-webhooks)
+### Messages not being received
+
+1. Verify Crybot is connected to the bridge (check logs for "Connected to WhatsApp bridge")
+2. Verify `allow_from` includes your phone number
+3. Check the bridge logs for incoming messages
+4. Try allowing all users temporarily: `allow_from: ["*"]`
+
+### Crybot can't connect to bridge
+
+1. Verify the bridge is running
+2. Check the `bridge_url` in config matches the bridge port
+3. Check firewall isn't blocking localhost connections
+4. Look for connection errors in Crybot logs
+
+## Features
+
+- ✅ **WhatsApp Web Protocol** - Works with personal WhatsApp account
+- ✅ **QR Code Authentication** - Simple scan-to-connect setup
+- ✅ **Auto-Reconnection** - Bridge handles connection drops
+- ✅ **No Meta Account** - No developer account or business app needed
+- ✅ **No Template Restrictions** - Send any message anytime
+- ✅ **Session Management** - Separate conversations per phone number
+- ✅ **Access Control** - Allowlist specific phone numbers
+- ✅ **Scheduled Tasks** - Forward task outputs to WhatsApp
+
+## Security Notes
+
+- The bridge only listens on `127.0.0.1` (localhost) by default
+- Authentication credentials are stored in `baileys_auth_info/` directory
+- Keep the auth directory secure - anyone with access can impersonate your WhatsApp
+- Use the `allow_from` option to control who can message your bot
+- Don't share the `baileys_auth_info` directory with others
+
+## Limitations
+
+- **Protocol** - Uses reverse-engineered WhatsApp Web protocol (not official API)
+- **Terms of Service** - May violate WhatsApp's Terms of Service (use at your own risk)
+- **Stability** - Could break if WhatsApp changes the Web protocol
+- **Rate Limits** - WhatsApp may rate-limit or ban accounts that send too many messages
+
+**Recommendation:** Use responsibly, don't spam, and be prepared for potential protocol changes.
+
+## Comparison with Official Cloud API
+
+| Feature | Bridge (This) | Official Cloud API |
+|---------|---------------|-------------------|
+| **Setup Complexity** | Simple (3 steps) | Complex (10+ steps) |
+| **Account Required** | Personal WhatsApp | Business account |
+| **Authentication** | QR code scan | API tokens |
+| **First Message** | No restrictions | Template message required |
+| **Cost** | Free | Free tier available |
+| **Reliability** | Community library | Official API |
+| **Maintenance** | Node.js dependencies | Meta infrastructure |
+
+## Advanced: Custom Bridge URL
+
+If you're running the bridge on a different host or port:
+
+```yaml
+channels:
+  whatsapp:
+    enabled: true
+    bridge_url: "ws://192.168.1.100:3001"
+    allow_from: ["*"]
+```
+
+**Warning:** The bridge has no authentication. Only run it on trusted networks or use SSH tunneling.
+
+## Advanced: Multiple Instances
+
+You can run multiple bridges on different ports for different WhatsApp accounts:
+
+```bash
+# Terminal 1
+CRYBOT_WHATSAPP_PORT=3001 npm start
+
+# Terminal 2
+CRYBOT_WHATSAPP_PORT=3002 CRYBOT_WHATSAPP_AUTH_DIR=./auth2 npm start
+```
+
+Then configure Crybot to connect to one or the other.
+
+## Getting Help
+
+- Check the [Baileys documentation](https://github.com/WhiskeySockets/Baileys)
+- Review bridge logs (set `LOG_LEVEL=debug`)
+- Check Crybot logs for connection errors
+- File issues on the Crybot GitHub repository

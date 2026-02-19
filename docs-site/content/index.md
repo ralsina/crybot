@@ -53,6 +53,14 @@
 
 ## Quick Start
 
+**Install Crybot:**
+
+```bash
+curl -sSL https://crybot.ralsina.me/install.sh | bash
+```
+
+**Or build from source:**
+
 ```bash
 git clone https://github.com/ralsina/crybot.git
 cd crybot
