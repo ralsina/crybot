@@ -1,5 +1,5 @@
 name: crybot
-version: 0.2.0
+version: 0.3.0
 
 authors:
   - ralsina <ralsina@kth.se>
@@ -30,8 +30,6 @@ dependencies:
     github: icyleaf/markd
   slack:
     github: jgaskins/slack
-  whatsapp:
-    path: ./whatsapp
 
 development_dependencies:
   ameba:
