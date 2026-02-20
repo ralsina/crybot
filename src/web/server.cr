@@ -93,14 +93,14 @@ module Crybot
       private def setup_middleware : Nil
         # Add CORS headers if enabled
         if @config.web.enable_cors?
-          add_handler Crybot::Web::CORSHandler.new(@config.web.allowed_origins)
+          use Crybot::Web::CORSHandler.new(@config.web.allowed_origins)
         end
 
         # Add baked file handler for static assets (embedded in binary)
-        add_handler BakedFileHandler::BakedFileHandler.new(Crybot::Web::BakedAssets)
+        use BakedFileHandler::BakedFileHandler.new(Crybot::Web::BakedAssets)
 
         # Add authentication middleware (but allow public paths)
-        add_handler Crybot::Web::Middleware::AuthMiddleware.new(@config)
+        use Crybot::Web::Middleware::AuthMiddleware.new(@config)
       end
 
       private def setup_routes : Nil

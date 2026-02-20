@@ -194,7 +194,7 @@ module HttpProxy
       end
 
       # Give the server a moment to start
-      sleep 0.1
+      sleep 0.1.seconds
 
       Log.info { "Proxy server started on http://#{proxy_config.host}:#{proxy_config.port}" }
       Log.info { "Domain whitelist: #{proxy_config.domain_whitelist.join(", ")}" }
