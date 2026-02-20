@@ -320,6 +320,7 @@ module Crybot
           end
         end
 
+        # ameba:disable Metrics/CyclomaticComplexity
         private def setup_autocompletion : Nil
           # Add Ctrl+K key binding for cancellation (K for Kill)
           @fancy.actions.set Fancyline::Key::Control::CtrlK do
@@ -330,6 +331,44 @@ module Crybot
             puts "\n⚠ Cancelling..."
             # Raise interrupt to exit readline
             raise Fancyline::Interrupt.new("Request cancelled")
+          end
+
+          # Add Ctrl+Left for moving backward by word
+          @fancy.actions.set Fancyline::Key::Control::CtrlLeft do |ctx|
+            line = ctx.editor.line
+            cursor = ctx.editor.cursor
+
+            # Find the start of the previous word
+            if cursor > 0
+              # Skip whitespace backward
+              while cursor > 0 && line[cursor - 1]?.try(&.whitespace?)
+                cursor -= 1
+              end
+              # Skip non-whitespace backward (the word itself)
+              while cursor > 0 && line[cursor - 1]? && !line[cursor - 1].whitespace?
+                cursor -= 1
+              end
+              ctx.editor.cursor = cursor
+            end
+          end
+
+          # Add Ctrl+Right for moving forward by word
+          @fancy.actions.set Fancyline::Key::Control::CtrlRight do |ctx|
+            line = ctx.editor.line
+            cursor = ctx.editor.cursor
+
+            # Find the start of the next word
+            if cursor < line.size
+              # Skip whitespace forward
+              while cursor < line.size && line[cursor]?.try(&.whitespace?)
+                cursor += 1
+              end
+              # Skip non-whitespace forward (the word itself)
+              while cursor < line.size && line[cursor]? && !line[cursor].whitespace?
+                cursor += 1
+              end
+              ctx.editor.cursor = cursor
+            end
           end
 
           @fancy.autocomplete.add do |ctx, range, word, yielder|
@@ -369,10 +408,8 @@ module Crybot
         end
 
         private def prompt_string : String
-          # Show current model in prompt with colors
-          model_short = @model.split('/').last
-          model_short = model_short[0..15] if model_short.size > 15
-          "[#{model_short}] ".colorize(:blue).to_s + "❯ ".colorize(:green).to_s
+          # Simple prompt
+          "❯ ".colorize(:green).to_s
         end
 
         private def handle_command(input : String) : Bool
