@@ -4,6 +4,7 @@ require "../session/manager"
 require "../session/metadata"
 require "fancyline"
 require "./base"
+require "markterm"
 
 module Crybot
   module Features
@@ -263,7 +264,8 @@ module Crybot
 
                 # Print response with formatting
                 puts
-                puts agent_response.response
+                formatted = Markd.to_term(agent_response.response, theme: "monokai", code_theme: "monokai")
+                puts formatted
                 puts
               else
                 puts ""
