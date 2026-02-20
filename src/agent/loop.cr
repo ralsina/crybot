@@ -150,6 +150,10 @@ module Crybot
 
         # Register built-in tools
         register_tools
+
+        # Start MCP servers asynchronously after initialization is complete
+        # This avoids blocking startup while MCP servers start
+        @mcp_manager.try(&.start_async)
       end
 
       private def lite_mode? : Bool

@@ -8,19 +8,31 @@ module Crybot
     # Manages MCP server connections and tool registration
     class Manager
       @clients : Hash(String, Client) = {} of String => Client
+      @config : Config::MCPConfig?
+      @started : Bool = false
 
-      def initialize(config : Config::MCPConfig?)
+      def initialize(@config : Config::MCPConfig?)
+        # Don't start servers during initialization - do it lazily
+      end
+
+      # Start MCP servers in the background (called after agent is ready)
+      def start_async : Nil
+        return if @started
+        config = @config
         return unless config
 
-        config.servers.each do |server_config|
-          begin
-            client = Client.new(server_config.name, server_config.command, server_config.url)
-            client.start
-            @clients[server_config.name] = client
+        spawn do
+          @started = true
+          config.servers.each do |server_config|
+            begin
+              client = Client.new(server_config.name, server_config.command, server_config.url)
+              client.start
+              @clients[server_config.name] = client
 
-            ::Log.info { "[MCP] Connected to server '#{server_config.name}' - #{client.list_tools.size} tools available" }
-          rescue e : Exception
-            ::Log.error { "[MCP] Failed to connect to server '#{server_config.name}': #{e.message}" }
+              ::Log.info { "[MCP] Connected to server '#{server_config.name}' - #{client.list_tools.size} tools available" }
+            rescue e : Exception
+              ::Log.error { "[MCP] Failed to connect to server '#{server_config.name}': #{e.message}" }
+            end
           end
         end
       end
@@ -28,6 +40,7 @@ module Crybot
       def stop : Nil
         @clients.each_value(&.stop)
         @clients.clear
+        @started = false
       end
 
       # Reload MCP servers with new configuration
