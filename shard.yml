@@ -28,8 +28,10 @@ dependencies:
     path: ./tool_runner
   markd:
     github: icyleaf/markd
+    branch: master
   markterm:
     github: ralsina/markterm
+    branch: main
   slack:
     github: jgaskins/slack
 

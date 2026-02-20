@@ -66,15 +66,19 @@ shards:
 
   markd:
     git: https://github.com/icyleaf/markd.git
-    version: 0.5.0
+    version: 0.5.0+git.commit.03cd4f5d6f4e56054502a6548b4c2ff92fb3dc20
 
   markterm:
     git: https://github.com/ralsina/markterm.git
-    version: 0.6.3
+    version: 0.8.0+git.commit.f365e9e6be9224ac645b8799363e6e7109492a72
 
   mcp-client:
     git: https://github.com/ralsina/mcp-client.git
     version: 0.1.0+git.commit.fcfae88398c131c58df04f9c87e634dbab632779
+
+  progress_bar:
+    git: https://github.com/mgomes/progress_bar.git
+    version: 1.0.1+git.commit.aa5ebab89d31167208387640db06d3964ec7922b
 
   radix:
     git: https://github.com/luislavena/radix.git
@@ -82,15 +86,27 @@ shards:
 
   sixteen:
     git: https://github.com/ralsina/sixteen.git
-    version: 0.8.0
+    version: 0.7.0
 
   slack:
     git: https://github.com/jgaskins/slack.git
     version: 0.1.0+git.commit.5cc63945919bba315fb8e1d15044bcd93224b0fa
 
+  tablo:
+    git: https://github.com/hutou/tablo.git
+    version: 1.1.0
+
   tartrazine:
     git: https://github.com/ralsina/tartrazine.git
     version: 0.20.1
+
+  term-screen:
+    git: https://github.com/crystal-term/screen.git
+    version: 0.3.1
+
+  textseg:
+    git: https://github.com/naqvis/uni_text_seg.git
+    version: 0.1.3
 
   tool_runner:
     path: ./tool_runner
@@ -99,6 +115,10 @@ shards:
   tourmaline:
     git: https://github.com/protoncr/tourmaline.git
     version: 0.28.0
+
+  uniwidth:
+    git: https://github.com/naqvis/uni_char_width.git
+    version: 0.1.3
 
   xpath2:
     git: https://github.com/naqvis/crystal-xpath2.git
