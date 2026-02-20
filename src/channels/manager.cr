@@ -1,3 +1,4 @@
+require "log"
 require "../config/loader"
 require "../agent/loop"
 require "./telegram"
@@ -12,19 +13,19 @@ module Crybot
       @channels : Array(TelegramChannel) = [] of TelegramChannel
 
       def initialize(@config : Config::ConfigFile)
-        puts "[#{Time.local.to_s("%H:%M:%S")}] Initializing agent..."
+        Log.info { "[Channels] Initializing agent..." }
         @agent = Agent::Loop.new(@config)
-        puts "[#{Time.local.to_s("%H:%M:%S")}] Agent initialized"
+        Log.info { "[Channels] Agent initialized" }
       end
 
       def start : Nil
         started = [] of String
 
-        if @config.channels.telegram.enabled
+        if @config.channels.telegram.enabled?
           if @config.channels.telegram.token.empty?
-            puts "Warning: Telegram enabled but no token configured"
+            Log.warn { "[Channels] Telegram enabled but no token configured" }
           else
-            puts "[#{Time.local.to_s("%H:%M:%S")}] Creating Telegram channel..."
+            Log.info { "[Channels] Creating Telegram channel..." }
             telegram = TelegramChannel.new(@config.channels.telegram, @agent)
             @channels << telegram
 
@@ -33,21 +34,27 @@ module Crybot
             UnifiedRegistry.register(adapter)
 
             started << "Telegram"
-            puts "[#{Time.local.to_s("%H:%M:%S")}] Telegram channel created and registered"
+            Log.info { "[Channels] Telegram channel created and registered" }
           end
         end
 
         if started.empty?
-          puts "No channels enabled. Enable channels in config.yml"
+          Log.warn { "[Channels] No channels enabled. Enable channels in config.yml" }
           return
         end
 
-        puts "Starting channels: #{started.join(", ")}"
-        puts "Press Ctrl+C to stop"
+        Log.info { "[Channels] Starting channels: #{started.join(", ")}" }
 
-        # Start first channel (blocking)
-        # For multiple channels, we'd use fibers/spawn
-        @channels.first.start
+        # Start each channel in a fiber so they don't block
+        @channels.each do |channel|
+          spawn do
+            begin
+              channel.start
+            rescue e : Exception
+              Log.error(exception: e) { "[Channels] Error in channel: #{e.message}" }
+            end
+          end
+        end
       end
 
       def stop : Nil

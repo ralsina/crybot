@@ -1,3 +1,4 @@
+require "log"
 require "json"
 require "../../scheduled_tasks/feature"
 require "../../scheduled_tasks/config"
@@ -15,7 +16,7 @@ module Crybot
 
         # List all tasks
         def list_tasks(env) : String
-          puts "[Web/ScheduledTask] Listing tasks (feature has #{feature.tasks.size} tasks)"
+          Log.debug { "[Web/ScheduledTasks] Listing tasks (feature has #{feature.tasks.size} tasks)" }
           tasks = feature.tasks.map(&.to_h)
           {tasks: tasks}.to_json
         end
@@ -85,6 +86,7 @@ module Crybot
             task:    task.to_h,
           }.to_json
         rescue e : Exception
+          Log.error(exception: e) { "[Web/ScheduledTasks] Failed to create task" }
           error_response("Failed to create task: #{e.message}")
         end
 
@@ -150,6 +152,7 @@ module Crybot
               task:    task.to_h,
             }.to_json
           rescue e : Exception
+            Log.error(exception: e) { "[Web/ScheduledTasks] Failed to update task" }
             error_response("Failed to update task: #{e.message}")
           end
         end
@@ -168,6 +171,7 @@ module Crybot
             id:      task_id,
           }.to_json
         rescue e : Exception
+          Log.error(exception: e) { "[Web/ScheduledTasks] Failed to delete task" }
           error_response("Failed to delete task: #{e.message}")
         end
 
@@ -177,17 +181,17 @@ module Crybot
 
           task = feature.get_task(task_id)
           if task.nil?
-            puts "[Web/ScheduledTask] Error: Task '#{task_id}' not found"
+            Log.warn { "[Web/ScheduledTasks] Task '#{task_id}' not found" }
             return error_response("Task not found", 404)
           end
 
-          puts "[Web/ScheduledTask] Manual execution requested for task '#{task.name}' (id: #{task_id})"
+          Log.info { "[Web/ScheduledTasks] Manual execution requested for task '#{task.name}' (id: #{task_id})" }
 
           begin
             # Execute task in a fiber to avoid blocking
             result = feature.execute_task_now(task_id)
 
-            puts "[Web/ScheduledTask] Task '#{task.name}' execution completed"
+            Log.info { "[Web/ScheduledTasks] Task '#{task.name}' execution completed" }
 
             {
               success: true,
@@ -195,21 +199,21 @@ module Crybot
               result:  result,
             }.to_json
           rescue e : Exception
-            puts "[Web/ScheduledTask] Error executing task '#{task.name}': #{e.message}"
+            Log.error(exception: e) { "[Web/ScheduledTasks] Error executing task '#{task.name}'" }
             error_response("Failed to execute task: #{e.message}")
           end
         end
 
         # Reload tasks from file
         def reload_tasks(env) : String
-          puts "[Web/ScheduledTask] Reloading tasks from file"
+          Log.info { "[Web/ScheduledTasks] Reloading tasks from file" }
           feature.reload
           {
             success: true,
             message: "Tasks reloaded successfully",
           }.to_json
         rescue e : Exception
-          puts "[Web/ScheduledTask] Error reloading tasks: #{e.message}"
+          Log.error(exception: e) { "[Web/ScheduledTasks] Error reloading tasks" }
           error_response("Failed to reload tasks: #{e.message}")
         end
 

@@ -2,6 +2,7 @@ require "json"
 require "file_utils"
 require "../config/loader"
 require "../providers/base"
+require "./metadata"
 
 module Crybot
   module Session
@@ -11,12 +12,14 @@ module Crybot
     class Manager
       @sessions_dir : Path
       @cache : Hash(String, Array(Providers::Message))
+      @metadata_cache : Hash(String, Metadata)
       @save_callbacks = Array(SaveCallback).new
       @provider_name : String?
 
       def initialize
         @sessions_dir = Config::Loader.sessions_dir
         @cache = {} of String => Array(Providers::Message)
+        @metadata_cache = {} of String => Metadata
       end
 
       def provider=(provider_name : String) : Nil
@@ -136,6 +139,15 @@ module Crybot
 
         @cache[sanitized_key] = messages
 
+        # Update metadata with last user/assistant message
+        last_content_message = messages.reverse.find { |msg| msg.content && msg.role != "system" }
+        if last_content_message
+          content = last_content_message.content
+          if content
+            update_last_message(session_key, content)
+          end
+        end
+
         # Trigger save callbacks
         @save_callbacks.each do |callback|
           begin
@@ -149,9 +161,12 @@ module Crybot
       def delete(session_key : String) : Nil
         sanitized_key = sanitize_key(session_key)
         session_file = @sessions_dir / "#{sanitized_key}.jsonl"
+        metadata_file = @sessions_dir / "#{sanitized_key}.meta.json"
 
         File.delete(session_file) if File.exists?(session_file)
+        File.delete(metadata_file) if File.exists?(metadata_file)
         @cache.delete(sanitized_key)
+        @metadata_cache.delete(sanitized_key)
       end
 
       # Trim a session to keep only messages after a certain time
@@ -164,8 +179,104 @@ module Crybot
       def list_sessions : Array(String)
         return [] of String unless Dir.exists?(@sessions_dir)
 
-        Dir.children(@sessions_dir).map do |filename|
-          filename.sub(/\.jsonl$/, "")
+        Dir.children(@sessions_dir)
+          .select(&.ends_with?(".jsonl"))
+          .map(&.sub(/\.jsonl$/, ""))
+      end
+
+      # Get metadata for a session, creating default if it doesn't exist
+      def get_metadata(session_key : String) : Metadata
+        sanitized_key = sanitize_key(session_key)
+
+        # Check cache first
+        if @metadata_cache.has_key?(sanitized_key)
+          return @metadata_cache[sanitized_key]
+        end
+
+        metadata_file = @sessions_dir / "#{sanitized_key}.meta.json"
+
+        if File.exists?(metadata_file)
+          begin
+            metadata = Metadata.from_json(File.read(metadata_file))
+            # Ensure session_type is set (for backward compatibility with old metadata files)
+            if metadata.session_type == "unknown"
+              metadata.session_type = detect_session_type(session_key)
+              save_metadata(session_key, metadata)
+            end
+            @metadata_cache[sanitized_key] = metadata
+            return metadata
+          rescue e : Exception
+            # If metadata is corrupted, create new default
+          end
+        end
+
+        # Create default metadata with detected session type
+        session_type = detect_session_type(session_key)
+        metadata = Metadata.new(session_type: session_type)
+        @metadata_cache[sanitized_key] = metadata
+        save_metadata(session_key, metadata)
+        metadata
+      end
+
+      # Detect session type from session key
+      private def detect_session_type(session_key : String) : String
+        case session_key
+        when /^web_/      then "web"
+        when /^telegram:/ then "telegram"
+        when /^repl_/     then "repl"
+        when /^repl$/     then "repl"
+        when /^voice$/    then "voice"
+        when /^whatsapp:/ then "whatsapp"
+        when /^slack:/    then "slack"
+        when /^cli$/      then "cli"
+        else                   "unknown"
+        end
+      end
+
+      # Save metadata for a session
+      def save_metadata(session_key : String, metadata : Metadata) : Nil
+        sanitized_key = sanitize_key(session_key)
+        metadata_file = @sessions_dir / "#{sanitized_key}.meta.json"
+
+        File.write(metadata_file, metadata.to_pretty_json)
+        @metadata_cache[sanitized_key] = metadata
+      end
+
+      # Update the last message in metadata when a new user message is sent
+      def update_last_message(session_key : String, content : String) : Nil
+        metadata = get_metadata(session_key)
+        metadata.update_last_message(content)
+        save_metadata(session_key, metadata)
+      end
+
+      # Update the description (can be called by agent/LLM)
+      def update_description(session_key : String, description : String) : Nil
+        metadata = get_metadata(session_key)
+        metadata.update_description(description)
+        save_metadata(session_key, metadata)
+      end
+
+      # Update the title
+      def update_title(session_key : String, title : String) : Nil
+        metadata = get_metadata(session_key)
+        metadata.update_title(title)
+        save_metadata(session_key, metadata)
+      end
+
+      # Get all sessions with their metadata
+      def list_sessions_with_metadata : Array(Hash(String, JSON::Any))
+        sessions = list_sessions
+
+        sessions.map do |session_key|
+          metadata = get_metadata(session_key)
+          {
+            "id"           => JSON::Any.new(session_key),
+            "title"        => JSON::Any.new(metadata.title),
+            "description"  => JSON::Any.new(metadata.description),
+            "last_message" => JSON::Any.new(metadata.last_message),
+            "updated_at"   => JSON::Any.new(metadata.updated_at),
+            "session_type" => JSON::Any.new(metadata.session_type),
+          }
         end
       end
 

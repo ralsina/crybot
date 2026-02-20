@@ -34,6 +34,9 @@ class CrybotWeb {
       'voice-messages': 'voice'
     };
 
+    // Store metadata for current sessions
+    this.currentSessionMetadata = null;
+
     // Track loading state to prevent duplicate loads
     this.isLoadingSessions = false;
 
@@ -221,6 +224,22 @@ class CrybotWeb {
     if (chatBackBtn) {
       chatBackBtn.addEventListener('click', () => {
         this.showChatList();
+      });
+    }
+
+    // Edit title button
+    const editTitleBtn = document.getElementById('edit-title-btn');
+    if (editTitleBtn) {
+      editTitleBtn.addEventListener('click', () => {
+        this.editChatTitle();
+      });
+    }
+
+    // Click on title to edit
+    const chatTitle = document.getElementById('chat-title');
+    if (chatTitle) {
+      chatTitle.addEventListener('click', () => {
+        this.editChatTitle();
       });
     }
 
@@ -1089,6 +1108,7 @@ class CrybotWeb {
   loadHistory(messages, sessionId) {
     this.sessionId = sessionId;
     localStorage.setItem('crybotChatSession', sessionId);
+    this.currentSessionMetadata = null; // Will be populated by openChatSession
 
     // Track which session is being viewed in this container
     this.currentViewSessions['chat-messages'] = sessionId;
@@ -1346,9 +1366,16 @@ class CrybotWeb {
     // Mark current chat as seen when user sends a message
     this.markCurrentChatAsSeen();
 
-    // For telegram, send to the telegram-specific endpoint
-    if (context === 'telegram' && this.currentTelegramChat) {
-      this.sendToTelegram(content);
+    // Check if current session is a Telegram session using metadata
+    const isTelegramSession = this.currentSessionMetadata &&
+                              this.currentSessionMetadata.session_type === 'telegram';
+    const chatId = isTelegramSession ? this.sessionId.replace('telegram:', '') : null;
+
+    // For telegram tab or telegram session in chat view, send to telegram endpoint
+    if ((context === 'telegram' && this.currentTelegramChat) || (isTelegramSession && chatId)) {
+      // Use the telegram-specific endpoint
+      const targetChatId = this.currentTelegramChat || chatId;
+      this.sendToTelegramDirect(content, targetChatId);
       return;
     }
 
@@ -1387,24 +1414,34 @@ class CrybotWeb {
   }
 
   async sendToTelegram(content) {
-    const form = document.getElementById('telegram-form');
-    const input = form.querySelector('.message-input');
+    await this.sendToTelegramDirect(content, this.currentTelegramChat);
+  }
 
-    this.addMessage(content, 'user', 'telegram-messages');
-    input.value = '';
+  async sendToTelegramDirect(content, chatId) {
+    const container = this.getCurrentContainer();
+
+    this.addMessage(content, 'user', container);
+
+    // Clear the input
+    const formId = this.currentTab === 'telegram-tab' ? 'telegram-form' : 'chat-form';
+    const form = document.getElementById(formId);
+    if (form) {
+      const input = form.querySelector('.message-input');
+      if (input) input.value = '';
+    }
 
     // Save to message history
-    this.addToHistory('telegram-messages', content);
+    this.addToHistory(container, content);
 
     // Reset history position
-    this.historyPosition['telegram-form'] = -1;
-    this.pendingInput['telegram-form'] = '';
+    this.historyPosition[formId] = -1;
+    this.pendingInput[formId] = '';
 
     // Show typing indicator
-    this.showTypingIndicator('telegram-messages');
+    this.showTypingIndicator(container);
 
     try {
-      const response = await fetch(`/api/telegram/conversations/${encodeURIComponent(this.currentTelegramChat)}/message`, {
+      const response = await fetch(`/api/telegram/conversations/${encodeURIComponent(chatId)}/message`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content }),
@@ -1412,16 +1449,16 @@ class CrybotWeb {
 
       const data = await response.json();
       if (data.error) {
-        this.hideTypingIndicator('telegram-messages');
-        this.addMessage(`Error: ${data.error}`, 'system', 'telegram-messages');
+        this.hideTypingIndicator(container);
+        this.addMessage(`Error: ${data.error}`, 'system', container);
       }
       // Note: We don't manually add the assistant message here because
       // the WebSocket broadcast will handle displaying the response
       // The broadcast will also hide the typing indicator
     } catch (error) {
-      this.hideTypingIndicator('telegram-messages');
+      this.hideTypingIndicator(container);
       console.error('Failed to send to telegram:', error);
-      this.addMessage('Failed to send message to Telegram', 'system', 'telegram-messages');
+      this.addMessage('Failed to send message to Telegram', 'system', container);
     }
   }
 
@@ -2121,12 +2158,9 @@ class CrybotWeb {
         return;
       }
 
-      // Filter to show web_ and repl_ sessions, plus "repl" and "cli" (not telegram or voice)
+      // Filter to show web and repl sessions only (not telegram, voice, whatsapp, slack)
       const chatSessions = data.sessions.filter(s =>
-        s.startsWith('web_') ||
-        s.startsWith('repl_') ||
-        s === 'repl' ||
-        s === 'cli'
+        s.session_type === 'web' || s.session_type === 'repl'
       );
 
       if (chatSessions.length === 0) {
@@ -2134,53 +2168,30 @@ class CrybotWeb {
         return;
       }
 
-      // Check each session for messages and filter out empty ones
-      const sessionsWithMessages = [];
+      // Sort sessions by updated_at (newest first)
+      chatSessions.sort((a, b) => {
+        const dateA = new Date(a.updated_at || 0);
+        const dateB = new Date(b.updated_at || 0);
+        return dateB - dateA;
+      });
 
-      for (const sessionId of chatSessions) {
-        try {
-          const sessionResponse = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}`);
-          const sessionData = await sessionResponse.json();
-
-          // Filter out messages that have actual content (not just system/tool messages)
-          const userMessages = sessionData.messages.filter(m =>
-            m.content && (m.role === 'user' || m.role === 'assistant')
-          );
-
-          if (userMessages.length > 0) {
-            sessionsWithMessages.push({
-              id: sessionId,
-              lastMessage: userMessages[userMessages.length - 1].content,
-              messageCount: userMessages.length,
-            });
-          }
-        } catch (e) {
-          console.error('Failed to load session:', sessionId, e);
-        }
-      }
-
-      if (sessionsWithMessages.length === 0) {
-        itemsContainer.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">No conversations yet. Start chatting!</p>';
-        return;
-      }
-
-      // Sort sessions by ID (newest first based on timestamp prefix)
-      sessionsWithMessages.sort((a, b) => b.id.localeCompare(a.id));
-
-      sessionsWithMessages.forEach(session => {
+      chatSessions.forEach(session => {
         const item = document.createElement('div');
         item.className = 'chat-conversation-item';
         item.dataset.sessionId = session.id;
 
-        // Get session info
-        const sessionInfo = this.formatSessionInfo(session.id, session.lastMessage);
+        // Use metadata title and last_message
+        const title = session.title || 'Conversation';
+        const preview = session.last_message || 'No messages';
+        const time = session.updated_at ? this.formatSessionTime(session.updated_at) : '';
+
         const isCurrent = session.id === this.sessionId;
 
         item.innerHTML = `
           <div class="chat-conversation-content">
-            <div class="chat-conversation-title">${this.escapeHtml(sessionInfo.title)}</div>
-            <div class="chat-conversation-preview">${this.escapeHtml(sessionInfo.preview)}</div>
-            <div class="chat-conversation-time">${sessionInfo.time}</div>
+            <div class="chat-conversation-title">${this.escapeHtml(title)}</div>
+            <div class="chat-conversation-preview">${this.escapeHtml(preview.substring(0, 50))}${preview.length > 50 ? '...' : ''}</div>
+            <div class="chat-conversation-time">${time}</div>
           </div>
           <button class="chat-conversation-delete" data-session="${session.id}" title="Delete conversation">×</button>
         `;
@@ -2246,11 +2257,19 @@ class CrybotWeb {
     return { title, preview, time };
   }
 
-  formatSessionTime(hexTime) {
+  formatSessionTime(timeInput) {
     try {
-      // Convert hex timestamp to readable time
-      const timestamp = parseInt(hexTime, 16);
-      const date = new Date(timestamp * 1000);
+      let date;
+
+      // Check if it's an RFC3339 timestamp (from metadata)
+      if (timeInput.includes('T') || timeInput.includes('-')) {
+        date = new Date(timeInput);
+      } else {
+        // Convert hex timestamp to readable time (legacy session IDs)
+        const timestamp = parseInt(timeInput, 16);
+        date = new Date(timestamp * 1000);
+      }
+
       const now = new Date();
       const diffMs = now.getTime() - date.getTime();
       const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
@@ -2284,6 +2303,20 @@ class CrybotWeb {
       // Update current session
       this.sessionId = sessionId;
       localStorage.setItem('crybotChatSession', sessionId);
+
+      // Store session metadata
+      this.currentSessionMetadata = {
+        id: sessionId,
+        title: data.title || 'New Conversation',
+        description: data.description || '',
+        session_type: data.session_type || 'unknown'
+      };
+
+      // Update title in header
+      const titleElement = document.getElementById('chat-title');
+      if (titleElement) {
+        titleElement.textContent = this.currentSessionMetadata.title;
+      }
 
       const container = document.getElementById('chat-messages');
       container.innerHTML = '';
@@ -2355,6 +2388,7 @@ class CrybotWeb {
         if (sessionId === this.sessionId) {
           this.showChatList();
           this.sessionId = null;
+          this.currentSessionMetadata = null;
           localStorage.removeItem('crybotChatSession');
         }
         // Refresh the list
@@ -2405,6 +2439,38 @@ class CrybotWeb {
         type: 'session_switch',
         session_id: '', // Empty means create new
       }));
+    }
+  }
+
+  async editChatTitle() {
+    if (!this.sessionId) return;
+
+    const titleElement = document.getElementById('chat-title');
+    const currentTitle = titleElement?.textContent || 'New Conversation';
+
+    const newTitle = prompt('Enter conversation title:', currentTitle);
+    if (newTitle === null || newTitle.trim() === '') return;
+
+    try {
+      const response = await fetch(`/api/sessions/${encodeURIComponent(this.sessionId)}/metadata`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ title: newTitle.trim() }),
+      });
+
+      if (response.ok) {
+        if (titleElement) {
+          titleElement.textContent = newTitle.trim();
+        }
+        // Refresh the sessions list to show updated title
+        this.loadSessionsList();
+      } else {
+        console.error('Failed to update title');
+      }
+    } catch (error) {
+      console.error('Failed to update title:', error);
     }
   }
 
@@ -3346,8 +3412,8 @@ execution:
         return;
       }
 
-      // Only show actual web chat sessions (starting with 'web_')
-      const webSessions = data.sessions.filter(s => s.startsWith('web_'));
+      // Only show web chat sessions (by session_type)
+      const webSessions = data.sessions.filter(s => s.session_type === 'web');
 
       if (webSessions.length === 0) {
         listContainer.innerHTML = '<p style="color: #999;">No web chat sessions found. Start a conversation in the chat tab first.</p>';
@@ -3356,10 +3422,12 @@ execution:
 
       listContainer.innerHTML = '<div style="margin-top: 8px;"><strong>Select a session to forward to:</strong></div>';
 
-      webSessions.forEach(sessionId => {
+      webSessions.forEach(session => {
         const item = document.createElement('div');
         item.className = 'telegram-chat-option';
-        item.textContent = sessionId;
+        // Display title with session ID as fallback
+        item.textContent = session.title || session.id;
+        item.title = session.id; // Show full session ID on hover
         item.style.cursor = 'pointer';
         item.style.padding = '4px 8px';
         item.style.borderRadius = '4px';
@@ -3367,7 +3435,7 @@ execution:
         item.style.backgroundColor = '#f5f5f5';
 
         item.addEventListener('click', () => {
-          document.getElementById('task-forward-to').value = `web:${sessionId}`;
+          document.getElementById('task-forward-to').value = `web:${session.id}`;
           listContainer.classList.add('hidden');
         });
 

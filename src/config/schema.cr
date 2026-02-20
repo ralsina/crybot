@@ -170,12 +170,16 @@ module Crybot
         include YAML::Serializable
 
         property? enabled : Bool = false
+        property bridge_url : String = ""
+        property allow_from : Array(String) = [] of String
+
+        # Legacy Cloud API fields (deprecated, kept for backward compatibility)
         property phone_number_id : String = ""
         property access_token : String = ""
         property webhook_verify_token : String = ""
         property app_secret : String = ""
 
-        def initialize(@enabled = false, @phone_number_id = "", @access_token = "", @webhook_verify_token = "", @app_secret = "")
+        def initialize(@enabled = false, @bridge_url = "ws://localhost:3001", @allow_from = [] of String, @phone_number_id = "", @access_token = "", @webhook_verify_token = "", @app_secret = "")
         end
       end
     end

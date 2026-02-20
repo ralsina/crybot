@@ -1,5 +1,7 @@
 require "../agent/loop"
 require "../agent/cancellation"
+require "../session/manager"
+require "../session/metadata"
 require "fancyline"
 require "./base"
 
@@ -90,9 +92,11 @@ module Crybot
         @session_key : String
         @fancy : Fancyline
         @running_check : Proc(Bool)
+        @sessions : Session::Manager
 
         def initialize(@agent_loop : Crybot::Agent::Loop, @model : String, @session_key : String = "repl", @running_check : Proc(Bool) = -> { true })
           @fancy = Fancyline.new
+          @sessions = Session::Manager.instance
 
           # Setup display widgets
           self.setup_display
@@ -303,6 +307,11 @@ module Crybot
               cmd.colorize(:cyan)
             end
 
+            # Colorize slash commands
+            line = line.gsub(/\/(title|description|info)\b/) do |cmd|
+              cmd.colorize(:yellow)
+            end
+
             # Call next middleware
             yielder.call(ctx, line)
           end
@@ -326,11 +335,23 @@ module Crybot
             # Built-in commands
             commands = ["help", "clear", "model", "quit", "exit"]
 
+            # Slash commands
+            slash_commands = ["/title", "/description", "/info"]
+
             # Add command completions if word matches
-            if word_matches_command(word)
+            if word_matches_command(word, commands)
               commands.each do |cmd|
                 if cmd.starts_with?(word) && cmd != word
                   completions << Fancyline::Completion.new(range, cmd, cmd.colorize(:cyan).to_s)
+                end
+              end
+            end
+
+            # Add slash command completions
+            if word.starts_with?("/")
+              slash_commands.each do |cmd|
+                if cmd.starts_with?(word) && cmd != word
+                  completions << Fancyline::Completion.new(range, cmd, cmd.colorize(:yellow).to_s)
                 end
               end
             end
@@ -339,10 +360,8 @@ module Crybot
           end
         end
 
-        private def word_matches_command(word : String) : Bool
+        private def word_matches_command(word : String, commands : Array(String)) : Bool
           return true if word.empty?
-
-          commands = ["help", "clear", "model", "quit", "exit"]
           commands.any?(&.starts_with?(word))
         end
 
@@ -370,6 +389,51 @@ module Crybot
             return true
           end
 
+          # Handle slash commands
+          if input.starts_with?("/")
+            return handle_slash_command(input)
+          end
+
+          false
+        end
+
+        # ameba:disable Metrics/CyclomaticComplexity
+        private def handle_slash_command(input : String) : Bool
+          parts = input.split(' ', 2)
+          command = parts[0]
+          args = parts.size > 1 ? parts[1]? : ""
+
+          case command
+          when "/title"
+            if args.nil? || args.empty?
+              metadata = @sessions.get_metadata(@session_key)
+              puts "Current title: #{metadata.title}"
+            else
+              @sessions.update_title(@session_key, args)
+              puts "✓ Title updated to: #{args}"
+            end
+            return true
+          when "/description"
+            if args.nil? || args.empty?
+              metadata = @sessions.get_metadata(@session_key)
+              puts "Current description: #{metadata.description}"
+              if metadata.description.empty?
+                puts "  (no description set)"
+              end
+            else
+              @sessions.update_description(@session_key, args)
+              puts "✓ Description updated"
+            end
+            return true
+          when "/info"
+            metadata = @sessions.get_metadata(@session_key)
+            puts "Session information:"
+            puts "  Title: #{metadata.title}"
+            puts "  Description: #{metadata.description.empty? ? "(none)" : metadata.description}"
+            puts "  Last updated: #{metadata.updated_at}"
+            return true
+          end
+
           false
         end
 
@@ -380,6 +444,13 @@ module Crybot
           puts "  clear  - Clear the screen"
           puts "  quit   - Exit the REPL"
           puts "  exit   - Exit the REPL"
+          puts
+          puts "Slash commands:"
+          puts "  /title [text]      - Set or view conversation title"
+          puts "  /description [text] - Set or view conversation description"
+          puts "  /info              - Show session information"
+          puts
+          puts "Other:"
           puts "  Tab    - Autocomplete commands"
           puts "  Up/Down - Navigate command history"
           puts "  Ctrl+R - Search history"

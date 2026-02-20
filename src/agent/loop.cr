@@ -16,6 +16,7 @@ require "./tools/web"
 require "./tools/memory"
 require "./tools/skill_builder"
 require "./tools/web_scraper_skill"
+require "./tools/session_metadata"
 require "./skill_manager"
 require "./skill_tool_wrapper"
 require "./cancellation"
@@ -309,6 +310,10 @@ module Crybot
         Tools::Registry.register(Tools::ListRecentMemoriesTool.new)
         Tools::Registry.register(Tools::RecordMemoryTool.new)
         Tools::Registry.register(Tools::MemoryStatsTool.new)
+
+        # Session metadata tools
+        Tools::Registry.register(Tools::UpdateSessionDescriptionTool.new)
+        Tools::Registry.register(Tools::UpdateSessionTitleTool.new)
 
         # Skill creation tools
         Tools::Registry.register(Tools::CreateSkillTool.new)

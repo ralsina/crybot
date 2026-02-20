@@ -10,10 +10,10 @@ module Crybot
 
         # GET /api/sessions - List all sessions
         def list_sessions(env) : String
-          sessions = @sessions.list_sessions
+          sessions_with_metadata = @sessions.list_sessions_with_metadata
           {
-            sessions: sessions,
-            count:    sessions.size,
+            sessions: sessions_with_metadata,
+            count:    sessions_with_metadata.size,
           }.to_json
         end
 
@@ -21,10 +21,13 @@ module Crybot
         def get_session(env) : String
           session_id = env.params.url["id"]
           messages = @sessions.get_or_create(session_id)
+          metadata = @sessions.get_metadata(session_id)
 
           {
-            session_id: session_id,
-            messages:   messages.map do |msg|
+            session_id:  session_id,
+            title:       metadata.title,
+            description: metadata.description,
+            messages:    messages.map do |msg|
               msg_hash = Hash(String, JSON::Any).new
               msg_hash["role"] = JSON::Any.new(msg.role)
               msg_hash["content"] = JSON::Any.new(msg.content) if msg.content
@@ -51,6 +54,39 @@ module Crybot
           @sessions.delete(session_id)
           env.response.status_code = 200
           {success: true}.to_json
+        end
+
+        # PATCH /api/sessions/:id/metadata - Update session metadata
+        def update_metadata(env) : String
+          session_id = env.params.url["id"]
+          metadata = @sessions.get_metadata(session_id)
+
+          # Parse request body
+          body = env.request.body
+          return {error: "No body provided"}.to_json unless body
+
+          begin
+            data = JSON.parse(body.gets_to_end)
+
+            if title = data["title"]?.try(&.as_s?)
+              metadata.update_title(title)
+            end
+
+            if description = data["description"]?.try(&.as_s?)
+              metadata.update_description(description)
+            end
+
+            @sessions.save_metadata(session_id, metadata)
+
+            {
+              success:     true,
+              title:       metadata.title,
+              description: metadata.description,
+            }.to_json
+          rescue e : Exception
+            env.response.status_code = 400
+            {error: "Invalid JSON: #{e.message}"}.to_json
+          end
         end
       end
     end

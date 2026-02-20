@@ -20,16 +20,104 @@ Crybot is a modular personal AI assistant built in Crystal. It provides multiple
 
 ## Installation
 
+### Quick Install (Recommended)
+
+Install the latest pre-built binary:
+
+```bash
+curl -O https://crybot.ralsina.me/install.sh
+chmod +x install.sh
+./install.sh
+```
+
+This will:
+- Download the latest binary for your system
+- Install it to `~/.local/bin`
+- Run the onboarding wizard
+- Optionally create a systemd service for auto-start
+
+**Manual download:** Visit the [releases page](https://github.com/ralsina/crybot/releases) and download the binary for your platform (linux-amd64, linux-arm64, etc.).
+
+### Install Options
+
+Download the script first for more options:
+
+```bash
+# Download install script
+curl -O https://crybot.ralsina.me/install.sh
+chmod +x install.sh
+
+# Install with interactive prompts
+./install.sh
+
+# Install specific version
+./install.sh --version v0.1.1
+
+# Skip onboarding
+./install.sh --skip-onboarding
+
+# Create systemd service (starts on login)
+./install.sh --service user
+
+# Create auto-start service (runs 24/7)
+./install.sh --service auto
+```
+
+### Updating
+
+Download and run the update script:
+
+```bash
+curl -sSL https://crybot.ralsina.me/update.sh | bash
+```
+
+Or download first for options:
+
+```bash
+# Download update script
+curl -O https://crybot.ralsina.me/update.sh
+chmod +x update.sh
+
+# Update with prompts
+./update.sh
+
+# Update and restart service
+./update.sh --restart-service
+```
+
+### Uninstalling
+
+```bash
+# Download uninstall script
+curl -O https://crybot.ralsina.me/uninstall.sh
+chmod +x uninstall.sh
+
+# Remove Crybot (keep config)
+./uninstall.sh
+
+# Remove configuration too
+./uninstall.sh --purge
+
+# Stop service before uninstalling
+./uninstall.sh --stop-service
+```
+./uninstall.sh --stop-service
+```
+
+### Build from Source
+
+If you prefer to build from source:
+
 1. Clone the repository
 2. Install dependencies: `shards install`
-3. Build: `shards build`
+3. Build: `make build` (or `crystal build src/main.cr -o bin/crybot -Dpreview_mt -Dexecution_context`)
 
 ## Configuration
 
 Run the onboarding command to initialize:
 
 ```bash
-./bin/crybot onboard
+crybot onboard
 ```
 
 This creates:
@@ -228,32 +316,53 @@ export SLACK_API_TOKEN="xoxb-..."
 
 **See the [Slack Integration documentation](https://crybot.ralsina.me/books/user-guide/15-slack/) for detailed setup instructions.**
 
-### WhatsApp Integration (Experimental)
+### WhatsApp Integration
 
-**Note:** This feature is experimental and has not been extensively tested. Feedback and improvements are welcome!
+Crybot supports WhatsApp via a bridge that uses the WhatsApp Web protocol. This is simpler than the official Cloud API and works with your personal WhatsApp account.
 
-Requires a public HTTPS server for webhook support (or use ngrok for testing).
+**Prerequisites:**
+- Node.js 18+ and npm
+- WhatsApp mobile app
 
-Configure in `config.yml`:
+**Setup:**
 
+1. Install the bridge dependencies:
+```bash
+cd src/whatsapp-bridge
+npm install --ignore-scripts
+```
+
+2. Start the WhatsApp bridge:
+```bash
+npm start
+```
+
+3. Scan the QR code displayed in the terminal with your WhatsApp mobile app:
+   - Open WhatsApp > Settings > Linked Devices > Link a Device
+
+4. Configure Crybot:
 ```yaml
 features:
-  web: true      # Required for webhooks
   whatsapp: true
 
 channels:
   whatsapp:
     enabled: true
-    phone_number_id: "YOUR_PHONE_NUMBER_ID"
-    access_token: "YOUR_ACCESS_TOKEN"
-    webhook_verify_token: "YOUR_VERIFY_TOKEN"
-    app_secret: "YOUR_APP_SECRET"
+    bridge_url: "ws://localhost:3001"  # Default
+    allow_from: []  # Empty = deny all, ["*"] = allow all, or ["15551234567"] for specific numbers
+```
+
+5. Start Crybot:
+```bash
+./bin/crybot start
 ```
 
 **Features:**
-- Meta WhatsApp Cloud API integration
-- Webhook-based message receiving
-- Template message support (required for first message)
+- WhatsApp Web protocol integration (via @whiskeysockets/baileys)
+- Direct WebSocket connection to bridge
+- Works with personal WhatsApp account
+- No Meta developer account or business app required
+- No template message restrictions
 - Channel-specific sessions (whatsapp:PHONE_NUMBER)
 - Scheduled task forwarding
 

@@ -997,6 +997,48 @@ body {
   background-color: var(--bg-darker);
   border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
+  gap: 12px;
+}
+
+.chat-title-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.chat-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-title:hover {
+  color: var(--accent-primary);
+}
+
+.edit-title-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  font-size: 16px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.chat-title-container:hover .edit-title-btn {
+  opacity: 1;
+}
+
+.edit-title-btn:hover {
+  color: var(--accent-primary);
 }
 
 .new-chat-btn {

@@ -1,5 +1,6 @@
 require "json"
 require "../../session/manager"
+require "../../providers/base"
 require "../../channels/telegram"
 require "../../channels/registry"
 
@@ -101,39 +102,32 @@ module Crybot
 
             puts "[Web] Session ID: #{session_id}, extracted chat_id: #{chat_id}"
 
-            # Process the message through the agent first to get context-aware response
-            # The session_key format is "telegram:chat_id"
             session_key = "telegram:#{chat_id}"
 
-            # Get the agent from the telegram channel
+            # First, send the user's message to Telegram with "FWD from web:" prefix
+            # This shows in Telegram what was forwarded
+            fwd_message = "📱 FWD from web:\n\n#{content}"
+            puts "[Web] Sending forwarded message to Telegram..."
+            telegram_channel.send_to_chat(chat_id, fwd_message)
+
+            # Then, send the original message to the agent (without the prefix)
+            # The agent's response will be sent to Telegram and web automatically
             agent = telegram_channel.agent
-            puts "[Web] Processing message through agent with session_key: #{session_key}"
+            puts "[Web] Processing through agent with session_key: #{session_key}"
             agent_response = agent.process(session_key, content)
 
-            # Log tool executions
-            agent_response.tool_executions.each do |exec|
-              status = exec.success? ? "✓" : "✗"
-              puts "[Web] [Tool] #{status} #{exec.tool_name}"
-              if exec.tool_name == "exec" || exec.tool_name == "exec_shell"
-                args_str = exec.arguments.map { |k, v| "#{k}=#{v}" }.join(" ")
-                puts "[Web]       Command: #{args_str}"
-                result_preview = exec.result.size > 200 ? "#{exec.result[0..200]}..." : exec.result
-                puts "[Web]       Output: #{result_preview}"
-              end
-            end
-
-            response = agent_response.response
-
-            # Send the message to Telegram with context
-            # Format: "you said on the web UI: <user_message>\n\n<response>"
-            telegram_message = "You said on the web UI: #{content}\n\n#{response}"
-            puts "[Web] Sending to Telegram chat #{chat_id}..."
-            telegram_channel.send_to_chat(chat_id, telegram_message)
+            # The agent response has been broadcast to web and Telegram
+            # Just return success to the web UI
+            {
+              status:   "sent",
+              chat_id:  chat_id,
+              response: agent_response.response,
+            }.to_json
 
             {
               status:   "sent",
               chat_id:  chat_id,
-              response: response,
+              message:  "Message sent to Telegram",
             }.to_json
           else
             env.response.status_code = 400

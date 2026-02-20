@@ -4,6 +4,9 @@ require "../landlock_socket"
 require "../agent/tool_monitor"
 require "../agent/tools/registry"
 require "../http_proxy/server"
+require "../scheduled_tasks/feature"
+require "../channels/manager"
+require "../features/gateway"
 
 module Crybot
   module Commands
@@ -80,6 +83,32 @@ module Crybot
       private def self.start_agent_features(config : Config::ConfigFile, agent_loop : AgentLoop) : Nil
         # Check if any features are enabled
         features_config = config.features
+
+        # Start gateway feature (Telegram) if enabled (runs in background fiber)
+        if features_config.gateway
+          Log.info { "[Agent] Starting gateway feature..." }
+          gateway_feature = Features::GatewayFeature.new(config)
+          spawn do
+            begin
+              gateway_feature.start
+            rescue e : Exception
+              Log.error(exception: e) { "[Agent] Gateway error: #{e.message}" }
+            end
+          end
+        end
+
+        # Start scheduled tasks feature if enabled (runs in background fiber)
+        if features_config.scheduled_tasks
+          Log.info { "[Agent] Starting scheduled tasks feature..." }
+          scheduled_tasks_feature = ScheduledTasks::Feature.new(config, agent_loop)
+          spawn do
+            begin
+              scheduled_tasks_feature.start
+            rescue e : Exception
+              Log.error(exception: e) { "[Agent] Scheduled tasks error: #{e.message}" }
+            end
+          end
+        end
 
         if features_config.repl
           Log.info { "[Agent] Starting REPL feature..." }

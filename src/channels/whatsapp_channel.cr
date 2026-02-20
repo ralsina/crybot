@@ -1,35 +1,33 @@
-require "whatsapp"
+require "http/web_socket"
+require "json"
 require "./channel"
 require "../agent/loop"
 require "../session/manager"
 
 module Crybot
   module Channels
-    # WhatsApp channel - handles WhatsApp bot interactions via Cloud API
-    # Uses the whatsapp shard for Meta's WhatsApp Cloud API integration
+    # WhatsApp channel - handles WhatsApp bot interactions via Baileys bridge
+    # Connects to a Node.js bridge that uses @whiskeysockets/baileys for WhatsApp Web protocol
     class WhatsAppChannel < Channel
-      @client : WhatsApp::Client
+      Log = ::Log.for("whatsapp")
+
       @agent : Agent::Loop
-      @verify_token : String
-      @app_secret : String
-      @running : Bool = true
       @sessions : Session::Manager
+      @bridge_url : String
+      @allowed_users : Array(String)
+      @ws : HTTP::WebSocket?
+      @connected : Bool = false
+      @running : Bool = false
+      @reconnect_delay : Time::Span = 5.seconds
 
-      getter agent, verify_token
+      getter agent
 
-      def initialize(config : Config::ChannelsConfig::WhatsAppConfig, agent : Agent::Loop)
-        @agent = agent
+      def initialize(config : Config::ChannelsConfig::WhatsAppConfig, @agent : Agent::Loop)
         @sessions = Session::Manager.instance
-        @verify_token = config.webhook_verify_token
-        @app_secret = config.app_secret
+        @bridge_url = config.bridge_url || "ws://localhost:3001"
+        @allowed_users = config.allow_from
 
-        # Create WhatsApp Cloud API client
-        @client = WhatsApp::Client.new(
-          phone_number_id: config.phone_number_id,
-          access_token: config.access_token
-        )
-
-        puts "[WhatsApp] WhatsApp client initialized"
+        puts "[WhatsApp] WhatsApp channel initialized (bridge: #{@bridge_url})"
       end
 
       def name : String
@@ -37,105 +35,217 @@ module Crybot
       end
 
       def start : Nil
-        puts "[WhatsApp] Webhook channel started"
-        puts "[WhatsApp] Configure webhook URL: #{@client.webhook_url}"
-        puts "[WhatsApp] Verify token: #{@verify_token}"
         @running = true
+        Log.info { "Starting WhatsApp channel, connecting to bridge at #{@bridge_url}" }
+
+        spawn do
+          while @running
+            begin
+              connect_to_bridge
+            rescue ex : Exception
+              @connected = false
+              Log.warn { "Bridge connection error: #{ex.message}" }
+            end
+
+            if @running
+              Log.info { "Reconnecting to bridge in #{@reconnect_delay.to_i} seconds..." }
+              sleep @reconnect_delay
+            end
+          end
+        end
       end
 
       def stop : Nil
         @running = false
-        puts "[WhatsApp] Webhook channel stopped"
+        @ws.try(&.close)
+        @connected = false
+        Log.info { "WhatsApp channel stopped" }
       end
 
       def send_message(message : ChannelMessage) : Nil
-        # Send message via WhatsApp Cloud API
-        phone_number = message.chat_id
+        ws = @ws
+        return unless ws
+        return unless @connected
 
-        # Convert content to plain text (WhatsApp supports basic formatting)
-        content = message.content
+        # Send message to WhatsApp via bridge
+        data = {
+          type:    "send",
+          jid:     message.chat_id,
+          content: message.content,
+        }
 
         begin
-          @client.send_text(
-            to: phone_number,
-            text: content
-          )
-        rescue e : Exception
-          puts "[WhatsApp] Error sending message: #{e.message}"
+          ws.send(data.to_json)
+          Log.debug { "Sent message to #{message.chat_id}" }
+        rescue ex : Exception
+          Log.error { "Failed to send message: #{ex.message}" }
         end
       end
 
       def session_key(chat_id : String) : String
         # WhatsApp sessions use the pattern "whatsapp:PHONE_NUMBER"
-        "#{name}:#{chat_id}"
+        # Extract phone number from JID (remove @s.whatsapp.net suffix)
+        phone_number = chat_id.split('@').first
+        "#{name}:#{phone_number}"
       end
 
-      # Check if this is a webhook channel (no direct connection)
       def webhook_based? : Bool
-        true
+        false # Direct WebSocket connection, not webhook-based
       end
 
-      # Verify a webhook request from Meta
-      def verify_webhook(mode : String?, token : String?) : Bool
-        WhatsApp::Webhook.verify?(mode, token, @verify_token)
-      end
-
-      # Verify webhook signature
-      def valid_webhook_signature?(headers : HTTP::Headers, body : String) : Bool
-        WhatsApp::Webhook.valid_signature?(headers, body, @app_secret)
-      end
-
-      # Handle incoming webhook payload
-      def handle_webhook(body : String) : Nil
-        return unless @running
-
-        payload = WhatsApp::Webhook.parse_payload(body)
-
-        payload.each_entry do |entry|
-          entry.each_change do |change|
-            change.each_message do |message|
-              process_message(message)
-            end
-          end
-        end
-      rescue e : Exception
-        puts "[WhatsApp] Error processing webhook: #{e.message}"
-        puts e.backtrace.join("\n") if ENV["DEBUG"]?
-      end
-
-      private def process_message(message : WhatsApp::Webhook::Message) : Nil
-        # Only process text messages
-        return unless message.text?
-
-        phone_number = message.from
-        text_obj = message.text
-        return unless text_obj
-
-        text_body = text_obj.body
-        return unless text_body
-
-        # Create session key
-        session_key = session_key(phone_number)
-
-        puts "[WhatsApp] Received message from #{phone_number}: #{text_body[0...100]}..."
-
-        # Process the message through the agent
-        spawn do
-          begin
-            @agent.process(session_key, text_body)
-          rescue e : Exception
-            puts "[WhatsApp] Error processing message: #{e.message}"
-            puts e.backtrace.join("\n") if ENV["DEBUG"]?
-          end
-        end
+      def healthy? : Bool
+        @connected
       end
 
       def supports_markdown? : Bool
         false # WhatsApp has its own formatting
       end
 
-      def healthy? : Bool
-        @running
+      private def connect_to_bridge : Nil
+        uri = URI.parse(@bridge_url)
+        host = uri.host || "localhost"
+        port = uri.port || 3001
+        path = uri.path
+        path = "/" if path.empty?
+
+        Log.info { "Connecting to bridge at #{host}:#{port}#{path}" }
+
+        ws = HTTP::WebSocket.new(host: host, path: path, port: port)
+
+        ws.on_message do |raw|
+          handle_bridge_message(raw)
+        end
+
+        ws.on_close do
+          @connected = false
+          Log.info { "Bridge disconnected" }
+        end
+
+        ws.on_error do |error|
+          Log.error { "WebSocket error: #{error}" }
+        end
+
+        @ws = ws
+        Log.info { "Connected to WhatsApp bridge" }
+        @connected = true
+
+        ws.run
+      end
+
+      private def handle_bridge_message(raw : String) : Nil
+        data = JSON.parse(raw)
+        msg_type = data["type"]?.try(&.as_s)
+
+        case msg_type
+        when "message"
+          handle_incoming_message(data)
+        when "status"
+          handle_status_update(data)
+        when "qr"
+          handle_qr_code(data)
+        when "error"
+          handle_error(data)
+        when "pong"
+          # Keepalive response, ignore
+        else
+          Log.debug { "Unknown message type: #{msg_type}" }
+        end
+      rescue ex : JSON::ParseException
+        Log.error { "Failed to parse bridge message: #{ex.message}" }
+      rescue ex : Exception
+        Log.error { "Error handling bridge message: #{ex.message}" }
+      end
+
+      private def handle_incoming_message(data : JSON::Any) : Nil
+        jid = data["pn"]?.try(&.as_s) || ""
+        content = data["content"]?.try(&.as_s) || ""
+
+        # Extract phone number from JID
+        phone_number = jid.split('@').first
+
+        # Check if sender is allowed
+        return unless allowed?(phone_number)
+
+        # Create metadata
+        metadata = Hash(String, String).new
+        metadata["message_id"] = data["id"]?.try(&.as_s) || ""
+        metadata["timestamp"] = data["timestamp"]?.try(&.as_s) || ""
+        metadata["is_group"] = data["isGroup"]?.try(&.as_s) || "false"
+        metadata["push_name"] = data["pushName"]?.try(&.as_s) || ""
+
+        is_group = data["isGroup"]?.try(&.as_bool) || false
+
+        Log.info {
+          msg_preview = content[0...50]
+          msg_preview += "..." if content.size > 50
+          "Received #{is_group ? "group" : "direct"} message from #{phone_number}: #{msg_preview}"
+        }
+
+        # Create channel message
+        msg = ChannelMessage.new(
+          channel: "whatsapp",
+          sender_id: phone_number,
+          chat_id: jid,
+          content: content,
+          metadata: metadata
+        )
+
+        # Process the message through the channel
+        handle_message(msg)
+      end
+
+      private def handle_status_update(data : JSON::Any) : Nil
+        status = data["status"]?.try(&.as_s)
+
+        case status
+        when "connected"
+          @connected = true
+          Log.info { "WhatsApp bridge status: connected" }
+        when "disconnected"
+          @connected = false
+          Log.warn { "WhatsApp bridge status: disconnected" }
+        when "logged_out"
+          @connected = false
+          Log.error { "WhatsApp logged out - please rescan QR code in bridge" }
+        else
+          Log.debug { "WhatsApp status: #{status}" }
+        end
+      end
+
+      private def handle_qr_code(data : JSON::Any) : Nil
+        Log.info { "QR code available - scan with WhatsApp mobile app" }
+        Log.info { "Open WhatsApp > Settings > Linked Devices > Link a Device" }
+        # The QR code is displayed in the bridge terminal
+      end
+
+      private def handle_error(data : JSON::Any) : Nil
+        error_msg = data["error"]?.try(&.as_s) || "Unknown error"
+        Log.error { "Bridge error: #{error_msg}" }
+      end
+
+      # Check if a phone number is allowed to use the bot
+      # Empty allow_from = deny all (secure default)
+      # ["*"] = allow all
+      # Otherwise check if phone number is in allowlist
+      private def allowed?(phone_number : String) : Bool
+        # Deny by default if no allowlist configured
+        return false if @allowed_users.empty?
+        # Allow all if wildcard is set
+        return true if @allowed_users.includes?("*")
+        # Check if phone number is in allowlist
+        @allowed_users.includes?(phone_number)
+      end
+
+      # Send ping to keep connection alive
+      def ping : Nil
+        ws = @ws
+        return unless ws && @connected
+
+        begin
+          ws.send({type: "ping"}.to_json)
+        rescue ex : Exception
+          Log.debug { "Failed to send ping: #{ex.message}" }
+        end
       end
     end
   end

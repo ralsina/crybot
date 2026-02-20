@@ -1,3 +1,4 @@
+require "log"
 require "../config/loader"
 require "../channels/manager"
 require "./base"
@@ -14,9 +15,12 @@ module Crybot
       end
 
       def start : Nil
-        return unless validate_config(@config)
+        unless validate_config(@config)
+          Log.warn { "[Gateway] Config validation failed, not starting" }
+          return
+        end
 
-        puts "[#{Time.local.to_s("%H:%M:%S")}] Starting gateway feature..."
+        Log.info { "[Gateway] Starting gateway feature..." }
 
         # Create agent loop
         @agent = Agent::Loop.new(@config)
@@ -42,8 +46,8 @@ module Crybot
       # ameba:disable Metrics/CyclomaticComplexity
       private def validate_config(config : Config::ConfigFile) : Bool
         # Check if any channels are enabled
-        unless config.channels.telegram.enabled
-          puts "Warning: Gateway enabled but no channels configured."
+        unless config.channels.telegram.enabled?
+          Log.warn { "[Gateway] Gateway enabled but no channels configured." }
           return false
         end
 
@@ -54,41 +58,41 @@ module Crybot
         case provider
         when "openai"
           if config.providers.openai.api_key.empty?
-            puts "Error: OpenAI API key not configured."
-            puts "Please edit #{Config::Loader.config_file} and add your API key"
+            Log.error { "[Gateway] OpenAI API key not configured." }
+            Log.error { "[Gateway] Please edit #{Config::Loader.config_file} and add your API key" }
             return false
           end
         when "anthropic"
           if config.providers.anthropic.api_key.empty?
-            puts "Error: Anthropic API key not configured."
-            puts "Please edit #{Config::Loader.config_file} and add your API key"
+            Log.error { "[Gateway] Anthropic API key not configured." }
+            Log.error { "[Gateway] Please edit #{Config::Loader.config_file} and add your API key" }
             return false
           end
         when "openrouter"
           if config.providers.openrouter.api_key.empty?
-            puts "Error: OpenRouter API key not configured."
-            puts "Please edit #{Config::Loader.config_file} and add your API key"
+            Log.error { "[Gateway] OpenRouter API key not configured." }
+            Log.error { "[Gateway] Please edit #{Config::Loader.config_file} and add your API key" }
             return false
           end
         when "vllm"
           if config.providers.vllm.api_base.empty?
-            puts "Error: vLLM api_base not configured."
-            puts "Please edit #{Config::Loader.config_file} and add api_base"
+            Log.error { "[Gateway] vLLM api_base not configured." }
+            Log.error { "[Gateway] Please edit #{Config::Loader.config_file} and add api_base" }
             return false
           end
         else # zhipu (default)
           if config.providers.zhipu.api_key.empty?
-            puts "Error: z.ai API key not configured."
-            puts "Please edit #{Config::Loader.config_file} and add your API key"
+            Log.error { "[Gateway] z.ai API key not configured." }
+            Log.error { "[Gateway] Please edit #{Config::Loader.config_file} and add your API key" }
             return false
           end
         end
 
         # Check Telegram token
         if config.channels.telegram.enabled? && config.channels.telegram.token.empty?
-          puts "Error: Telegram enabled but token not configured."
-          puts "Please edit #{Config::Loader.config_file} and add your bot token"
-          puts "\nGet a bot token from @BotFather on Telegram"
+          Log.error { "[Gateway] Telegram enabled but token not configured." }
+          Log.error { "[Gateway] Please edit #{Config::Loader.config_file} and add your bot token" }
+          Log.error { "[Gateway] Get a bot token from @BotFather on Telegram" }
           return false
         end
 

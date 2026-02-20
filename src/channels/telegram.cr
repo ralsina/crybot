@@ -43,11 +43,9 @@ module Crybot
 
       def start : Nil
         # Register this channel in the registry so web UI can access it
+        Log.info { "[Channels::Telegram] Registering channel in registry..." }
         Channels::Registry.register_telegram(self)
-        puts "[#{Time.local.to_s("%H:%M:%S")}] Starting polling (skipping webhook deletion)..."
-        # ameba:disable Documentation/DocumentationAdmonition
-        # TODO: Fix logging
-        # Crybot::Web::Handlers::LogsHandler.log("INFO", "Connected to Telegram")
+        Log.info { "[Channels::Telegram] Starting polling..." }
         start_polling
       end
 

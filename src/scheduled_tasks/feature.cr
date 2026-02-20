@@ -1,3 +1,4 @@
+require "log"
 require "../config/loader"
 require "../agent/loop"
 require "../features/base"
@@ -25,7 +26,7 @@ module Crybot
       def start : Nil
         return unless validate_tasks_file
 
-        puts "[#{Time.local.to_s("%H:%M:%S")}] Starting scheduled tasks feature..."
+        Log.info { "[ScheduledTasks] Starting scheduled tasks feature..." }
 
         # Register this instance in the registry for web access
         Registry.instance.register(self)
@@ -33,10 +34,14 @@ module Crybot
         # Load tasks from file
         load_tasks
 
-        # Calculate next run times for tasks that don't have one
+        now = Time.utc
+
+        # Calculate next run times for tasks that don't have one, or recalculate if in the past
         @tasks.each do |task|
-          if task.next_run.nil?
+          next_run = task.next_run
+          if next_run.nil? || next_run < now
             task.next_run = IntervalParser.calculate_next_run(task.interval)
+            Log.info { "[ScheduledTask] Task '#{task.name}' next run: #{task.next_run}" }
           end
         end
 
@@ -48,19 +53,19 @@ module Crybot
 
         @running = true
         task_count = @tasks.count(&.enabled?)
-        puts "[#{Time.local.to_s("%H:%M:%S")}] Scheduled tasks started with #{task_count} enabled tasks"
+        Log.info { "[ScheduledTasks] Started with #{task_count} enabled task(s)" }
       end
 
       def stop : Nil
         @running = false
-        puts "[#{Time.local.to_s("%H:%M:%S")}] Scheduled tasks stopped"
+        Log.info { "[ScheduledTasks] Stopped" }
       end
 
       def reload : Nil
-        puts "[#{Time.local.to_s("%H:%M:%S")}] Reloading scheduled tasks..."
+        Log.info { "[ScheduledTasks] Reloading..." }
         load_tasks
         task_count = @tasks.count(&.enabled?)
-        puts "[#{Time.local.to_s("%H:%M:%S")}] Scheduled tasks reloaded (#{@tasks.size} total, #{task_count} enabled)"
+        Log.info { "[ScheduledTasks] Reloaded (#{@tasks.size} total, #{task_count} enabled)" }
       end
 
       def tasks : Array(TaskConfig)
@@ -72,7 +77,7 @@ module Crybot
       end
 
       def add_task(task : TaskConfig) : Nil
-        puts "[ScheduledTask] Adding new task '#{task.name}' (enabled: #{task.enabled?}, forward_to: #{task.forward_to || "none"})"
+        Log.info { "[ScheduledTask] Adding new task '#{task.name}' (enabled: #{task.enabled?}, forward_to: #{task.forward_to || "none"})" }
         @tasks << task
         save_tasks
       end
@@ -80,7 +85,7 @@ module Crybot
       def update_task(id : String, updated_task : TaskConfig) : Bool
         index = @tasks.index { |task| task.id == id }
         if index
-          puts "[ScheduledTask] Updating task '#{updated_task.name}' (forward_to: #{updated_task.forward_to || "none"})"
+          Log.info { "[ScheduledTask] Updating task '#{updated_task.name}' (forward_to: #{updated_task.forward_to || "none"})" }
           @tasks[index] = updated_task
           save_tasks
           true
@@ -107,21 +112,21 @@ module Crybot
       def execute_task_now(id : String) : String
         task = get_task(id)
         if task.nil?
-          puts "[ScheduledTask] Error: Task '#{id}' not found"
+          Log.error { "[ScheduledTask] Error: Task '#{id}' not found" }
           return "Error: Task not found"
         end
 
-        puts "[ScheduledTask] Manual execution requested for task '#{task.name}'..."
+        Log.info { "[ScheduledTask] Manual execution requested for task '#{task.name}'..." }
         begin
           response = execute_task(task)
           task.last_run = Time.utc
+          update_next_run(task)
           save_tasks
-          puts "[ScheduledTask] Task '#{task.name}' executed successfully"
-          puts "[ScheduledTask] Response: #{response[0..200]}#{response.size > 200 ? "..." : ""}"
+          Log.info { "[ScheduledTask] Task '#{task.name}' executed successfully" }
+          Log.debug { "[ScheduledTask] Response: #{response[0..200]}#{response.size > 200 ? "..." : ""}" }
           response
         rescue e : Exception
-          puts "[ScheduledTask] Error executing task '#{task.name}': #{e.message}"
-          puts "[ScheduledTask] Backtrace: #{e.backtrace.join("\n")}"
+          Log.error(exception: e) { "[ScheduledTask] Error executing task '#{task.name}': #{e.message}" }
           "Error executing task: #{e.message}"
         end
       end
@@ -131,7 +136,7 @@ module Crybot
           begin
             check_and_execute_tasks
           rescue e : Exception
-            puts "[ScheduledTask] Error in scheduler: #{e.message}"
+            Log.error(exception: e) { "[ScheduledTask] Error in scheduler: #{e.message}" }
           end
           sleep 1.second
         end
@@ -141,20 +146,20 @@ module Crybot
         now = Time.utc
 
         @tasks.each do |task|
-          next unless task.enabled
+          next unless task.enabled?
 
           next_run = task.next_run
           next if next_run.nil? || next_run > now
 
           begin
-            puts "[ScheduledTask] Executing task '#{task.name}'..."
+            Log.info { "[ScheduledTask] Executing task '#{task.name}'..." }
             execute_task(task)
             task.last_run = now
             update_next_run(task)
             save_tasks
-            puts "[ScheduledTask] Task '#{task.name}' executed successfully"
+            Log.info { "[ScheduledTask] Task '#{task.name}' executed successfully" }
           rescue e : Exception
-            puts "[ScheduledTask] Error executing task '#{task.name}': #{e.message}"
+            Log.error(exception: e) { "[ScheduledTask] Error executing task '#{task.name}': #{e.message}" }
           end
         end
       end
@@ -162,7 +167,7 @@ module Crybot
       private def execute_task(task : TaskConfig) : String
         session_key = "scheduled/#{task.id}"
         forward_to_display = task.forward_to || "none"
-        puts "[ScheduledTask] Executing task '#{task.name}' (forward_to: #{forward_to_display})"
+        Log.debug { "[ScheduledTask] Executing task '#{task.name}' (forward_to: #{forward_to_display})" }
 
         # Apply memory expiration if configured
         apply_memory_expiration(task, session_key)
@@ -196,30 +201,30 @@ module Crybot
 
         # For scheduled tasks, we clear the session to start fresh
         # This prevents "I already have the content from earlier" responses
-        puts "[ScheduledTask] Clearing session context for task '#{task.name}' (memory_expiration: #{expiration})"
+        Log.debug { "[ScheduledTask] Clearing session context for task '#{task.name}' (memory_expiration: #{expiration})" }
         sessions.trim_session(session_key, Time.utc)
       end
 
       private def forward_output(task : TaskConfig, output : String) : Nil
         forward_target = task.forward_to
         unless forward_target
-          puts "[ScheduledTask] No forward_to configured for task '#{task.name}'"
+          Log.debug { "[ScheduledTask] No forward_to configured for task '#{task.name}'" }
           return
         end
 
-        puts "[ScheduledTask] Forwarding output for '#{task.name}' to: #{forward_target}"
+        Log.info { "[ScheduledTask] Forwarding output for '#{task.name}' to: #{forward_target}" }
 
         # Parse forward target: "telegram:chat_id", "web:session_id", "voice:", "repl:"
         parts = forward_target.split(":", 2)
         if parts.size < 2
-          puts "[ScheduledTask] Invalid forward_to format: #{forward_target}"
+          Log.warn { "[ScheduledTask] Invalid forward_to format: #{forward_target}" }
           return
         end
 
         channel_name = parts[0]
         chat_id = parts[1]
 
-        puts "[ScheduledTask] Forwarding to #{channel_name} chat '#{chat_id}'"
+        Log.debug { "[ScheduledTask] Forwarding to #{channel_name} chat '#{chat_id}'" }
 
         # Format the message
         message = format_task_message(task.name, output)
@@ -233,16 +238,15 @@ module Crybot
         )
 
         if success
-          puts "[ScheduledTask] Successfully forwarded to #{channel_name}"
+          Log.info { "[ScheduledTask] Successfully forwarded to #{channel_name}" }
           # Save to session so it appears in web UI
           session_key = "#{channel_name}:#{chat_id}"
           save_assistant_message_to_session(session_key, message)
         else
-          puts "[ScheduledTask] Failed to forward to #{channel_name} (channel not available)"
+          Log.warn { "[ScheduledTask] Failed to forward to #{channel_name} (channel not available)" }
         end
       rescue e : Exception
-        puts "[ScheduledTask] Error forwarding to #{forward_target}: #{e.message}"
-        puts "[ScheduledTask] Backtrace: #{e.backtrace.join("\n")}"
+        Log.error(exception: e) { "[ScheduledTask] Error forwarding to #{forward_target}: #{e.message}" }
       end
 
       private def format_task_message(task_name : String, output : String) : String
@@ -258,10 +262,10 @@ module Crybot
         telegram_channel = Channels::Registry.telegram
         if telegram_channel
           telegram_channel.send_to_chat(chat_id, message, :markdown)
-          puts "[ScheduledTask] Forwarded to Telegram chat '#{chat_id}' (legacy method)"
+          Log.debug { "[ScheduledTask] Forwarded to Telegram chat '#{chat_id}' (legacy method)" }
           save_assistant_message_to_session("telegram:#{chat_id}", message)
         else
-          puts "[ScheduledTask] Telegram channel not available"
+          Log.warn { "[ScheduledTask] Telegram channel not available" }
         end
       end
 
@@ -341,7 +345,7 @@ module Crybot
           TasksFile.from_yaml(content)
           true
         rescue e : Exception
-          puts "[ScheduledTask] Warning: Invalid tasks file at #{path}: #{e.message}"
+          Log.warn { "[ScheduledTask] Warning: Invalid tasks file at #{path}: #{e.message}" }
           false
         end
       end
