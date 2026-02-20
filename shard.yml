@@ -10,7 +10,7 @@ targets:
 
 dependencies:
   docopt:
-    github: chenkovsky/docopt.cr
+    github: ralsina/docopt.cr
   tourmaline:
     github: protoncr/tourmaline
   fancyline:
@@ -28,6 +28,8 @@ dependencies:
     path: ./tool_runner
   markd:
     github: icyleaf/markd
+  markterm:
+    github: ralsina/markterm
   slack:
     github: jgaskins/slack
 

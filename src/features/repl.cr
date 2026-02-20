@@ -257,8 +257,9 @@ module Crybot
                   end
                 end
 
-                # Clear the spinner line
-                print "\r" + " " * 30 + "\r"
+                # Clear the spinner line completely
+                print "\r" + " " * 50 + "\r"
+                STDOUT.flush
 
                 # Print response with formatting
                 puts

@@ -71,6 +71,7 @@ class CrybotWeb {
     this.setupSkillsHandlers();
     this.setupNotifications();
     this.setupCancelButton();
+    this.setupSidebarToggle();
     this.connectWebSocket();
     this.loadConfiguration();
     this.loadLogs();
@@ -452,6 +453,26 @@ class CrybotWeb {
     const cancelBtn = document.getElementById('chat-cancel');
     if (cancelBtn) {
       cancelBtn.classList.add('hidden');
+    }
+  }
+
+  setupSidebarToggle() {
+    const menuToggle = document.getElementById('menu-toggle');
+    const appContainer = document.querySelector('.app-container');
+
+    if (menuToggle && appContainer) {
+      // Restore sidebar state from localStorage
+      const sidebarCollapsed = localStorage.getItem('crybotSidebarCollapsed') === 'true';
+      if (sidebarCollapsed) {
+        appContainer.classList.add('sidebar-collapsed');
+      }
+
+      menuToggle.addEventListener('click', () => {
+        appContainer.classList.toggle('sidebar-collapsed');
+        // Save state to localStorage
+        const isCollapsed = appContainer.classList.contains('sidebar-collapsed');
+        localStorage.setItem('crybotSidebarCollapsed', isCollapsed.toString());
+      });
     }
   }
 
