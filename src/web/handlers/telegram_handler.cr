@@ -3,6 +3,7 @@ require "../../session/manager"
 require "../../providers/base"
 require "../../channels/telegram"
 require "../../channels/registry"
+require "../../config/loader"
 
 module Crybot
   module Web
@@ -87,9 +88,20 @@ module Crybot
           telegram_channel = Channels::Registry.telegram
           if telegram_channel.nil?
             puts "[Web] ERROR: Telegram channel not available in registry!"
-            puts "[Web] Make sure the gateway feature is running"
-            env.response.status_code = 503
-            return {error: "Telegram channel not available. Make sure the gateway feature is started."}.to_json
+
+            # Check if gateway is enabled in config to give appropriate error message
+            config = Config::Loader.load
+            if config.features.gateway && config.channels.telegram.enabled?
+              # Gateway is enabled but channel not ready yet
+              puts "[Web] Gateway enabled but channel not registered yet (still starting?)"
+              env.response.status_code = 503
+              return {error: "Telegram gateway is starting up. Please try again in a moment."}.to_json
+            else
+              # Gateway is not enabled
+              puts "[Web] Gateway or Telegram not enabled in config"
+              env.response.status_code = 503
+              return {error: "Telegram gateway is not enabled. Enable it in config.yml."}.to_json
+            end
           end
 
           puts "[Web] Found Telegram channel, processing message..."
@@ -111,23 +123,22 @@ module Crybot
             telegram_channel.send_to_chat(chat_id, fwd_message)
 
             # Then, send the original message to the agent (without the prefix)
-            # The agent's response will be sent to Telegram and web automatically
             agent = telegram_channel.agent
             puts "[Web] Processing through agent with session_key: #{session_key}"
             agent_response = agent.process(session_key, content)
 
-            # The agent response has been broadcast to web and Telegram
-            # Just return success to the web UI
-            {
-              status:   "sent",
-              chat_id:  chat_id,
-              response: agent_response.response,
-            }.to_json
+            # Send the agent's response to Telegram
+            response = agent_response.response
+            if response && !response.empty?
+              puts "[Web] Sending agent response to Telegram..."
+              telegram_channel.send_to_chat(chat_id, response)
+            end
 
+            # Return success to the web UI
             {
               status:   "sent",
               chat_id:  chat_id,
-              message:  "Message sent to Telegram",
+              response: response,
             }.to_json
           else
             env.response.status_code = 400

@@ -49,7 +49,9 @@ module Crybot
         @channels.each do |channel|
           spawn do
             begin
+              Log.info { "[Channels] Starting channel fiber..." }
               channel.start
+              Log.info { "[Channels] Channel fiber completed" }
             rescue e : Exception
               Log.error(exception: e) { "[Channels] Error in channel: #{e.message}" }
             end
