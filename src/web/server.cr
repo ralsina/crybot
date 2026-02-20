@@ -45,6 +45,7 @@ module Crybot
         Kemal.run
       end
 
+      # ameba:disable Metrics/CyclomaticComplexity
       private def setup_session_callbacks : Nil
         @sessions.on_save do |session_key, messages|
           last_message = messages.last?

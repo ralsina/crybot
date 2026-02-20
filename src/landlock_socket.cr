@@ -509,6 +509,7 @@ module Crybot
     end
 
     # Prompt user for access (rofi or terminal)
+    # ameba:disable Metrics/CyclomaticComplexity
     private def self.prompt_user(path : String) : Symbol
       home = ENV.fetch("HOME", "")
       display_path = path.starts_with?(home) ? path.sub(home, "~") : path
@@ -814,6 +815,7 @@ module Crybot
     end
 
     # Prompt user for domain access (rofi or terminal)
+    # ameba:disable Metrics/CyclomaticComplexity
     private def self.prompt_user_for_domain(domain : String) : Symbol
       # Check for graphical environment
       has_display = ENV.has_key?("DISPLAY") || ENV.has_key?("WAYLAND_DISPLAY")
