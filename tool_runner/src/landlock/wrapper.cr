@@ -31,6 +31,14 @@ module ToolRunner
                    ACCESS_FS_MAKE_DIR | ACCESS_FS_MAKE_REG | ACCESS_FS_MAKE_SYM |
                    ACCESS_FS_REMOVE_FILE | ACCESS_FS_REMOVE_DIR | ACCESS_FS_TRUNCATE
 
+    # All filesystem access rights that can be controlled (for use in handled_access_fs)
+    # This must include ALL rights we want Landlock to restrict
+    ACCESS_FS_ALL = ACCESS_FS_READ_FILE | ACCESS_FS_WRITE_FILE | ACCESS_FS_READ_DIR |
+                    ACCESS_FS_REMOVE_DIR | ACCESS_FS_REMOVE_FILE | ACCESS_FS_MAKE_CHAR |
+                    ACCESS_FS_MAKE_DIR | ACCESS_FS_MAKE_REG | ACCESS_FS_MAKE_SOCK |
+                    ACCESS_FS_MAKE_FIFO | ACCESS_FS_MAKE_BLOCK | ACCESS_FS_MAKE_SYM |
+                    ACCESS_FS_REFER | ACCESS_FS_TRUNCATE
+
     # Network access rights (ABI v3 - Linux 6.7+)
     ACCESS_NET_CONNECT_TCP = 1_u64 << 0
     ACCESS_NET_BIND_TCP    = 1_u64 << 1

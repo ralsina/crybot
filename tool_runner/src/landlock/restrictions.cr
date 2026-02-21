@@ -112,11 +112,9 @@ module ToolRunner
       def apply : Bool
         return false unless Landlock.available?
 
-        # Collect all access rights we want to control
-        handled_access_fs = 0_u64
-        @path_rules.each do |rule|
-          handled_access_fs |= rule.access_rights
-        end
+        # IMPORTANT: We must include ALL access rights we want to control in handled_access_fs
+        # Only operations matching these rights will be restricted by Landlock
+        handled_access_fs = Landlock::ACCESS_FS_ALL
 
         # Check if we have network rules and if network is supported
         handled_access_net = 0_u64

@@ -519,11 +519,35 @@ module Crybot
       target_path = path
       parent_note = ""
 
-      if !Dir.exists?(path)
+      # Check if path is a directory (with permission error handling)
+      is_dir = begin
+        Dir.exists?(path)
+      rescue File::AccessDeniedError
+        # Can't access this path at all - Landlock won't help
+        Log.warn { "[LandlockSocket] Path not accessible by user: #{path}" }
+        return :denied
+      rescue Exception
+        false
+      end
+
+      if !is_dir
         parent = File.dirname(path)
         parent_display = parent.starts_with?(home) ? parent.sub(home, "~") : parent
         target_path = parent
         parent_note = " (grants RW access to: #{parent_display})"
+
+        # Check if parent directory is accessible
+        begin
+          # Try to check parent accessibility without actually accessing it
+          # Just check if we can stat it
+          File.info?(parent)
+        rescue File::AccessDeniedError
+          # Can't access parent either - Landlock won't help
+          Log.warn { "[LandlockSocket] Parent directory not accessible: #{parent}" }
+          return :denied
+        rescue Exception
+          # Path doesn't exist or other error - continue, we might be able to create it
+        end
       end
 
       # Store the actual path we'll grant access to (may be parent dir)

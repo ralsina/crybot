@@ -180,7 +180,9 @@ module Crybot
         error_channel = Channel(Exception).new
 
         # Create isolated execution context
-        _isolated_context = Fiber::ExecutionContext::Isolated.new("ToolExecution", spawn_context: Fiber::ExecutionContext.default) do
+        _isolated_context = Fiber::ExecutionContext::Isolated.new("ToolExecution-#{tool_name}", spawn_context: Fiber::ExecutionContext.default) do
+          Log.debug { "[ToolMonitor] Starting execution in isolated context for #{tool_name}" }
+
           begin
             # Set proxy environment variables if proxy is enabled
             if proxy_config && proxy_config.enabled?
@@ -191,11 +193,15 @@ module Crybot
             end
 
             # Apply Landlock restrictions first
-            if restrictions.path_rules.empty? || !::ToolRunner::Landlock.available?
-              # No restrictions to apply or Landlock not available - continue without sandboxing
+            if restrictions.path_rules.empty?
+              Log.warn { "[ToolMonitor] No path rules configured, skipping Landlock" }
+            elsif !::ToolRunner::Landlock.available?
+              Log.warn { "[ToolMonitor] Landlock not available on this system" }
             elsif !restrictions.apply
               error_channel.send(Exception.new("Failed to apply Landlock restrictions"))
               next
+            else
+              Log.debug { "[ToolMonitor] Landlock restrictions applied successfully" }
             end
 
             # Get the tool from registry
