@@ -123,54 +123,42 @@ module Crybot
           Log.info { "[ToolMonitor] Applying network Landlock: only allowing connections to proxy port #{proxy_config.port}" }
         end
 
-        max_retries = 2 # Allow one retry after access granted
-        attempt = 0
+        # Execute the tool ONCE with Landlock
+        # Note: We cannot retry with expanded permissions in the same process
+        # because PR_SET_NO_NEW_PRIVS can only be set once per thread.
+        # If access is denied, the user must grant permission and retry in a new execution.
+        begin
+          result = execute_tool_in_isolated_context(tool_name, arguments, restrictions, proxy_config)
+          return result
+        rescue e : Tools::LandlockDeniedException
+          # Handle Landlock denial - we know the path from the exception
+          path = e.path
 
-        while attempt < max_retries
-          attempt += 1
+          Log.warn { "[ToolMonitor] Access denied for: #{path}" }
 
-          begin
-            # Execute the tool directly in an isolated fiber with Landlock
-            result = execute_tool_in_isolated_context(tool_name, arguments, restrictions, proxy_config)
-            return result
-          rescue e : Tools::LandlockDeniedException
-            # Handle Landlock denial - we know the path from the exception
-            path = e.path
+          # Get current session_id from Agent module's session store
+          session_id = Crybot::Agent.current_session
 
-            if attempt < max_retries
-              Log.warn { "[ToolMonitor] Access denied for: #{path}" }
+          access_result = LandlockSocket.request_access(path, session_id)
 
-              # Get current session_id from Agent module's session store
-              session_id = Crybot::Agent.current_session
-
-              access_result = LandlockSocket.request_access(path, session_id)
-
-              case access_result
-              when LandlockSocket::AccessResult::Granted, LandlockSocket::AccessResult::GrantedSession, LandlockSocket::AccessResult::GrantedOnce
-                Log.info { "[ToolMonitor] Access granted, retrying..." }
-                # Landlock works on directories, not files. Use parent directory.
-                dir_path = File.directory?(path) ? path : File.dirname(path)
-                restrictions.add_read_write(dir_path)
-                next
-              when LandlockSocket::AccessResult::DeniedSuggestPlayground
-                playground_path = File.join(ENV.fetch("HOME", ""), ".crybot", "playground")
-                return "Error: Access denied for #{path}. Suggested using playground (#{playground_path})."
-              else
-                return "Error: Access denied for #{path}."
-              end
-            else
-              return "Error: Access denied for #{path}."
-            end
-          rescue e : Exception
-            # Check if this is a timeout from ToolRunner
-            if e.message.try(&.includes?("timed out"))
-              return "Error: Tool execution timed out"
-            end
-            return "Error: #{e.message}"
+          case access_result
+          when LandlockSocket::AccessResult::Granted, LandlockSocket::AccessResult::GrantedSession, LandlockSocket::AccessResult::GrantedOnce
+            # Access granted, but we cannot retry in this process
+            # Return a message explaining the user needs to try again
+            return "Error: Access denied for #{path}. Permission granted - please try the command again."
+          when LandlockSocket::AccessResult::DeniedSuggestPlayground
+            playground_path = File.join(ENV.fetch("HOME", ""), ".crybot", "playground")
+            return "Error: Access denied for #{path}. Suggested using playground (#{playground_path})."
+          else
+            return "Error: Access denied for #{path}."
           end
+        rescue e : Exception
+          # Check if this is a timeout from ToolRunner
+          if e.message.try(&.includes?("timed out"))
+            return "Error: Tool execution timed out"
+          end
+          return "Error: #{e.message}"
         end
-
-        "Error: Maximum retries exceeded"
       end
 
       # Execute tool in an isolated context with Landlock
