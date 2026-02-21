@@ -218,6 +218,20 @@ module Crybot
       property name : String
       property command : String?
       property url : String?
+      property landlock : MCPLandlockConfig?
+
+      def initialize(@name : String, @command = nil, @url = nil, @landlock = nil)
+      end
+    end
+
+    struct MCPLandlockConfig
+      include YAML::Serializable
+
+      property allowed_paths : Array(String) = [] of String
+      property allowed_ports : Array(Int32) = [] of Int32
+
+      def initialize(@allowed_paths = [] of String, @allowed_ports = [] of Int32)
+      end
     end
 
     struct VoiceConfig

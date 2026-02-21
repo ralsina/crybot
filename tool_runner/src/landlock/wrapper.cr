@@ -9,22 +9,27 @@ module ToolRunner
     ABI_V6 = 6
 
     # Landlock access rights for filesystem (ABI v1)
-    ACCESS_FS_READ_FILE   = 1_u64 << 0
+    # Updated to match kernel 6.x layout where EXECUTE, READ_FILE, and READ_DIR are separate bits
+    ACCESS_FS_EXECUTE     = 1_u64 << 0
     ACCESS_FS_WRITE_FILE  = 1_u64 << 1
-    ACCESS_FS_READ_DIR    = 1_u64 << 2
-    ACCESS_FS_REMOVE_DIR  = 1_u64 << 3
-    ACCESS_FS_REMOVE_FILE = 1_u64 << 4
-    ACCESS_FS_MAKE_CHAR   = 1_u64 << 5
-    ACCESS_FS_MAKE_DIR    = 1_u64 << 6
-    ACCESS_FS_MAKE_REG    = 1_u64 << 7
-    ACCESS_FS_MAKE_SOCK   = 1_u64 << 8
-    ACCESS_FS_MAKE_FIFO   = 1_u64 << 9
-    ACCESS_FS_MAKE_BLOCK  = 1_u64 << 10
-    ACCESS_FS_MAKE_SYM    = 1_u64 << 11
+    ACCESS_FS_READ_FILE   = 1_u64 << 2
+    ACCESS_FS_READ_DIR    = 1_u64 << 3
+    ACCESS_FS_REMOVE_DIR  = 1_u64 << 4
+    ACCESS_FS_REMOVE_FILE = 1_u64 << 5
+    ACCESS_FS_MAKE_CHAR   = 1_u64 << 6
+    ACCESS_FS_MAKE_DIR    = 1_u64 << 7
+    ACCESS_FS_MAKE_REG    = 1_u64 << 8
+    ACCESS_FS_MAKE_SOCK   = 1_u64 << 9
+    ACCESS_FS_MAKE_FIFO   = 1_u64 << 10
+    ACCESS_FS_MAKE_BLOCK  = 1_u64 << 11
+    ACCESS_FS_MAKE_SYM    = 1_u64 << 12
 
     # Additional access rights for ABI v2
     ACCESS_FS_REFER    = 1_u64 << 13
     ACCESS_FS_TRUNCATE = 1_u64 << 14
+
+    # Additional access rights for ABI v6 (Linux 6.8+)
+    ACCESS_FS_IOCTL_DEV = 1_u64 << 15
 
     # All access rights we want to control
     ACCESS_FS_RW = ACCESS_FS_READ_FILE | ACCESS_FS_WRITE_FILE | ACCESS_FS_READ_DIR |
@@ -242,12 +247,15 @@ module ToolRunner
       end
 
       # Restrict self with the ruleset
-      result = LibC.syscall(SYS_LANDLOCK_RESTRICT_SELF, ruleset_fd, 0, 0)
+      # NOTE: syscall takes 3 args: ruleset_fd, flags (unused), and a spare
+      # We pass only the required arguments
+      result = LibC.syscall(SYS_LANDLOCK_RESTRICT_SELF, ruleset_fd, 0)
       if result != 0
         STDERR.puts "[Landlock] Failed to restrict self: #{Errno.value}"
         return false
       end
 
+      STDERR.puts "[Landlock] Successfully restricted self with ruleset fd=#{ruleset_fd}"
       true
     end
 

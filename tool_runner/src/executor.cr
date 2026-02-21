@@ -9,6 +9,7 @@ module ToolRunner
       restrictions : Landlock::Restrictions,
       timeout : Time::Span?,
       env : Hash(String, String)?,
+      disable_landlock : Bool = false,
     ) : ExecutionResult
       # Create channels for result and error
       result_channel = Channel(ExecutionResult).new
@@ -19,13 +20,17 @@ module ToolRunner
       # We need to keep a reference to isolated_context to keep it alive until channels complete
       _isolated_context = Fiber::ExecutionContext::Isolated.new("ToolRunner", spawn_context: Fiber::ExecutionContext.default) do
         begin
-          # Apply Landlock restrictions first
+          # Apply Landlock restrictions first (unless disabled)
           # If restrictions are empty or Landlock is not available, skip silently
-          if restrictions.path_rules.empty? || !Landlock.available?
-            # No restrictions to apply or Landlock not available - continue without sandboxing
-          elsif !restrictions.apply
-            error_channel.send(LandlockError.new("Failed to apply Landlock restrictions"))
-            next
+          if disable_landlock
+            STDERR.puts "[Landlock] Disabled via flag - running without sandboxing"
+          else
+            if restrictions.path_rules.empty? || !Landlock.available?
+              # No restrictions to apply or Landlock not available - continue without sandboxing
+            elsif !restrictions.apply
+              error_channel.send(LandlockError.new("Failed to apply Landlock restrictions"))
+              next
+            end
           end
 
           # Execute the command

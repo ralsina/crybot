@@ -54,7 +54,7 @@ describe "Landlock Integration" do
       .add_read_write("/tmp")
 
     begin
-      result2 = ToolRunner::Executor.execute(
+      ToolRunner::Executor.execute(
         command: "echo test2 > #{test_file}",
         restrictions: restrictions2,
         timeout: nil,
@@ -88,7 +88,7 @@ describe "Landlock Integration" do
 
     # Try to write to home - should be blocked
     begin
-      result = ToolRunner::Executor.execute(
+      ToolRunner::Executor.execute(
         command: "echo blocked > #{test_file}",
         restrictions: restrictions,
         timeout: nil,

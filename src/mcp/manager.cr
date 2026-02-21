@@ -25,7 +25,7 @@ module Crybot
           @started = true
           config.servers.each do |server_config|
             begin
-              client = Client.new(server_config.name, server_config.command, server_config.url)
+              client = Client.new(server_config.name, server_config.command, server_config.url, server_config)
               client.start
               @clients[server_config.name] = client
 
@@ -54,7 +54,7 @@ module Crybot
 
         config.servers.each do |server_config|
           begin
-            client = Client.new(server_config.name, server_config.command, server_config.url)
+            client = Client.new(server_config.name, server_config.command, server_config.url, server_config)
             client.start
             @clients[server_config.name] = client
 

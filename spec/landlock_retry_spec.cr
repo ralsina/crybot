@@ -18,9 +18,8 @@ describe "Landlock Retry Scenario" do
     puts "Parent dir: #{parent_dir}"
 
     # First attempt: restrictions WITHOUT home directory
-    # KEY: Add a rule for / with no access to create default-deny
+    # Only allow specific paths, not home
     restrictions1 = ToolRunner::Landlock::Restrictions.new
-      .add_path("/", 0)  # No access to root - this should block everything
       .add_read_only("/usr")
       .add_read_only("/bin")
       .add_read_only("/dev")
@@ -31,7 +30,7 @@ describe "Landlock Retry Scenario" do
     puts "Restrictions: / (deny all), /usr, /bin, /dev, /tmp (NO home)"
 
     # Try to write to home - should be blocked
-    result1 = ToolRunner::Executor.execute(
+    ToolRunner::Executor.execute(
       command: "echo test > #{test_file}",
       restrictions: restrictions1,
       timeout: nil,
@@ -56,7 +55,7 @@ describe "Landlock Retry Scenario" do
       .add_read_only("/dev")
       .add_path("/dev/null", ToolRunner::Landlock::ACCESS_FS_READ_FILE | ToolRunner::Landlock::ACCESS_FS_WRITE_FILE)
       .add_read_write("/tmp")
-      .add_read_write(parent_dir)  # <-- GRANTED PERMISSION
+      .add_read_write(parent_dir) # <-- GRANTED PERMISSION
 
     puts "Restrictions: /usr, /bin, /dev, /tmp, #{parent_dir} (HOME ADDED)"
 
@@ -188,7 +187,7 @@ describe "Landlock Retry Scenario" do
     puts "\n--- First execution attempt (should fail) ---"
 
     begin
-      result1 = ToolRunner::Executor.execute(
+      ToolRunner::Executor.execute(
         command: "echo attempt1 > #{test_file}",
         restrictions: restrictions,
         timeout: nil,
@@ -198,7 +197,7 @@ describe "Landlock Retry Scenario" do
       if File.exists?(test_file)
         puts "WARNING: File created on first attempt (home might be in default restrictions)"
         File.delete(test_file)
-          next # skip "Test setup invalid - home already accessible"
+        next # skip "Test setup invalid - home already accessible"
       else
         puts "OK: First attempt failed as expected"
       end
@@ -269,7 +268,7 @@ describe "Landlock Retry Scenario" do
       end
 
       begin
-        result = ToolRunner::Executor.execute(
+        ToolRunner::Executor.execute(
           command: "echo attempt#{attempt} > #{test_file}",
           restrictions: restrictions,
           timeout: nil,

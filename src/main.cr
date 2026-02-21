@@ -52,14 +52,15 @@ Crybot - Crystal-based Personal AI Assistant
 
 Usage:
   crybot onboard
-  crybot agent [-m <message>]
+  crybot agent [-m <message>] [--no-landlock]
   crybot status
   crybot tool-runner <tool_name> <json_args>
   crybot [-h | --help]
 
 Options:
-  -h --help     Show this help message
-  -m <message>  Message to send to the agent (non-interactive mode)
+  -h --help        Show this help message
+  -m <message>     Message to send to the agent (non-interactive mode)
+  --no-landlock    Disable Landlock sandboxing for tools and MCP servers
 
 Commands:
   onboard       Initialize configuration and workspace
@@ -74,15 +75,29 @@ Running Crybot:
 Landlock:
   Crybot runs with a monitor that handles access requests via rofi/terminal.
   Tools run in Landlocked subprocesses and request access when needed.
+  Use --no-landlock to disable sandboxing (not recommended for production use).
 DOC
 
 module Crybot
   # Logger for the main Crybot module
   Log = ::Log.for("crybot")
 
+  # Global flag to disable Landlock sandboxing
+  @@landlock_disabled = false
+
+  def self.landlock_disabled?
+    @@landlock_disabled
+  end
+
   # ameba:disable Metrics/CyclomaticComplexity
   def self.run : Nil
     args = ARGV
+
+    # Check for --no-landlock flag
+    @@landlock_disabled = args.includes?("--no-landlock")
+    if @@landlock_disabled
+      Log.warn { "[Landlock] Sandbox DISABLED via --no-landlock flag" }
+    end
 
     # Show help if requested
     if args.includes?("-h") || args.includes?("--help")

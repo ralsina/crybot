@@ -198,7 +198,18 @@ module Crybot
             end
 
             # Apply Landlock restrictions first
-            if restrictions.path_rules.empty?
+            # Check if Landlock is globally disabled
+            landlock_disabled = false
+            begin
+              # Access the Crybot module's landlock_disabled flag
+              landlock_disabled = Crybot.landlock_disabled?
+            rescue
+              # If we can't access it (e.g., in tests), assume enabled
+            end
+
+            if landlock_disabled
+              Log.warn { "[ToolMonitor] Landlock DISABLED globally - tools running without sandboxing" }
+            elsif restrictions.path_rules.empty?
               Log.warn { "[ToolMonitor] No path rules configured, skipping Landlock" }
             elsif !::ToolRunner::Landlock.available?
               Log.warn { "[ToolMonitor] Landlock not available on this system" }

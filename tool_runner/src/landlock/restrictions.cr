@@ -112,12 +112,9 @@ module ToolRunner
       def apply : Bool
         return false unless Landlock.available?
 
-        # IMPORTANT: Collect the actual access rights we're using
-        # Only operations matching these rights will be restricted by Landlock
-        handled_access_fs = 0_u64
-        @path_rules.each do |rule|
-          handled_access_fs |= rule.access_rights
-        end
+        # IMPORTANT: Use ACCESS_FS_ALL to tell Landlock to manage ALL filesystem operations
+        # This means operations not explicitly allowed will be denied
+        handled_access_fs = Landlock::ACCESS_FS_ALL
 
         STDERR.puts "[Landlock] apply: #{@path_rules.size} rules, handled_access_fs=#{handled_access_fs}"
 

@@ -1,0 +1,26 @@
+# Example MCP server configuration with per-server Landlock restrictions
+
+mcp:
+  servers:
+    # Playwright MCP server - restricted to specific download directories
+    - name: playwright
+      command: "npx -y @executeautomation/playwright"
+      landlock:
+        allowed_paths:
+          - "/tmp/playwright"
+          - "~/web-downloads"
+          - "~/screenshots"
+
+    # Filesystem MCP server - restricted to specific document directories
+    - name: filesystem
+      command: "npx -y @modelcontextprotocol/server-filesystem /home/user/Documents"
+      landlock:
+        allowed_paths:
+          - "/tmp"
+          - "~/Documents"
+          - "~/Downloads"
+
+    # Another MCP server - using default Crybot restrictions
+    # (no landlock section = uses default_crybot restrictions)
+    - name: some-other-server
+      command: "npx some-mcp-server"
