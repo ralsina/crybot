@@ -227,7 +227,7 @@ module ToolRunner
       # Set no_new_privs to prevent privilege escalation
       result = LibC.syscall(SYS_PRCTL, PR_SET_NO_NEW_PRIVS, 1, 0, 0)
       if result != 0
-        STDERR.puts "[Landlock] Failed to set PR_SET_NO_NEW_PRIVS"
+        STDERR.puts "[Landlock] Failed to set PR_SET_NO_NEW_PRIVS (errno: #{Errno.value})"
         return false
       end
 
