@@ -18,7 +18,9 @@ describe "Landlock Retry Scenario" do
     puts "Parent dir: #{parent_dir}"
 
     # First attempt: restrictions WITHOUT home directory
+    # KEY: Add a rule for / with no access to create default-deny
     restrictions1 = ToolRunner::Landlock::Restrictions.new
+      .add_path("/", 0)  # No access to root - this should block everything
       .add_read_only("/usr")
       .add_read_only("/bin")
       .add_read_only("/dev")
@@ -26,7 +28,7 @@ describe "Landlock Retry Scenario" do
       .add_read_write("/tmp")
 
     puts "\n--- Attempt 1: Without home directory access ---"
-    puts "Restrictions: /usr, /bin, /dev, /tmp (NO home)"
+    puts "Restrictions: / (deny all), /usr, /bin, /dev, /tmp (NO home)"
 
     # Try to write to home - should be blocked
     result1 = ToolRunner::Executor.execute(
@@ -92,7 +94,7 @@ describe "Landlock Retry Scenario" do
     puts "  stdout: #{test_result.stdout}"
 
     # Now try to create the file
-    # Use /usr/bin/ruby explicitly to avoid PATH issues
+    # Use /usr/bin/ruby explicitly
     result2 = ToolRunner::Executor.execute(
       command: "/usr/bin/ruby -e 'File.write(\"#{test_file}\", \"test2\")'",
       restrictions: restrictions2,

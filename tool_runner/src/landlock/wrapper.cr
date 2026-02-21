@@ -178,9 +178,11 @@ module ToolRunner
       # Open the path with O_PATH | O_CLOEXEC
       fd = LibC.open(path, O_PATH | O_CLOEXEC)
       if fd < 0
-        STDERR.puts "[Landlock] Failed to open path: #{path} (errno: #{Errno.value})"
+        STDERR.puts "[Landlock] Failed to open path for rule: #{path} (errno: #{Errno.value})"
         return false
       end
+
+      STDERR.puts "[Landlock] Opened #{path} (fd=#{fd}) for adding rule with access=#{allowed_access}"
 
       begin
         path_beneath = LibLandlock::LandlockPathBeneathAttr.new

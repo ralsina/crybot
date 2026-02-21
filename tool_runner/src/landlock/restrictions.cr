@@ -112,9 +112,14 @@ module ToolRunner
       def apply : Bool
         return false unless Landlock.available?
 
-        # IMPORTANT: We must include ALL access rights we want to control in handled_access_fs
+        # IMPORTANT: Collect the actual access rights we're using
         # Only operations matching these rights will be restricted by Landlock
-        handled_access_fs = Landlock::ACCESS_FS_ALL
+        handled_access_fs = 0_u64
+        @path_rules.each do |rule|
+          handled_access_fs |= rule.access_rights
+        end
+
+        STDERR.puts "[Landlock] apply: #{@path_rules.size} rules, handled_access_fs=#{handled_access_fs}"
 
         # Check if we have network rules and if network is supported
         handled_access_net = 0_u64
@@ -132,14 +137,14 @@ module ToolRunner
 
         # Create comprehensive ruleset with both filesystem and network
         ruleset_fd = Landlock.create_comprehensive_ruleset(handled_access_fs, handled_access_net)
+        STDERR.puts "[Landlock] ruleset_fd=#{ruleset_fd}"
         return false unless ruleset_fd && ruleset_fd >= 0
 
         begin
           # Add each path rule
           @path_rules.each do |rule|
-            unless Landlock.add_path_rule(ruleset_fd, rule.path, rule.access_rights)
-              STDERR.puts "[Landlock] Failed to add rule for #{rule.path}"
-            end
+            result = Landlock.add_path_rule(ruleset_fd, rule.path, rule.access_rights)
+            STDERR.puts "[Landlock] add_path_rule(#{rule.path}, #{rule.access_rights})=#{result}"
           end
 
           # Add each port rule (if network is supported)
@@ -152,9 +157,10 @@ module ToolRunner
           end
 
           # Restrict current thread
-          Landlock.restrict_self(ruleset_fd)
+          result = Landlock.restrict_self(ruleset_fd)
+          STDERR.puts "[Landlock] restrict_self result=#{result}"
 
-          true
+          result
         ensure
           LibC.close(ruleset_fd) if ruleset_fd && ruleset_fd >= 0
         end

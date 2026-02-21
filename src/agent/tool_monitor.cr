@@ -123,42 +123,59 @@ module Crybot
           Log.info { "[ToolMonitor] Applying network Landlock: only allowing connections to proxy port #{proxy_config.port}" }
         end
 
-        # Execute the tool ONCE with Landlock
-        # Note: We cannot retry with expanded permissions in the same process
-        # because PR_SET_NO_NEW_PRIVS can only be set once per thread.
-        # If access is denied, the user must grant permission and retry in a new execution.
-        begin
-          result = execute_tool_in_isolated_context(tool_name, arguments, restrictions, proxy_config)
-          return result
-        rescue e : Tools::LandlockDeniedException
-          # Handle Landlock denial - we know the path from the exception
-          path = e.path
+        # Try executing with permission prompts and retries
+        # We do retries BEFORE applying Landlock, so we can gather all needed permissions first
+        max_retries = 3
+        attempt = 0
 
-          Log.warn { "[ToolMonitor] Access denied for: #{path}" }
+        while attempt < max_retries
+          attempt += 1
 
-          # Get current session_id from Agent module's session store
-          session_id = Crybot::Agent.current_session
+          begin
+            # Execute with Landlock in isolated context
+            # This applies Landlock ONCE with the current restrictions
+            result = execute_tool_in_isolated_context(tool_name, arguments, restrictions, proxy_config)
+            return result
+          rescue e : Tools::LandlockDeniedException
+            # Handle Landlock denial - we know the path from the exception
+            path = e.path
 
-          access_result = LandlockSocket.request_access(path, session_id)
+            if attempt < max_retries
+              Log.warn { "[ToolMonitor] Access denied for: #{path}" }
 
-          case access_result
-          when LandlockSocket::AccessResult::Granted, LandlockSocket::AccessResult::GrantedSession, LandlockSocket::AccessResult::GrantedOnce
-            # Access granted, but we cannot retry in this process
-            # Return a message explaining the user needs to try again
-            return "Error: Access denied for #{path}. Permission granted - please try the command again."
-          when LandlockSocket::AccessResult::DeniedSuggestPlayground
-            playground_path = File.join(ENV.fetch("HOME", ""), ".crybot", "playground")
-            return "Error: Access denied for #{path}. Suggested using playground (#{playground_path})."
-          else
-            return "Error: Access denied for #{path}."
+              # Get current session_id from Agent module's session store
+              session_id = Crybot::Agent.current_session
+
+              access_result = LandlockSocket.request_access(path, session_id)
+
+              case access_result
+              when LandlockSocket::AccessResult::Granted, LandlockSocket::AccessResult::GrantedSession, LandlockSocket::AccessResult::GrantedOnce
+                Log.info { "[ToolMonitor] Access granted, retrying..." }
+                # Add the path to restrictions and retry
+                # Note: We need to create a NEW isolated context with expanded restrictions
+                # because PR_SET_NO_NEW_PRIVS can only be set once per thread
+                dir_path = File.directory?(path) ? path : File.dirname(path)
+                restrictions.add_read_write(dir_path)
+                next
+              when LandlockSocket::AccessResult::DeniedSuggestPlayground
+                playground_path = File.join(ENV.fetch("HOME", ""), ".crybot", "playground")
+                return "Error: Access denied for #{path}. Suggested using playground (#{playground_path})."
+              else
+                return "Error: Access denied for #{path}."
+              end
+            else
+              return "Error: Access denied for #{path}."
+            end
+          rescue e : Exception
+            # Check if this is a timeout from ToolRunner
+            if e.message.try(&.includes?("timed out"))
+              return "Error: Tool execution timed out"
+            end
+            return "Error: #{e.message}"
           end
-        rescue e : Exception
-          # Check if this is a timeout from ToolRunner
-          if e.message.try(&.includes?("timed out"))
-            return "Error: Tool execution timed out"
-          end
-          return "Error: #{e.message}"
         end
+
+        "Error: Maximum retries exceeded"
       end
 
       # Execute tool in an isolated context with Landlock
@@ -226,9 +243,25 @@ module Crybot
 
       # Load user-configured allowed paths
       private def self.load_allowed_paths : Array(String)?
-        # ameba:disable Documentation/DocumentationAdmonition
-        # TODO: Load from config.yml landlock.allowed_paths
-        [] of String
+        home = ENV.fetch("HOME", "")
+        return nil if home.empty?
+
+        monitor_dir = File.join(home, ".crybot", "monitor")
+        allowed_paths_file = File.join(monitor_dir, "allowed_paths.yml")
+
+        return nil unless File.exists?(allowed_paths_file)
+
+        begin
+          data = YAML.parse(File.read(allowed_paths_file))
+          if data["paths"]?
+            data["paths"].as_a.map(&.as_s)
+          else
+            nil
+          end
+        rescue e : Exception
+          Log.error { "[ToolMonitor] Failed to load allowed paths: #{e.message}" }
+          nil
+        end
       end
 
       # Load proxy configuration
