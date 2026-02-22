@@ -139,7 +139,8 @@ module Crybot
 
       def initialize(@config : Config::ConfigFile)
         # Initialize MCP manager first (before SkillManager)
-        @mcp_manager = MCP::Manager.new(@config.mcp)
+        # Use singleton to share MCP connections across all agent loops
+        @mcp_manager = MCP::Manager.instance(@config.mcp)
 
         @skill_manager = SkillManager.new(Config::Loader.skills_dir, @mcp_manager)
         @provider, @provider_name = create_provider
