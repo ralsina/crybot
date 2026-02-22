@@ -153,6 +153,17 @@ module Crybot
           - `web_search(query, max_results)` - Search the web
           - `web_fetch(url)` - Fetch and read web pages
 
+          **MCP (Model Context Protocol) Tools:**
+          - You have access to various MCP servers that provide additional tools
+          - MCP tools appear with names like `server_name/tool_name` (e.g., `playwright/browser_navigate`)
+          - **IMPORTANT: MCP servers are SHARED resources with locking**
+          - When you use an MCP tool, you acquire an exclusive lock on that server
+          - Other agents must wait until you're done
+          - **MCP state is NOT preserved between your tool calls**
+          - Always assume each sequence starts fresh - navigate before clicking, re-query before acting
+          - Example: For Playwright, always do navigate → click, never assume page is still loaded
+          - Keep your MCP operations concise and complete them in as few tool calls as possible
+
           **CRITICAL: How to Use Tools:**
           When you need to use a tool, you MUST call it using function calling syntax. Do NOT just write code blocks or explain what you would do.
           - **WRONG**: "Here's the command to run: ```bash ping 8.8.8.8 ```"
