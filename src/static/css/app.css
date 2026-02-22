@@ -2015,3 +2015,272 @@ body {
   outline: none;
   border-color: var(--accent-primary);
 }
+
+/* MCP Marketplace Styles */
+.marketplace-search {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.marketplace-search input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+}
+
+.marketplace-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.marketplace-tab {
+  padding: 8px 16px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.marketplace-tab:hover {
+  color: var(--text-primary);
+}
+
+.marketplace-tab.active {
+  color: var(--accent-primary);
+  border-bottom-color: var(--accent-primary);
+}
+
+.marketplace-tab-content {
+  display: none;
+}
+
+.marketplace-tab-content.active {
+  display: block;
+}
+
+.server-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.server-card {
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 16px;
+  background-color: var(--bg-base);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+}
+
+.server-card:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.server-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  margin-bottom: 12px;
+}
+
+.server-card-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.server-card-version {
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 2px 6px;
+  background-color: var(--bg-lighter);
+  border-radius: 4px;
+}
+
+.server-card-description {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+  line-height: 1.4;
+  max-height: 60px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.server-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.server-card-badge {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background-color: var(--bg-lighter);
+  color: var(--text-secondary);
+}
+
+.server-card-badge.official {
+  background-color: rgba(40, 167, 69, 0.1);
+  color: #28a745;
+}
+
+.server-card-badge.auth-required {
+  background-color: rgba(255, 193, 7, 0.1);
+  color: #ffc107;
+}
+
+.server-card-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.server-card-btn {
+  flex: 1;
+  padding: 6px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--bg-lighter);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s ease;
+}
+
+.server-card-btn:hover {
+  background-color: var(--accent-primary);
+  color: white;
+  border-color: var(--accent-primary);
+}
+
+.server-card-btn.install {
+  background-color: var(--accent-primary);
+  color: white;
+  border-color: var(--accent-primary);
+}
+
+.server-card-btn.install:hover {
+  background-color: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.server-card-btn.installed {
+  background-color: rgba(40, 167, 69, 0.1);
+  color: #28a745;
+  border-color: #28a745;
+}
+
+.server-card-btn.installed:hover {
+  background-color: #28a745;
+  color: white;
+}
+
+.server-details-content {
+  padding: 8px 0;
+}
+
+.server-details-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.server-details-description {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.server-details-info {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 12px;
+  background-color: var(--bg-lighter);
+  border-radius: 6px;
+}
+
+.server-details-info-item {
+  font-size: 13px;
+}
+
+.server-details-info-label {
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.server-details-info-value {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.server-details-packages,
+.server-details-remotes {
+  margin-bottom: 16px;
+}
+
+.server-details-subtitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.server-details-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.server-details-list-item {
+  padding: 6px 8px;
+  background-color: var(--bg-base);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  margin-bottom: 4px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-family: monospace;
+}
+
+.modal-large {
+  max-width: 700px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--text-muted);
+  font-style: italic;
+}

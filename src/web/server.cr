@@ -328,6 +328,37 @@ module Crybot
           handler = Handlers::ScheduledTasksHandler.new
           handler.reload_tasks(env)
         end
+
+        # API: MCP Marketplace
+        get "/api/mcp/search" do |env|
+          handler = Handlers::MCPHandler.new
+          handler.search_servers(env)
+        end
+
+        get "/api/mcp/featured" do |env|
+          handler = Handlers::MCPHandler.new
+          handler.get_featured(env)
+        end
+
+        get "/api/mcp/server/:server" do |env|
+          handler = Handlers::MCPHandler.new
+          handler.get_server(env)
+        end
+
+        get "/api/mcp/installed" do |env|
+          handler = Handlers::MCPHandler.new
+          handler.list_installed(env)
+        end
+
+        post "/api/mcp/install" do |env|
+          handler = Handlers::MCPHandler.new
+          handler.install_server(env)
+        end
+
+        delete "/api/mcp/server/:server" do |env|
+          handler = Handlers::MCPHandler.new
+          handler.uninstall_server(env)
+        end
       end
 
       private def handle_chat_websocket(socket) : Nil

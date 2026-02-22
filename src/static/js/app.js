@@ -10,6 +10,7 @@ class CrybotWeb {
     this.docsEditor = null;
     this.mcpServers = [];
     this.editingMCPServer = null;
+    this.selectedMarketplaceServer = null;
     this.scheduledTasks = [];
     this.editingTaskId = null;
 
@@ -310,6 +311,66 @@ class CrybotWeb {
       });
     } else {
       console.error('add-mcp-server-btn not found');
+    }
+
+    // MCP Marketplace handlers
+    const browseMarketplaceBtn = document.getElementById('browse-marketplace-btn');
+    if (browseMarketplaceBtn) {
+      browseMarketplaceBtn.addEventListener('click', () => {
+        this.scrollToMarketplace();
+      });
+    }
+
+    // Marketplace search
+    const marketplaceSearchBtn = document.getElementById('marketplace-search-btn');
+    const marketplaceSearchInput = document.getElementById('marketplace-search-input');
+    if (marketplaceSearchBtn && marketplaceSearchInput) {
+      marketplaceSearchBtn.addEventListener('click', () => {
+        this.searchMarketplace(marketplaceSearchInput.value);
+      });
+      marketplaceSearchInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          this.searchMarketplace(marketplaceSearchInput.value);
+        }
+      });
+    }
+
+    // Marketplace tabs
+    document.querySelectorAll('.marketplace-tab').forEach(tab => {
+      tab.addEventListener('click', (e) => {
+        const tabName = e.target.dataset.tab;
+        if (tabName) {
+          this.switchMarketplaceTab(tabName);
+        }
+      });
+    });
+
+    // Marketplace modal
+    document.getElementById('close-marketplace-modal-btn').addEventListener('click', () => {
+      this.closeMarketplaceModal();
+    });
+
+    document.getElementById('cancel-marketplace-btn').addEventListener('click', () => {
+      this.closeMarketplaceModal();
+    });
+
+    document.getElementById('install-from-marketplace-btn').addEventListener('click', () => {
+      this.installFromMarketplace();
+    });
+
+    // Load featured servers on MCP section load
+    const mcpSection = document.getElementById('section-mcp');
+    if (mcpSection) {
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.target.classList.contains('active') &&
+              mutation.target.id === 'section-mcp') {
+            this.loadMarketplaceFeatured();
+          }
+        });
+      });
+
+      observer.observe(mcpSection, { attributes: true, attributeFilter: ['class'] });
     }
 
     // MCP modal handlers
@@ -979,6 +1040,334 @@ class CrybotWeb {
     } catch (error) {
       console.error('Failed to save MCP servers:', error);
       alert('Failed to save MCP servers: ' + error.message);
+    }
+  }
+
+  // MCP Marketplace methods
+  scrollToMarketplace() {
+    const marketplaceSection = document.getElementById('mcp-marketplace-section');
+    if (marketplaceSection) {
+      marketplaceSection.scrollIntoView({ behavior: 'smooth' });
+      this.loadMarketplaceFeatured();
+    }
+  }
+
+  async loadMarketplaceFeatured() {
+    const container = document.getElementById('marketplace-featured-list');
+    if (!container) return;
+
+    container.innerHTML = '<p class="empty-state">Loading featured servers...</p>';
+
+    try {
+      const response = await fetch('/api/mcp/featured');
+      const data = await response.json();
+
+      if (data.success && data.featured && data.featured.length > 0) {
+        container.innerHTML = '';
+        data.featured.forEach(server => {
+          container.appendChild(this.createMarketplaceServerCard(server));
+        });
+      } else {
+        container.innerHTML = '<p class="empty-state">No featured servers available.</p>';
+      }
+    } catch (error) {
+      console.error('Failed to load featured servers:', error);
+      container.innerHTML = '<p class="empty-state">Failed to load featured servers.</p>';
+    }
+  }
+
+  async searchMarketplace(query) {
+    const container = document.getElementById('marketplace-search-list');
+    if (!container) return;
+
+    if (!query || query.trim() === '') {
+      container.innerHTML = '<p class="empty-state">Enter a search term to find MCP servers.</p>';
+      return;
+    }
+
+    container.innerHTML = '<p class="empty-state">Searching...</p>';
+    this.switchMarketplaceTab('search-results');
+
+    try {
+      const response = await fetch(`/api/mcp/search?q=${encodeURIComponent(query)}`);
+      const data = await response.json();
+
+      if (data.success && data.servers && data.servers.length > 0) {
+        container.innerHTML = '';
+        data.servers.forEach(server => {
+          container.appendChild(this.createMarketplaceServerCard(server));
+        });
+      } else {
+        container.innerHTML = '<p class="empty-state">No servers found. Try a different search term.</p>';
+      }
+    } catch (error) {
+      console.error('Failed to search marketplace:', error);
+      container.innerHTML = '<p class="empty-state">Failed to search marketplace.</p>';
+    }
+  }
+
+  async loadMarketplaceInstalled() {
+    const container = document.getElementById('marketplace-installed-list');
+    if (!container) return;
+
+    container.innerHTML = '<p class="empty-state">Loading installed servers...</p>';
+
+    try {
+      const response = await fetch('/api/mcp/installed');
+      const data = await response.json();
+
+      if (data.success && data.servers && data.servers.length > 0) {
+        container.innerHTML = '';
+        data.servers.forEach(server => {
+          container.appendChild(this.createInstalledServerCard(server));
+        });
+      } else {
+        container.innerHTML = '<p class="empty-state">No MCP servers installed.</p>';
+      }
+    } catch (error) {
+      console.error('Failed to load installed servers:', error);
+      container.innerHTML = '<p class="empty-state">Failed to load installed servers.</p>';
+    }
+  }
+
+  createMarketplaceServerCard(server) {
+    const card = document.createElement('div');
+    card.className = 'server-card';
+
+    const isInstalled = this.mcpServers.some(s => s.name === server.display_name);
+
+    const badges = [];
+    if (server.is_official) badges.push('<span class="server-card-badge official">Official</span>');
+    if (server.requires_auth) badges.push('<span class="server-card-badge auth-required">Auth Required</span>');
+    badges.push(`<span class="server-card-badge">${server.transport_display}</span>`);
+
+    card.innerHTML = `
+      <div class="server-card-header">
+        <div>
+          <div class="server-card-name">${this.escapeHtml(server.display_name || server.name)}</div>
+          <div class="server-card-version">v${server.version}</div>
+        </div>
+      </div>
+      <div class="server-card-description">${this.escapeHtml(server.description)}</div>
+      <div class="server-card-meta">
+        ${badges.join('')}
+      </div>
+      <div class="server-card-actions">
+        <button class="server-card-btn" onclick="app.showMarketplaceServerDetails('${server.name}')">Details</button>
+        ${isInstalled
+          ? '<button class="server-card-btn installed" disabled>Installed</button>'
+          : `<button class="server-card-btn install" onclick="app.quickInstallServer('${server.name}')">Install</button>`
+        }
+      </div>
+    `;
+
+    return card;
+  }
+
+  createInstalledServerCard(server) {
+    const card = document.createElement('div');
+    card.className = 'server-card';
+
+    card.innerHTML = `
+      <div class="server-card-header">
+        <div>
+          <div class="server-card-name">${this.escapeHtml(server.name)}</div>
+        </div>
+      </div>
+      <div class="server-card-details">
+        ${server.command ? `<div><strong>Command:</strong> <code>${this.escapeHtml(server.command)}</code></div>` : ''}
+        ${server.url ? `<div><strong>URL:</strong> <code>${this.escapeHtml(server.url)}</code></div>` : ''}
+      </div>
+      <div class="server-card-actions">
+        <button class="server-card-btn" onclick="app.editMCPServer('${this.escapeHtml(server.name)}')">Edit</button>
+        <button class="server-card-btn" onclick="app.uninstallServer('${this.escapeHtml(server.name)}')">Uninstall</button>
+      </div>
+    `;
+
+    return card;
+  }
+
+  async showMarketplaceServerDetails(serverName) {
+    try {
+      const response = await fetch(`/api/mcp/server/${encodeURIComponent(serverName)}`);
+      const data = await response.json();
+
+      if (!data.success) {
+        alert('Failed to load server details: ' + (data.error || 'Unknown error'));
+        return;
+      }
+
+      const server = data;
+      const container = document.getElementById('marketplace-server-details');
+      if (!container) return;
+
+      const isInstalled = this.mcpServers.some(s => s.name === server.display_name);
+
+      let packagesHtml = '';
+      if (server.packages && server.packages.length > 0) {
+        packagesHtml = `
+          <div class="server-details-packages">
+            <div class="server-details-subtitle">Packages</div>
+            <ul class="server-details-list">
+              ${server.packages.map(pkg =>
+                `<li class="server-details-list-item">${pkg.registry_type}: ${pkg.identifier}</li>`
+              ).join('')}
+            </ul>
+          </div>
+        `;
+      }
+
+      let remotesHtml = '';
+      if (server.remotes && server.remotes.length > 0) {
+        remotesHtml = `
+          <div class="server-details-remotes">
+            <div class="server-details-subtitle">Endpoints</div>
+            <ul class="server-details-list">
+              ${server.remotes.map(remote =>
+                `<li class="server-details-list-item">${remote.type}: ${remote.url}</li>`
+              ).join('')}
+            </ul>
+          </div>
+        `;
+      }
+
+      container.innerHTML = `
+        <div class="server-details-content">
+          <div class="server-details-title">${this.escapeHtml(server.display_name || server.name)}</div>
+          ${server.title ? `<div style="margin-bottom: 8px; color: var(--text-muted);">${this.escapeHtml(server.title)}</div>` : ''}
+          <div class="server-details-description">${this.escapeHtml(server.description)}</div>
+
+          <div class="server-details-info">
+            <div class="server-details-info-item">
+              <div class="server-details-info-label">Version</div>
+              <div class="server-details-info-value">${server.version}</div>
+            </div>
+            <div class="server-details-info-item">
+              <div class="server-details-info-label">Transport</div>
+              <div class="server-details-info-value">${server.transport_display}</div>
+            </div>
+            ${server.repository_url ? `
+              <div class="server-details-info-item">
+                <div class="server-details-info-label">Repository</div>
+                <div class="server-details-info-value">
+                  <a href="${server.repository_url}" target="_blank" rel="noopener">View</a>
+                </div>
+              </div>
+            ` : ''}
+            ${server.website_url ? `
+              <div class="server-details-info-item">
+                <div class="server-details-info-label">Website</div>
+                <div class="server-details-info-value">
+                  <a href="${server.website_url}" target="_blank" rel="noopener">Visit</a>
+                </div>
+              </div>
+            ` : ''}
+          </div>
+
+          ${packagesHtml}
+          ${remotesHtml}
+        </div>
+      `;
+
+      this.selectedMarketplaceServer = server.name;
+      const installBtn = document.getElementById('install-from-marketplace-btn');
+      if (installBtn) {
+        if (isInstalled) {
+          installBtn.textContent = 'Already Installed';
+          installBtn.disabled = true;
+        } else {
+          installBtn.textContent = 'Install Server';
+          installBtn.disabled = false;
+        }
+      }
+
+      document.getElementById('mcp-marketplace-modal').classList.remove('hidden');
+    } catch (error) {
+      console.error('Failed to load server details:', error);
+      alert('Failed to load server details: ' + error.message);
+    }
+  }
+
+  async quickInstallServer(serverName) {
+    if (!confirm(`Install server "${serverName}"?`)) return;
+
+    try {
+      const response = await fetch('/api/mcp/install', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ server_name: serverName }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        alert(`Server "${data.server.name}" installed successfully!`);
+        // Reload MCP servers list
+        this.mcpServers = (this.mcpServers || []).filter(s => s.name !== data.server.name);
+        this.mcpServers.push(data.server);
+        this.loadMCPServers();
+        this.loadMarketplaceFeatured();
+      } else {
+        alert('Failed to install server: ' + (data.error || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('Failed to install server:', error);
+      alert('Failed to install server: ' + error.message);
+    }
+  }
+
+  async installFromMarketplace() {
+    if (!this.selectedMarketplaceServer) return;
+
+    await this.quickInstallServer(this.selectedMarketplaceServer);
+    this.closeMarketplaceModal();
+  }
+
+  async uninstallServer(serverName) {
+    if (!confirm(`Uninstall server "${serverName}"?`)) return;
+
+    try {
+      const response = await fetch(`/api/mcp/server/${encodeURIComponent(serverName)}`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        alert(`Server "${serverName}" uninstalled successfully!`);
+        this.mcpServers = this.mcpServers.filter(s => s.name !== serverName);
+        this.loadMCPServers();
+        this.loadMarketplaceInstalled();
+      } else {
+        alert('Failed to uninstall server: ' + (data.error || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('Failed to uninstall server:', error);
+      alert('Failed to uninstall server: ' + error.message);
+    }
+  }
+
+  closeMarketplaceModal() {
+    document.getElementById('mcp-marketplace-modal').classList.add('hidden');
+    this.selectedMarketplaceServer = null;
+  }
+
+  switchMarketplaceTab(tabName) {
+    // Update tab buttons
+    document.querySelectorAll('.marketplace-tab').forEach(tab => {
+      tab.classList.toggle('active', tab.dataset.tab === tabName);
+    });
+
+    // Update tab content
+    document.querySelectorAll('.marketplace-tab-content').forEach(content => {
+      content.classList.toggle('active', content.id === `marketplace-${tabName}`);
+    });
+
+    // Load data for the tab
+    if (tabName === 'featured') {
+      this.loadMarketplaceFeatured();
+    } else if (tabName === 'installed') {
+      this.loadMarketplaceInstalled();
     }
   }
 

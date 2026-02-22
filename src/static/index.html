@@ -331,11 +331,46 @@
         <div class="section-header">
           <h2>MCP Servers</h2>
           <div class="section-actions">
+            <button id="browse-marketplace-btn" class="btn-secondary">Browse Marketplace</button>
             <button id="add-mcp-server-btn" class="btn-primary">+ Add Server</button>
           </div>
         </div>
 
         <p class="section-description">Configure Model Context Protocol (MCP) servers to extend Crybot's capabilities with external tools.</p>
+
+        <!-- Marketplace Browser -->
+        <div class="config-section" id="mcp-marketplace-section">
+          <h3>Browse Marketplace</h3>
+
+          <div class="marketplace-search">
+            <input type="text" id="marketplace-search-input" class="search-input" placeholder="Search for MCP servers (e.g., 'browser', 'database', 'api')...">
+            <button id="marketplace-search-btn" class="btn-primary">Search</button>
+          </div>
+
+          <div class="marketplace-tabs">
+            <button class="marketplace-tab active" data-tab="featured">Featured</button>
+            <button class="marketplace-tab" data-tab="search-results">Search Results</button>
+            <button class="marketplace-tab" data-tab="installed">Installed</button>
+          </div>
+
+          <div id="marketplace-featured" class="marketplace-tab-content active">
+            <div id="marketplace-featured-list" class="server-cards-grid">
+              <p class="empty-state">Loading featured servers...</p>
+            </div>
+          </div>
+
+          <div id="marketplace-search-results" class="marketplace-tab-content">
+            <div id="marketplace-search-list" class="server-cards-grid">
+              <p class="empty-state">Enter a search term to find MCP servers.</p>
+            </div>
+          </div>
+
+          <div id="marketplace-installed" class="marketplace-tab-content">
+            <div id="marketplace-installed-list" class="server-cards-grid">
+              <p class="empty-state">No MCP servers installed.</p>
+            </div>
+          </div>
+        </div>
 
         <div class="config-section">
           <h3>Configured Servers</h3>
@@ -473,6 +508,25 @@
         <div class="modal-footer">
           <button id="cancel-create-btn" class="btn-secondary">Cancel</button>
           <button id="create-skill-confirm-btn" class="btn-primary">Create Skill</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MCP Marketplace Modal -->
+    <div id="mcp-marketplace-modal" class="modal hidden">
+      <div class="modal-content modal-large">
+        <div class="modal-header">
+          <h3 id="marketplace-modal-title">Server Details</h3>
+          <button class="modal-close" id="close-marketplace-modal-btn">×</button>
+        </div>
+        <div class="modal-body">
+          <div id="marketplace-server-details">
+            <!-- Server details loaded dynamically -->
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="cancel-marketplace-btn" class="btn-secondary">Cancel</button>
+          <button id="install-from-marketplace-btn" class="btn-primary">Install Server</button>
         </div>
       </div>
     </div>
