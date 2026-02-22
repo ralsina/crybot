@@ -54,6 +54,7 @@ Usage:
   crybot onboard
   crybot agent [-m <message>] [--no-landlock]
   crybot status
+  crybot mcp <subcommand> [args]
   crybot tool-runner <tool_name> <json_args>
   crybot [-h | --help]
 
@@ -66,7 +67,14 @@ Commands:
   onboard       Initialize configuration and workspace
   agent         Interact with the AI agent directly
   status        Show configuration status
+  mcp           Manage MCP servers (search, install, list, uninstall)
   tool-runner   Internal: Execute a tool in a Landlocked subprocess (used by monitor)
+
+MCP Commands:
+  crybot mcp search [query]     Search for MCP servers in the registry
+  crybot mcp install <name>     Install an MCP server from the registry
+  crybot mcp list               List installed MCP servers
+  crybot mcp uninstall <name>   Uninstall an MCP server
 
 Running Crybot:
   When run without arguments, crybot starts all enabled features.
@@ -76,6 +84,10 @@ Landlock:
   Crybot runs with a monitor that handles access requests via rofi/terminal.
   Tools run in Landlocked subprocesses and request access when needed.
   Use --no-landlock to disable sandboxing (not recommended for production use).
+
+MCP Registry:
+  Discover and install MCP servers from the official registry at
+  https://registry.modelcontextprotocol.io
 DOC
 
 module Crybot
@@ -114,6 +126,9 @@ module Crybot
       Commands::Onboard.execute
     when "status"
       Commands::Status.execute
+    when "mcp"
+      # MCP server management commands
+      Commands::MCP.run(args[1..])
     when "tool-runner"
       # Internal tool-runner command for Landlocked subprocess execution
       tool_name = args[1]?
