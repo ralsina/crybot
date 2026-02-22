@@ -17,6 +17,8 @@ require "./tools/memory"
 require "./tools/skill_builder"
 require "./tools/web_scraper_skill"
 require "./tools/session_metadata"
+require "./tools/create_worker"
+require "../workers/manager"
 require "./skill_manager"
 require "./skill_tool_wrapper"
 require "./cancellation"
@@ -213,6 +215,16 @@ module Crybot
       end
 
       def process(session_key : String, user_message : String) : AgentResponse
+        # Check if this message is addressed to a worker
+        if worker = Workers::Manager.find_matching_worker(user_message)
+          if command = worker.extract_command(user_message)
+            Log.info { "[Worker] Forwarding to worker '#{worker.name}': #{command}" }
+            # Forward to the worker's session
+            worker_session_key = worker.session_key
+            return process_worker(worker, worker_session_key, command)
+          end
+        end
+
         # Set provider on session manager for message sanitization
         @session_manager.provider = @provider_name
 
@@ -223,7 +235,11 @@ module Crybot
         ::Log.debug { "Processing message for session_key: #{session_key}" }
         messages = @context_builder.build_messages(user_message, history, session_key)
 
-        # Reset cancellation token for new request
+        process_with_messages(session_key, messages, user_message)
+      end
+
+      # Process messages with the LLM (shared logic for normal and worker processing)
+      private def process_with_messages(session_key : String, messages : Array(Providers::Message), original_user_message : String) : AgentResponse
         CancellationManager.reset
 
         # Main loop
@@ -324,6 +340,9 @@ module Crybot
         Tools::Registry.register(Tools::CreateSkillTool.new)
         Tools::Registry.register(Tools::CreateWebScraperSkillTool.new)
 
+        # Worker tools
+        Tools::Registry.register(Tools::CreateWorker.new)
+
         # Load and register skills
         load_skills
       end
@@ -391,6 +410,29 @@ module Crybot
         @context_builder = ContextBuilder.new(@config, @skill_manager)
 
         results
+      end
+
+      # Process a command for a worker agent
+      private def process_worker(worker : Workers::Worker, session_key : String, command : String) : AgentResponse
+        # Set provider on session manager
+        @session_manager.provider = @provider_name
+
+        # Get or create session for the worker
+        history = @session_manager.get_or_create(session_key)
+
+        # Build messages with worker's instructions prepended
+        # The worker's instructions serve as a custom system prompt
+        messages = @context_builder.build_messages(command, history, session_key)
+
+        # Prepend worker's instructions as a system message
+        worker_system_message = Providers::Message.new(
+          "system",
+          "You are #{worker.name}. #{worker.instructions}"
+        )
+        messages = [worker_system_message] + messages
+
+        # Process normally (rest of the logic is the same)
+        process_with_messages(session_key, messages, command)
       end
 
       # Reload MCP servers with new configuration
