@@ -219,8 +219,9 @@ module Crybot
       property command : String?
       property url : String?
       property landlock : MCPLandlockConfig?
+      property env : Hash(String, String)?
 
-      def initialize(@name : String, @command = nil, @url = nil, @landlock = nil)
+      def initialize(@name : String, @command = nil, @url = nil, @landlock = nil, @env = nil)
       end
     end
 

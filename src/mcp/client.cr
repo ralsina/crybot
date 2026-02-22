@@ -62,6 +62,16 @@ module Crybot
               end
             end
 
+            # Set server-specific environment variables from config
+            if server_config = @server_config
+              if server_env = server_config.env
+                server_env.each do |key, value|
+                  ENV[key] = value
+                  ::Log.debug { "[MCP] Set env var: #{key}" }
+                end
+              end
+            end
+
             # Apply Landlock restrictions before spawning the MCP server
             if landlock_disabled
               ::Log.warn { "[MCP] Landlock DISABLED globally - MCP server running without sandboxing" }
