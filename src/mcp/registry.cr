@@ -94,7 +94,7 @@ module Crybot
       struct Repository
         include JSON::Serializable
 
-        property url : String
+        property url : String = ""
         property source : String? # "github", etc.
       end
 
@@ -211,7 +211,7 @@ module Crybot
                        s.name.downcase.includes?(query_lower) ||
                          s.description.downcase.includes?(query_lower) ||
                          s.title.try(&.downcase.includes?(query_lower)) ||
-                         s.repository.try(&.url.downcase.includes?(query_lower))
+                         (s.repository.try(&.url).try { |url| !url.empty? && url.downcase.includes?(query_lower) } || false)
                      end
                    end
 
