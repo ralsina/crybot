@@ -12,6 +12,17 @@ module Crybot
 
       Log = ::Log.for("crybot.mcp.registry")
 
+      # Cache for fetched servers (expires after 1 hour)
+      @@cached_servers : Array(ServerInfo)?
+      @@cache_time : Time?
+      CACHE_TTL = 1.hour
+
+      # Clear the cache (useful for testing)
+      def self.clear_cache : Nil
+        @@cached_servers = nil
+        @@cache_time = nil
+      end
+
       # Server information from the registry
       struct ServerInfo
         include JSON::Serializable
@@ -198,33 +209,69 @@ module Crybot
         end
       end
 
-      # Search for MCP servers by query
+      # Search for MCP servers by query using the registry API
       # Returns only the latest version of each server
-      def self.search(query : String? = nil, limit : Int32 = 30) : Array(ServerInfo)
+      def self.search(query : String? = nil, limit : Int32 = 50) : Array(ServerInfo)
+        # Use registry API's built-in search for faster results
+        if query && !query.empty?
+          return search_api(query, limit)
+        end
+
+        # For empty query, return featured/official servers
         servers = fetch_servers
 
-        filtered = if query.nil? || query.empty?
-                     servers
-                   else
-                     query_lower = query.downcase
-                     servers.select do |s|
-                       s.name.downcase.includes?(query_lower) ||
-                         s.description.downcase.includes?(query_lower) ||
-                         s.title.try(&.downcase.includes?(query_lower)) ||
-                         (s.repository.try(&.url).try { |url| !url.empty? && url.downcase.includes?(query_lower) } || false)
-                     end
-                   end
+        # Filter to official and latest only for empty query
+        servers.select { |s| s.is_official && s.is_latest }.first(limit)
+      end
 
-        # Sort by latest status first, then by name
-        filtered.sort do |a, b|
-          if a.is_latest != b.is_latest
-            # Latest versions first
-            a.is_latest ? -1 : 1
-          else
-            # Then alphabetically by name
-            a.name <=> b.name
+      # Search using the registry API's search endpoint
+      private def self.search_api(query : String, limit : Int32) : Array(ServerInfo)
+        all_servers = [] of ServerInfo
+        cursor : String? = nil
+
+        loop do
+          url = "#{API_BASE}#{SERVERS_ENDPOINT}"
+          params = [] of String
+          params << "search=#{URI.encode_path_segment(query)}"
+          if limit && all_servers.size < limit
+            params << "limit=#{Math.min(limit - all_servers.size, 100)}"
           end
-        end.first(limit)
+          if cursor
+            params << "cursor=#{URI.encode_path_segment(cursor)}"
+          end
+          url += "?#{params.join("&")}"
+
+          Log.debug { "Searching registry: #{url}" }
+
+          response = HTTP::Client.get(url)
+
+          unless response.success?
+            Log.error { "Registry API returned #{response.status_code}: #{response.status_message}" }
+            raise RegistryError.new("Failed to search registry: #{response.status_code}")
+          end
+
+          registry_response = RegistryResponse.from_json(response.body)
+
+          # Extract server info and mark official status
+          registry_response.servers.each do |entry|
+            server = entry.server
+            if meta = entry._meta
+              if official = meta["io.modelcontextprotocol.registry/official"]?
+                server.is_official = official["status"]?.try(&.as_s) == "active"
+                server.is_latest = official["isLatest"]?.try(&.as_bool) || false
+              end
+            end
+            all_servers << server
+          end
+
+          # Check if we have enough results or there's no next page
+          break if all_servers.size >= limit
+          cursor = registry_response.metadata.next_cursor
+          break if cursor.nil? || cursor.empty?
+        end
+
+        Log.info { "Search returned #{all_servers.size} servers" }
+        all_servers.first(limit)
       end
 
       # Get a specific server by name

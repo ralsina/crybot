@@ -118,9 +118,9 @@ class CrybotWeb {
       this.loadSkills();
     }
 
-    // Load MCP servers when navigating to MCP section
+    // Load MCP marketplace when navigating to MCP section
     if (section === 'mcp') {
-      this.loadMCPServers();
+      this.loadMarketplaceFeatured();
     }
 
     // Load scheduled tasks when navigating to scheduled tasks section
@@ -311,14 +311,6 @@ class CrybotWeb {
       });
     } else {
       console.error('add-mcp-server-btn not found');
-    }
-
-    // MCP Marketplace handlers
-    const browseMarketplaceBtn = document.getElementById('browse-marketplace-btn');
-    if (browseMarketplaceBtn) {
-      browseMarketplaceBtn.addEventListener('click', () => {
-        this.scrollToMarketplace();
-      });
     }
 
     // Marketplace search
@@ -973,35 +965,6 @@ class CrybotWeb {
     this.closeMCPServerModal();
   }
 
-  loadMCPServers() {
-    const container = document.getElementById('mcp-servers-list');
-
-    if (!this.mcpServers || this.mcpServers.length === 0) {
-      container.innerHTML = '<p class="empty-state">No MCP servers configured.</p>';
-      return;
-    }
-
-    container.innerHTML = '';
-    this.mcpServers.forEach(server => {
-      const card = document.createElement('div');
-      card.className = 'mcp-server-card';
-      card.innerHTML = `
-        <div class="mcp-server-header">
-          <span class="mcp-server-name">${this.escapeHtml(server.name)}</span>
-          <div class="mcp-server-actions">
-            <button class="btn-sm btn-secondary" onclick="app.editMCPServer('${this.escapeHtml(server.name)}')">Edit</button>
-            <button class="btn-sm btn-delete" onclick="app.deleteMCPServer('${this.escapeHtml(server.name)}')">Delete</button>
-          </div>
-        </div>
-        <div class="mcp-server-details">
-          ${server.command ? `<div><strong>Command:</strong> <code>${this.escapeHtml(server.command)}</code></div>` : ''}
-          ${server.url ? `<div><strong>URL:</strong> <code>${this.escapeHtml(server.url)}</code></div>` : ''}
-        </div>
-      `;
-      container.appendChild(card);
-    });
-  }
-
   async deleteMCPServer(serverName) {
     if (!confirm(`Delete MCP server "${serverName}"?`)) return;
 
@@ -1032,7 +995,7 @@ class CrybotWeb {
           console.log('MCP reload skipped (server may be restarting):', reloadError.message);
         }
 
-        this.loadMCPServers();
+        this.loadMarketplaceInstalled();
         alert('MCP servers saved successfully! Crybot will reload the configuration.');
       } else {
         alert(`Failed to save: ${data.error || 'Unknown error'}`);
@@ -1044,14 +1007,6 @@ class CrybotWeb {
   }
 
   // MCP Marketplace methods
-  scrollToMarketplace() {
-    const marketplaceSection = document.getElementById('mcp-marketplace-section');
-    if (marketplaceSection) {
-      marketplaceSection.scrollIntoView({ behavior: 'smooth' });
-      this.loadMarketplaceFeatured();
-    }
-  }
-
   async loadMarketplaceFeatured() {
     const container = document.getElementById('marketplace-featured-list');
     if (!container) return;
@@ -1305,7 +1260,7 @@ class CrybotWeb {
         // Reload MCP servers list
         this.mcpServers = (this.mcpServers || []).filter(s => s.name !== data.server.name);
         this.mcpServers.push(data.server);
-        this.loadMCPServers();
+        this.loadMarketplaceInstalled();
         this.loadMarketplaceFeatured();
       } else {
         alert('Failed to install server: ' + (data.error || 'Unknown error'));
@@ -1336,7 +1291,6 @@ class CrybotWeb {
       if (data.success) {
         alert(`Server "${serverName}" uninstalled successfully!`);
         this.mcpServers = this.mcpServers.filter(s => s.name !== serverName);
-        this.loadMCPServers();
         this.loadMarketplaceInstalled();
       } else {
         alert('Failed to uninstall server: ' + (data.error || 'Unknown error'));
@@ -2462,7 +2416,6 @@ class CrybotWeb {
 
       // MCP - store for later use
       this.mcpServers = config.mcp?.servers || [];
-      this.loadMCPServers();
     } catch (error) {
       console.error('Failed to load configuration:', error);
     }

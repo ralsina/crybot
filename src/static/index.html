@@ -331,15 +331,12 @@
         <div class="section-header">
           <h2>MCP Servers</h2>
           <div class="section-actions">
-            <button id="browse-marketplace-btn" class="btn-secondary">Browse Marketplace</button>
             <button id="add-mcp-server-btn" class="btn-primary">+ Add Server</button>
           </div>
         </div>
 
-        <p class="section-description">Configure Model Context Protocol (MCP) servers to extend Crybot's capabilities with external tools.</p>
-
         <!-- Marketplace Browser -->
-        <div class="config-section" id="mcp-marketplace-section">
+        <div class="marketplace-section">
           <h3>Browse Marketplace</h3>
 
           <div class="marketplace-search">
@@ -370,27 +367,6 @@
               <p class="empty-state">No MCP servers installed.</p>
             </div>
           </div>
-        </div>
-
-        <div class="config-section">
-          <h3>Configured Servers</h3>
-
-          <div id="mcp-servers-list" class="mcp-servers-list">
-            <!-- MCP servers loaded dynamically -->
-            <p class="empty-state">No MCP servers configured.</p>
-          </div>
-        </div>
-
-        <div class="config-section">
-          <h3>About MCP</h3>
-          <p>MCP (Model Context Protocol) servers provide external tools and resources to Crybot. Common uses include:</p>
-          <ul>
-            <li><strong>Browser automation</strong> - Playwright, Puppeteer for web scraping</li>
-            <li><strong>Filesystem access</strong> - Read/write files on your system</li>
-            <li><strong>Database access</strong> - Query databases directly</li>
-            <li><strong>API integrations</strong> - Connect to external services</li>
-          </ul>
-          <p>Configure servers in your config.yml under the <code>mcp:</code> section, or use this UI.</p>
         </div>
       </section>
 

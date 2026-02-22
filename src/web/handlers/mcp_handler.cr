@@ -12,7 +12,7 @@ module Crybot
         # Search MCP servers from registry
         def search_servers(env) : String
           query = env.params.query["q"]?
-          limit = env.params.query["limit"]?.try(&.to_i?) || 20
+          limit = env.params.query["limit"]?.try(&.to_i?) || 50
 
           Log.debug { "[Web/MCP] Searching servers: query=#{query.inspect}, limit=#{limit}" }
 
