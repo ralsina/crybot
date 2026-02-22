@@ -48,6 +48,19 @@ module Crybot
               # If we can't access it (e.g., in tests), assume enabled
             end
 
+            # Redirect npm cache to playground before applying Landlock
+            # This prevents npm from trying to write to ~/.npm which is read-only
+            if cmd.includes?("npx") || cmd.includes?("npm")
+              home = ENV.fetch("HOME", "")
+              if !home.empty?
+                playground = File.join(home, ".crybot", "playground")
+                npm_cache = File.join(playground, "npm-cache")
+                Dir.mkdir_p(npm_cache) unless Dir.exists?(npm_cache)
+                ENV["npm_config_cache"] = npm_cache
+                ::Log.info { "[MCP] Redirected npm cache to: #{npm_cache}" }
+              end
+            end
+
             # Apply Landlock restrictions before spawning the MCP server
             if landlock_disabled
               ::Log.warn { "[MCP] Landlock DISABLED globally - MCP server running without sandboxing" }
@@ -149,13 +162,7 @@ module Crybot
           end
         end
 
-        # Add common npm/node paths if they exist
-        if !home.empty?
-          npm_cache = File.join(home, ".npm")
-          node_modules = File.join(home, "node_modules")
-          restrictions.add_read_only(npm_cache) if Dir.exists?(npm_cache)
-          restrictions.add_read_only(node_modules) if Dir.exists?(node_modules)
-        end
+        # Note: We don't add ~/.npm anymore - npm cache is redirected to playground via npm_config_cache
 
         restrictions
       end
@@ -164,14 +171,7 @@ module Crybot
         # Use default_crybot restrictions for MCP servers without specific config
         restrictions = ToolRunner::Landlock::Restrictions.default_crybot
 
-        # Add npm/node paths
-        home = ENV.fetch("HOME", "")
-        if !home.empty?
-          npm_cache = File.join(home, ".npm")
-          node_modules = File.join(home, "node_modules")
-          restrictions.add_read_only(npm_cache) if Dir.exists?(npm_cache)
-          restrictions.add_read_only(node_modules) if Dir.exists?(node_modules)
-        end
+        # Note: We don't add ~/.npm anymore - npm cache is redirected to playground via npm_config_cache
 
         restrictions
       end

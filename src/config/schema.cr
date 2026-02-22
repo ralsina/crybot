@@ -352,6 +352,16 @@ module Crybot
       end
     end
 
+    struct LandlockConfig
+      include YAML::Serializable
+
+      # ameba:disable Naming/QueryBoolMethods
+      property disabled : Bool = false
+
+      def initialize(@disabled = false)
+      end
+    end
+
     struct ConfigFile
       include YAML::Serializable
 
@@ -364,6 +374,7 @@ module Crybot
       property web : WebServerConfig = WebServerConfig.new
       property features : FeaturesConfig = FeaturesConfig.new
       property proxy : ProxyConfig = ProxyConfig.new
+      property landlock : LandlockConfig = LandlockConfig.new
 
       def with_web(@web : WebServerConfig) : ConfigFile
         self

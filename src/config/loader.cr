@@ -140,6 +140,9 @@ module Crybot
               api_key: ""  # Brave Search API
               max_results: 5
 
+        landlock:
+          disabled: false  # Set to true to disable Landlock sandboxing (not recommended for production use)
+
         mcp:
           servers: []
           # Example MCP servers:

@@ -56,6 +56,7 @@ Usage:
   crybot status
   crybot mcp <subcommand> [args]
   crybot tool-runner <tool_name> <json_args>
+  crybot [--no-landlock]
   crybot [-h | --help]
 
 Options:
@@ -105,10 +106,19 @@ module Crybot
   def self.run : Nil
     args = ARGV
 
-    # Check for --no-landlock flag
+    # Check for --no-landlock flag (before processing commands)
     @@landlock_disabled = args.includes?("--no-landlock")
+
+    # Also check config file for landlock.disabled setting
+    begin
+      config = Config::Loader.load
+      @@landlock_disabled = true if config.landlock.disabled
+    rescue
+      # Config might not exist yet (e.g., during onboard), ignore
+    end
+
     if @@landlock_disabled
-      Log.warn { "[Landlock] Sandbox DISABLED via --no-landlock flag" }
+      Log.warn { "[Landlock] Sandbox DISABLED via --no-landlock flag or config setting" }
     end
 
     # Show help if requested
@@ -117,7 +127,9 @@ module Crybot
       return
     end
 
-    cmd = args[0]?
+    # Filter out --no-landlock from args to get the actual command
+    args_without_flags = args.reject { |arg| arg == "--no-landlock" }
+    cmd = args_without_flags[0]?
 
     Log.debug { "Running command: #{cmd.inspect}" }
 
@@ -128,7 +140,7 @@ module Crybot
       Commands::Status.execute
     when "mcp"
       # MCP server management commands
-      Commands::MCP.run(args[1..])
+      Commands::MCP.run(args_without_flags[1..])
     when "tool-runner"
       # Internal tool-runner command for Landlocked subprocess execution
       tool_name = args[1]?
