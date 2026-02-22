@@ -12,15 +12,17 @@ module Crybot
 
       Log = ::Log.for("crybot.mcp.registry")
 
-      # Cache for fetched servers (expires after 1 hour)
+      # Cache for fetched servers (persists for 24 hours)
       @@cached_servers : Array(ServerInfo)?
       @@cache_time : Time?
-      CACHE_TTL = 1.hour
+      CACHE_TTL  = 24.hours
+      CACHE_FILE = File.join(ENV.fetch("HOME", ""), ".crybot", "cache", "mcp_registry.json")
 
       # Clear the cache (useful for testing)
       def self.clear_cache : Nil
         @@cached_servers = nil
         @@cache_time = nil
+        File.delete(CACHE_FILE) if File.exists?(CACHE_FILE)
       end
 
       # Server information from the registry
@@ -37,7 +39,9 @@ module Crybot
         property packages : Array(Package) = [] of Package
         property remotes : Array(Remote) = [] of Remote
         property environment_variables : Array(EnvVar)?
+        # ameba:disable Naming/QueryBoolMethods
         property is_latest : Bool = false
+        # ameba:disable Naming/QueryBoolMethods
         property is_official : Bool = false
 
         # Get the transport type for this server
@@ -98,7 +102,8 @@ module Crybot
 
         # Check if server requires authentication
         def requires_auth? : Bool
-          remotes.any? { |r| r.headers.try(&.any?) || false }
+          # ameba:disable Performance/AnyInsteadOfEmpty
+          remotes.any? { |remote| remote.headers.try(&.any?) || false }
         end
       end
 
@@ -221,7 +226,7 @@ module Crybot
         servers = fetch_servers
 
         # Filter to official and latest only for empty query
-        servers.select { |s| s.is_official && s.is_latest }.first(limit)
+        servers.select { |server| server.is_official && server.is_latest }.first(limit)
       end
 
       # Search using the registry API's search endpoint
@@ -277,11 +282,28 @@ module Crybot
       # Get a specific server by name
       def self.get(server_name : String) : ServerInfo?
         servers = fetch_servers
-        servers.find { |s| s.name == server_name && s.is_latest }
+        servers.find { |server| server.name == server_name && server.is_latest }
       end
 
       # Fetch all servers from the registry
       private def self.fetch_servers : Array(ServerInfo)
+        # Check in-memory cache first
+        if cache_valid? && (cached = @@cached_servers)
+          Log.debug { "Using in-memory cache (#{cached.size} entries)" }
+          return cached
+        end
+
+        # Try loading from disk cache
+        if servers = load_cache_from_disk
+          @@cached_servers = servers
+          @@cache_time = Time.utc
+          Log.info { "Loaded #{servers.size} servers from disk cache" }
+          return servers
+        end
+
+        # No valid cache - fetch from API
+        Log.info { "Fetching all servers from registry API..." }
+
         all_servers = [] of ServerInfo
         cursor : String? = nil
 
@@ -319,8 +341,54 @@ module Crybot
           break if cursor.nil? || cursor.empty?
         end
 
+        # Update both in-memory and disk cache
+        @@cached_servers = all_servers
+        @@cache_time = Time.utc
+        save_cache_to_disk(all_servers)
+
         Log.info { "Fetched #{all_servers.size} servers from registry" }
         all_servers
+      end
+
+      # Check if in-memory cache is valid
+      private def self.cache_valid? : Bool
+        return false unless @@cached_servers && @@cache_time
+        if cache_time = @@cache_time
+          (Time.utc - cache_time) < CACHE_TTL
+        else
+          false
+        end
+      end
+
+      # Load servers from disk cache if available and not expired
+      private def self.load_cache_from_disk : Array(ServerInfo)?
+        return nil unless File.exists?(CACHE_FILE)
+
+        # Check file age
+        file_time = File.info(CACHE_FILE).modification_time
+        if (Time.utc - file_time) > CACHE_TTL
+          Log.debug { "Cache file expired (age: #{Time.utc - file_time})" }
+          File.delete(CACHE_FILE) if File.exists?(CACHE_FILE)
+          return nil
+        end
+
+        Log.debug { "Loading servers from disk cache: #{CACHE_FILE}" }
+        begin
+          data = File.read(CACHE_FILE)
+          Array(ServerInfo).from_json(data)
+        rescue e : Exception
+          Log.warn { "Failed to load cache file: #{e.message}" }
+          nil
+        end
+      end
+
+      # Save servers to disk cache
+      private def self.save_cache_to_disk(servers : Array(ServerInfo)) : Nil
+        cache_dir = File.dirname(CACHE_FILE)
+        Dir.mkdir_p(cache_dir) unless Dir.exists?(cache_dir)
+
+        File.write(CACHE_FILE, servers.to_json)
+        Log.debug { "Saved #{servers.size} servers to cache file" }
       end
 
       # Generate config for installing a server
@@ -345,6 +413,7 @@ module Crybot
       end
 
       # Suggest Landlock restrictions based on server type
+      # ameba:disable Metrics/CyclomaticComplexity
       private def self.suggest_landlock_restrictions(server : ServerInfo) : Config::MCPLandlockConfig?
         # Default restrictions for most servers
         allowed_paths = [] of String
@@ -371,7 +440,7 @@ module Crybot
         end
 
         # If we have specific suggestions, return them
-        if allowed_paths.any? || allowed_ports.any?
+        if !allowed_paths.empty? || !allowed_ports.empty?
           Config::MCPLandlockConfig.new(
             allowed_paths: allowed_paths,
             allowed_ports: allowed_ports

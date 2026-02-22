@@ -21,18 +21,18 @@ module Crybot
 
             results = servers.map do |server|
               {
-                name:             server.name,
+                name:              server.name,
                 display_name:      server.display_name,
-                description:      server.description,
-                version:          server.version,
-                transport:        server.transport_type.to_s,
+                description:       server.description,
+                version:           server.version,
+                transport:         server.transport_type.to_s,
                 transport_display: server.transport_type.display_name,
-                requires_auth:    server.requires_auth?,
-                is_latest:        server.is_latest,
-                is_official:      server.is_official,
-                repository_url:   server.repository.try(&.url),
-                website_url:      server.website_url,
-                install_target:   server.installation_target,
+                requires_auth:     server.requires_auth?,
+                is_latest:         server.is_latest,
+                is_official:       server.is_official,
+                repository_url:    server.repository.try(&.url),
+                website_url:       server.website_url,
+                install_target:    server.installation_target,
                 suggested_command: server.suggested_command,
               }
             end
@@ -58,22 +58,22 @@ module Crybot
             end
 
             {
-              success:          true,
-              name:             server.name,
+              success:           true,
+              name:              server.name,
               display_name:      server.display_name,
-              description:      server.description,
-              version:          server.version,
-              title:            server.title,
-              repository_url:   server.repository.try(&.url),
-              website_url:      server.website_url,
-              transport:        server.transport_type.to_s,
+              description:       server.description,
+              version:           server.version,
+              title:             server.title,
+              repository_url:    server.repository.try(&.url),
+              website_url:       server.website_url,
+              transport:         server.transport_type.to_s,
               transport_display: server.transport_type.display_name,
-              requires_auth:    server.requires_auth?,
-              is_latest:        server.is_latest,
-              is_official:      server.is_official,
-              install_target:   server.installation_target,
+              requires_auth:     server.requires_auth?,
+              is_latest:         server.is_latest,
+              is_official:       server.is_official,
+              install_target:    server.installation_target,
               suggested_command: server.suggested_command,
-              packages: server.packages.map do |pkg|
+              packages:          server.packages.map do |pkg|
                 {
                   registry_type: pkg.registry_type,
                   identifier:    pkg.identifier,
@@ -121,7 +121,7 @@ module Crybot
                 # Multiple matches - return them for user to choose
                 return {
                   success: false,
-                  error:  "Multiple servers found",
+                  error:   "Multiple servers found",
                   matches: results.map do |s|
                     {name: s.name, description: s.description}
                   end,
@@ -145,7 +145,7 @@ module Crybot
             {
               success: true,
               message: "Server installed successfully",
-              server: {
+              server:  {
                 name:     config.name,
                 command:  config.command,
                 url:      config.url,
@@ -244,10 +244,10 @@ module Crybot
           begin
             # Return curated list of popular servers
             featured_names = [
-              "ai.exa/exa",           # Web search
-              "ai.mcpcap/mcpcap",     # PCAP analysis
-              "ai.gossiper/shopify-admin-mcp",  # Shopify
-              "ai.autoblocks/ctxl",   # Context management
+              "ai.exa/exa",                    # Web search
+              "ai.mcpcap/mcpcap",              # PCAP analysis
+              "ai.gossiper/shopify-admin-mcp", # Shopify
+              "ai.autoblocks/ctxl",            # Context management
             ]
 
             servers = featured_names.compact_map do |name|
@@ -256,12 +256,12 @@ module Crybot
 
             results = servers.map do |server|
               {
-                name:             server.name,
+                name:              server.name,
                 display_name:      server.display_name,
-                description:      server.description,
-                version:          server.version,
+                description:       server.description,
+                version:           server.version,
                 transport_display: server.transport_type.display_name,
-                is_official:      server.is_official,
+                is_official:       server.is_official,
               }
             end
 
@@ -317,7 +317,7 @@ module Crybot
         private def error_response(message : String) : String
           {
             success: false,
-            error:  message,
+            error:   message,
           }.to_json
         end
       end

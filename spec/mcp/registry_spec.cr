@@ -279,7 +279,7 @@ describe Crybot::MCP::Registry do
       results = Crybot::MCP::Registry.search("spotify")
 
       results.size.should eq 2
-      results.all? { |s| s.name.downcase.includes?("spotify") }.should be_true
+      results.all?(&.name.downcase.includes?("spotify")).should be_true
     end
 
     it "searches by description" do
@@ -472,15 +472,15 @@ describe Crybot::MCP::Registry do
 
       # Create a server with no packages or remotes by parsing JSON
       server_json = {
-        "name"        => "ai.test/unknown",
-        "description" => "Unknown server",
-        "version"     => "1.0.0",
-        "packages"    => [] of String,
-        "remotes"     => [] of String,
-        "title"       => nil.as(String?),
-        "repository"  => nil.as(String?),
-        "website_url" => nil.as(String?),
-        "icons"       => [] of String,
+        "name"                  => "ai.test/unknown",
+        "description"           => "Unknown server",
+        "version"               => "1.0.0",
+        "packages"              => [] of String,
+        "remotes"               => [] of String,
+        "title"                 => nil.as(String?),
+        "repository"            => nil.as(String?),
+        "website_url"           => nil.as(String?),
+        "icons"                 => [] of String,
         "environment_variables" => [] of String,
       }.to_json
 

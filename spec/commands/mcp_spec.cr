@@ -193,7 +193,7 @@ describe Crybot::Commands::MCP do
           name: "test-server",
           command: "npx @test/mcp",
           landlock: nil
-        )
+        ),
       ]
 
       File.write(config_path, config.to_yaml)
@@ -213,7 +213,7 @@ describe Crybot::Commands::MCP do
             allowed_paths: ["~/data", "~/projects"],
             allowed_ports: [8080]
           )
-        )
+        ),
       ]
 
       File.write(config_path, config.to_yaml)
@@ -259,7 +259,7 @@ describe Crybot::Commands::MCP do
           name: "test-server",
           command: "npx @test/mcp",
           landlock: nil
-        )
+        ),
       ]
 
       File.write(config_path, config.to_yaml)
