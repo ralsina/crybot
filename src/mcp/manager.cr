@@ -7,10 +7,12 @@ module Crybot
   module MCP
     # Manages MCP server connections and tool registration
     # Singleton pattern - only one instance shared across all agent loops
+    # MCP servers have per-server locks to prevent concurrent access
     class Manager
       @@instance : Manager?
 
       @clients : Hash(String, Client) = {} of String => Client
+      @server_locks : Hash(String, Mutex) = {} of String => Mutex
       @config : Config::MCPConfig?
       @started : Bool = false
       @mutex : Mutex = Mutex.new
@@ -38,6 +40,14 @@ module Crybot
       def self.reset : Nil
         @@instance.try(&.stop)
         @@instance = nil
+      end
+
+      # Acquire a lock for a specific server
+      # Returns the lock mutex
+      def get_server_lock(server_name : String) : Mutex
+        @mutex.synchronize do
+          @server_locks[server_name] ||= Mutex.new
+        end
       end
 
       # Start MCP servers in the background (called after agent is ready)
@@ -70,6 +80,7 @@ module Crybot
         @mutex.synchronize do
           @clients.each_value(&.stop)
           @clients.clear
+          @server_locks.clear
           @started = false
         end
       end

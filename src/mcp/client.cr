@@ -17,6 +17,7 @@ module Crybot
         raise "Either command or url must be provided" if @command.nil? && @url.nil?
       end
 
+      # ameba:disable Metrics/CyclomaticComplexity
       def start : Nil
         command = @command
         return unless command
@@ -237,8 +238,19 @@ module Crybot
         end
 
         def execute(arguments : Hash(String, JSON::Any)) : String
-          result = @client.call_tool(@mcp_tool.name, arguments)
-          result.to_response_string
+          # Acquire server lock to prevent concurrent access
+          manager = Manager.instance(nil)
+          lock = manager.get_server_lock(@server_name)
+
+          lock.synchronize do
+            ::Log.debug { "[MCP] Acquired lock for server '#{@server_name}' for tool #{@mcp_tool.name}" }
+            begin
+              result = @client.call_tool(@mcp_tool.name, arguments)
+              result.to_response_string
+            ensure
+              ::Log.debug { "[MCP] Released lock for server '#{@server_name}'" }
+            end
+          end
         end
       end
     end
