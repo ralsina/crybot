@@ -121,13 +121,13 @@ module Crybot
               Log.error { "Server '#{server_name}' not found in registry" }
               Log.info { "Try 'crybot mcp search #{server_name}' to find similar servers" }
               exit 1
-            elsif results.size == 1 || results.any? { |s| s.name == server_name }
-              server = results.find { |s| s.name == server_name } || results.first
+            elsif results.size == 1 || results.any? { |server_info| server_info.name == server_name }
+              server = results.find { |server_info| server_info.name == server_name } || results.first
             else
               # Multiple matches, show selection
               Log.info { "Multiple servers found:" }
-              results.each_with_index do |s, idx|
-                puts "#{idx + 1}. #{s.name} - #{s.description}"
+              results.each_with_index do |server_info, idx|
+                puts "#{idx + 1}. #{server_info.name} - #{server_info.description}"
               end
               Log.error { "Please be more specific" }
               exit 1
@@ -150,6 +150,7 @@ module Crybot
       end
 
       # Install a server interactively
+      # ameba:disable Metrics/CyclomaticComplexity
       private def self.install_server(server : ::Crybot::MCP::Registry::ServerInfo) : Nil
         puts "\n" + "=".colorize.bold.to_s * 60
         puts "Installing MCP Server".colorize.bold.to_s
@@ -248,7 +249,7 @@ module Crybot
                  end
 
         # Check if server already exists
-        if config.mcp.servers.any? { |s| s.name == server_config.name }
+        if config.mcp.servers.any? { |server| server.name == server_config.name }
           Log.warn { "Server '#{server_config.name}' already exists in config" }
           print "Overwrite? [y/N] ".colorize.yellow.to_s
           response = gets
@@ -259,7 +260,7 @@ module Crybot
           end
 
           # Remove existing server
-          config.mcp.servers.reject! { |s| s.name == server_config.name }
+          config.mcp.servers.reject! { |server| server.name == server_config.name }
         end
 
         # Add server
@@ -336,7 +337,7 @@ module Crybot
         config = Config::ConfigFile.from_yaml(File.read(config_path))
         servers = config.mcp.servers
 
-        if servers.nil? || servers.none? { |s| s.name == server_name }
+        if servers.nil? || servers.none? { |server| server.name == server_name }
           Log.error { "Server '#{server_name}' not found in config" }
           exit 1
         end
@@ -349,7 +350,7 @@ module Crybot
           return
         end
 
-        config.mcp.servers = servers.reject { |s| s.name == server_name }
+        config.mcp.servers = servers.reject { |server| server.name == server_name }
 
         File.write(config_path, config.to_yaml)
 

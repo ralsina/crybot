@@ -179,6 +179,7 @@ module Crybot
       end
 
       # Execute tool in an isolated context with Landlock
+      # ameba:disable Metrics/CyclomaticComplexity
       private def self.execute_tool_in_isolated_context(tool_name : String, arguments : Hash(String, JSON::Any), restrictions : ::ToolRunner::Landlock::Restrictions, proxy_config : Crybot::Config::ProxyConfig?) : String
         # Create channels for result and error
         result_channel = Channel(String).new

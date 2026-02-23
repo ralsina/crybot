@@ -66,6 +66,7 @@ class CrybotWeb {
   }
 
   init() {
+    this.configureMarked();
     this.setupNavigation();
     this.setupTabs();
     this.setupForms();
@@ -80,6 +81,19 @@ class CrybotWeb {
     // Restore the saved section and tab
     this.showSection(this.currentSection);
     this.showTab(this.currentTab);
+  }
+
+  configureMarked() {
+    // Configure marked to open all links in new tabs
+    if (typeof marked !== 'undefined' && marked.use) {
+      marked.use({
+        renderer: {
+          link(href, title, text) {
+            return `<a href="${href}" target="_blank" rel="noopener noreferrer"${title ? ` title="${title}"` : ''}>${text}</a>`;
+          }
+        }
+      });
+    }
   }
 
   setupNavigation() {

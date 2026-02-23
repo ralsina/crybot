@@ -122,14 +122,14 @@ module Crybot
                 return {
                   success: false,
                   error:   "Multiple servers found",
-                  matches: results.map do |s|
-                    {name: s.name, description: s.description}
+                  matches: results.map do |server_info|
+                    {name: server_info.name, description: server_info.description}
                   end,
                 }.to_json
               end
             end
 
-            server_obj = server.not_nil!
+            server_obj = server || raise "Server should not be nil here"
 
             # Generate config
             config = ::Crybot::MCP::Registry.generate_config(server_obj)
@@ -149,10 +149,10 @@ module Crybot
                 name:     config.name,
                 command:  config.command,
                 url:      config.url,
-                landlock: config.landlock.try { |ll|
+                landlock: config.landlock.try { |landlock_config|
                   {
-                    allowed_paths: ll.allowed_paths,
-                    allowed_ports: ll.allowed_ports,
+                    allowed_paths: landlock_config.allowed_paths,
+                    allowed_ports: landlock_config.allowed_ports,
                   }
                 },
               },
@@ -176,10 +176,10 @@ module Crybot
                 name:     server.name,
                 command:  server.command,
                 url:      server.url,
-                landlock: server.landlock.try do |ll|
+                landlock: server.landlock.try do |landlock_config|
                   {
-                    allowed_paths: ll.allowed_paths,
-                    allowed_ports: ll.allowed_ports,
+                    allowed_paths: landlock_config.allowed_paths,
+                    allowed_ports: landlock_config.allowed_ports,
                   }
                 end,
               }
@@ -212,12 +212,12 @@ module Crybot
 
             config = Config::ConfigFile.from_yaml(File.read(config_path))
 
-            if config.mcp.servers.none? { |s| s.name == server_name }
+            if config.mcp.servers.none? { |server| server.name == server_name }
               return error_response("Server '#{server_name}' not found in config")
             end
 
             # Remove server
-            config.mcp.servers.reject! { |s| s.name == server_name }
+            config.mcp.servers.reject! { |server| server.name == server_name }
 
             # Write config
             File.write(config_path, config.to_yaml)
@@ -289,9 +289,9 @@ module Crybot
                    end
 
           # Check if server already exists - replace it
-          if config.mcp.servers.any? { |s| s.name == server_config.name }
+          if config.mcp.servers.any? { |server| server.name == server_config.name }
             Log.warn { "[Web/MCP] Server '#{server_config.name}' already exists, replacing" }
-            config.mcp.servers.reject! { |s| s.name == server_config.name }
+            config.mcp.servers.reject! { |server| server.name == server_config.name }
           end
 
           # Add server
