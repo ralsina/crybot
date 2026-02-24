@@ -9,7 +9,7 @@ build:
 	$(CRYSTAL) build $(FLAGS) src/main.cr -o $(TARGET)
 
 shell-build:
-	$(CRYSTAL) build src/crysh.cr -o $(SHELL_TARGET)
+	$(CRYSTAL) build --release src/crysh.cr -o $(SHELL_TARGET)
 
 run: build
 	./$(TARGET)

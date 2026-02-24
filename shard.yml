@@ -1,5 +1,5 @@
 name: crybot
-version: 0.6.0
+version: 0.7.0
 
 authors:
   - ralsina <ralsina@kth.se>
@@ -7,6 +7,8 @@ authors:
 targets:
   crybot:
     main: src/main.cr
+  crysh:
+    main: src/crysh.cr
 
 dependencies:
   docopt:

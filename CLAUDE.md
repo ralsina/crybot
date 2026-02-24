@@ -8,26 +8,26 @@ Crybot is a modular personal AI assistant built in Crystal, inspired by nanobot 
 
 ## Build & Development Commands
 
-### Building - Important: Must Use Special Flags
-
-Crybot **requires** `-Dpreview_mt -Dexecution_context` flags for multi-threading and isolated fiber support. These are **NOT supported by `shards build`** - you must use `make build` or build manually:
+### Building
 
 ```bash
-make build                    # Uses correct flags (preview_mt + execution_context)
-crystal build src/main.cr -o bin/crybot -Dpreview_mt -Dexecution_context  # Manual build
+# Build both binaries (recommended)
+shards build -Dpreview_mt -Dexecution_context --release
+
+# Or use the Makefile
+make build                    # Build crybot with proper flags
+make shell-build              # Build crysh (shell wrapper)
+make all                      # Build both binaries
+make run                      # Build and run crybot
+make clean                    # Remove binaries
+make deploy_site              # Deploy documentation site
+
+# Manual builds
+crystal build src/main.cr -o bin/crybot -Dpreview_mt -Dexecution_context
+crystal build src/crysh.cr -o bin/crysh
 ```
 
-**DO NOT use** `shards build` - it doesn't support the required flags.
-
-**DO NOT use** `--release` flag when building manually (per user preference).
-
-The Makefile includes:
-- `make build` - Build crybot with proper flags
-- `make shell-build` - Build crysh (shell wrapper)
-- `make all` - Build both binaries
-- `make run` - Build and run crybot
-- `make clean` - Remove binaries
-- `make deploy_site` - Deploy documentation site
+**Note**: `shards build` works with the proper flags. Use `-Dpreview_mt -Dexecution_context` for crybot's multi-threading support. Crysh doesn't require these flags.
 
 ### Linting
 ```bash
