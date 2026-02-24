@@ -15,8 +15,7 @@ docker run --rm \
   --user="$(id -u):$(id -g)" \
   crybot-builder-amd64 \
   /bin/sh -c "cd /app && \
-  shards build --without-development --release --static --no-debug '-Dpreview_mt' '-Dexecution_context' 'crybot' && \
-  crystal build --without-development --release --static --no-debug src/crysh.cr -o bin/crysh"
+  shards build --without-development --release --static --no-debug '-Dpreview_mt' '-Dexecution_context'"
 
 # Copy and compress the AMD64 binaries
 mkdir -p dist
@@ -41,8 +40,7 @@ if docker run --rm \
   --user="$(id -u):$(id -g)" \
   crybot-builder-arm64 \
   /bin/sh -c "cd /app && \
-  shards build --without-development --release --static --no-debug '-Dpreview_mt' '-Dexecution_context' 'crybot' && \
-  crystal build --without-development --release --static --no-debug src/crysh.cr -o bin/crysh"; then
+  shards build --without-development --release --static --no-debug '-Dpreview_mt' '-Dexecution_context'"; then
   echo "✓ ARM64 build succeeded on first try"
 else
   echo "⚠ ARM64 build failed, retrying..."
@@ -52,8 +50,7 @@ else
     --user="$(id -u):$(id -g)" \
     crybot-builder-arm64 \
     /bin/sh -c "cd /app && \
-    shards build --without-development --release --static --no-debug '-Dpreview_mt' '-Dexecution_context' 'crybot' && \
-    crystal build --without-development --release --static --no-debug src/crysh.cr -o bin/crysh"
+    shards build --without-development --release --static --no-debug '-Dpreview_mt' '-Dexecution_context'"
 fi
 
 # Copy and compress the ARM64 binaries
