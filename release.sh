@@ -37,6 +37,8 @@ gh release create "v$VERSION" \
   --repo "$(git remote get-url origin | sed 's/.*:\(.*\)\.git/\1/' | sed 's/github.com\///')" \
   "dist/$PKGNAME-linux-amd64" \
   "dist/$PKGNAME-linux-arm64" \
+  "dist/crysh-linux-amd64" \
+  "dist/crysh-linux-arm64" \
   --title "Release v$VERSION" \
   --notes "$(git cliff -l -s all)"
 
