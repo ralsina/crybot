@@ -4,6 +4,7 @@
 
 - [Introduction](00-introduction.md)
 - [Installation](01-installation.md)
+- [Crysh - Natural Language Shell](02-5-crysh.md)
 - [Configuration](02-configuration.md)
 - [Features Overview](03-features.md)
 - [Web Interface](04-web-interface.md)
