@@ -67,13 +67,14 @@ module Crybot
         return
       end
 
-      # Get description from arguments
-      description = args_without_flags[0]?
-      if description.nil?
+      # Get description from arguments (join all args with spaces)
+      if args_without_flags.empty?
         STDERR.puts "Error: No description provided"
         puts "\n" + DOC
         exit 1
       end
+
+      description = args_without_flags.join(" ")
 
       # Load config
       config = Config::Loader.load
