@@ -22,9 +22,11 @@ crystal build src/main.cr -o bin/crybot -Dpreview_mt -Dexecution_context  # Manu
 **DO NOT use** `--release` flag when building manually (per user preference).
 
 The Makefile includes:
-- `make build` - Build with proper flags
-- `make run` - Build and run
-- `make clean` - Remove binary
+- `make build` - Build crybot with proper flags
+- `make shell-build` - Build crysh (shell wrapper)
+- `make all` - Build both binaries
+- `make run` - Build and run crybot
+- `make clean` - Remove binaries
 - `make deploy_site` - Deploy documentation site
 
 ### Linting
@@ -34,15 +36,31 @@ ameba --fix           # Auto-fix linting issues
 
 ### Running
 ```bash
+# Crybot (main assistant)
 ./bin/crybot              # Start all enabled features (default: threaded mode)
 ./bin/crybot onboard      # Initialize configuration
 ./bin/crybot agent [-m <msg>]  # Direct agent interaction
 ./bin/crybot status       # Show configuration status
 ./bin/crybot profile     # Profile startup performance
 ./bin/crybot tool-runner <tool_name> <json_args>  # Internal: execute tool in Landlocked subprocess
+
+# Crysh (shell wrapper)
+./bin/crysh "description"  # Generate and execute shell command from natural language
+./bin/crysh -y "description"  # Skip rofi confirmation (for scripts)
 ```
 
-**Note**: There is only one binary (`bin/crybot`). The `ameba` file in `bin/` is just the development linter.
+**Note**: There are two binaries - `bin/crybot` (main assistant) and `bin/crysh` (shell wrapper). The `ameba` file in `bin/` is just the development linter.
+
+**Crysh** - Natural language shell wrapper:
+- Generates shell commands from natural language descriptions using LLMs
+- Shows rofi dialog for confirmation before execution (Run/Edit/Cancel)
+- Supports editing via $EDITOR or rofi prompt
+- Use `-y` flag to skip confirmation (useful in scripts)
+- Preserves stdin/stdout for clean pipeline integration
+- Examples:
+  - `echo "a,b,c" | crysh "get second field"` → `cut -d, -f2`
+  - `ls -l | crysh "sort by size"` → sorts by file size
+  - `crysh "count unique lines" < file.txt` → `sort | uniq -c`
 
 ### Testing
 No test suite exists yet in this repository.
@@ -157,3 +175,32 @@ Located at `~/.crybot/`:
 - **Important**: Avoid `not_nil!` and `to_s` for nil handling
 - Fix linting with `ameba --fix` before declaring tasks done
 - Code in `lib/` is external - do not modify
+
+### Crysh Architecture
+
+**Entry Point** (`src/crysh.cr`)
+- Standalone binary that doesn't require preview_mt/execution_context flags
+- Uses docopt for CLI parsing
+- Supports `-y` flag to skip rofi confirmation
+
+**Provider Factory** (`src/crysh/provider_factory.cr`)
+- Reuses crybot's provider infrastructure
+- Creates LLM provider instances based on config
+
+**Rofi Integration** (`src/crysh/rofi.cr`)
+- Shows confirmation dialog with Run/Edit/Cancel options
+- Supports editing via $EDITOR or rofi dmenu
+- Runs rofi on separate FD to preserve stdin/stdout for pipelines
+- Gracefully handles rofi failures (e.g., no X display)
+
+**Command Generation**
+- Sends prompt to LLM with specific system prompt for shell commands
+- Cleans response by removing markdown formatting
+- Validates command before execution
+
+**Command Execution**
+- Buffers stdin before spawning command
+- Spawns shell command with `sh -c`
+- Pipes buffered stdin to command
+- Forwards command stdout/stderr to actual stdout/stderr
+- Exits with command's exit code
