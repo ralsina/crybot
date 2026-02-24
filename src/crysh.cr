@@ -1,8 +1,10 @@
 require "log"
 require "docopt"
+require "yaml"
 require "./config/loader"
 require "./crysh/provider_factory"
 require "./crysh/rofi"
+require "./crysh/onboard"
 
 # Setup logging from environment
 Log.setup_from_env
@@ -15,6 +17,7 @@ Generates shell commands from natural language descriptions using LLMs.
 Usage:
   crysh [-y] [--dry-run] [-v] <description>
   crysh [-h | --help]
+  crysh onboard
 
 Options:
   -h --help        Show this help message
@@ -25,6 +28,9 @@ Options:
 Arguments:
   description      Natural language description of the desired shell operation
 
+Commands:
+  onboard          Run the setup wizard to configure API keys
+
 Examples:
   crysh "get the second field of stdin separated by commas"
   crysh "sort lines in reverse order"
@@ -34,6 +40,7 @@ The generated command will be shown in a rofi dialog for confirmation before exe
 Use -y to skip confirmation (useful in scripts or for testing).
 Use --dry-run to preview the command without executing.
 Use -v for verbose logging to debug issues.
+Run 'crysh onboard' to set up your configuration.
 DOC
 
 module Crybot
@@ -42,6 +49,12 @@ module Crybot
 
     def self.run : Nil
       args = ARGV
+
+      # Handle onboard command first
+      if args.includes?("onboard")
+        Onboard.execute
+        return
+      end
 
       # Check for flags
       skip_confirmation = args.includes?("-y")
