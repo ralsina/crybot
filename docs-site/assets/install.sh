@@ -169,9 +169,10 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=${crybot_path} start
+ExecStart=${crybot_path}
 Restart=on-failure
 RestartSec=5
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
 
 [Install]
 WantedBy=default.target
