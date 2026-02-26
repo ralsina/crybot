@@ -9,6 +9,7 @@ curl -sSL https://crybot.ralsina.me/install.sh | bash
 ```
 
 This will:
+
 - ✅ Detect your system architecture (linux-amd64, linux-arm64, etc.)
 - ✅ Download the latest binary from GitHub releases
 - ✅ Install it to `~/.local/bin`
