@@ -3471,6 +3471,7 @@ execution:
         <option value="telegram" ${channel === 'telegram' ? 'selected' : ''}>Telegram</option>
         <option value="web" ${channel === 'web' ? 'selected' : ''}>Web Session</option>
         <option value="pasto" ${channel === 'pasto' ? 'selected' : ''}>Pasto (Pastebin)</option>
+        <option value="folder" ${channel === 'folder' ? 'selected' : ''}>Folder (File System)</option>
         <option value="voice" ${channel === 'voice' ? 'selected' : ''}>Voice (TTS)</option>
         <option value="repl" ${channel === 'repl' ? 'selected' : ''}>REPL (Console)</option>
       </select>
@@ -3501,6 +3502,11 @@ execution:
       } else if (selectedChannel === 'pasto') {
         chatIdInput.value = 'pastebin';
         chatIdInput.placeholder = 'Pastebin service';
+        loadBtn.disabled = true;
+        loadBtn.textContent = 'Load';
+      } else if (selectedChannel === 'folder') {
+        chatIdInput.value = 'debug';
+        chatIdInput.placeholder = 'Saves to ~/.crybot/folder/';
         loadBtn.disabled = true;
         loadBtn.textContent = 'Load';
       } else if (selectedChannel === 'voice' || selectedChannel === 'repl') {

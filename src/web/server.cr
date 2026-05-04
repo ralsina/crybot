@@ -6,6 +6,7 @@ require "../scheduled_tasks/registry"
 require "../channels/unified_registry"
 require "../channels/web_channel"
 require "../channels/pasto_channel"
+require "../channels/folder_channel"
 require "./handlers/*"
 require "./websocket/*"
 require "./middleware/*"
@@ -35,6 +36,11 @@ module Crybot
         pasto_channel = Channels::PastoChannel.new(skill_manager)
         Channels::UnifiedRegistry.register(pasto_channel)
         puts "[#{Time.local.to_s("%H:%M:%S")}] Pasto channel registered for scheduled task forwarding"
+
+        # Register FolderChannel with UnifiedRegistry for scheduled task forwarding
+        folder_channel = Channels::FolderChannel.new(skill_manager)
+        Channels::UnifiedRegistry.register(folder_channel)
+        puts "[#{Time.local.to_s("%H:%M:%S")}] Folder channel registered for scheduled task forwarding"
 
         # Setup Kemal configuration
         Kemal.config.port = @config.web.port
