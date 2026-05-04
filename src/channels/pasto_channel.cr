@@ -8,6 +8,17 @@ module Crybot
     class PastoChannel < Channel
       @skill_manager : SkillManager
 
+      # Store the most recent paste URL for access by other components
+      @@last_url : String? = nil
+
+      def self.last_url : String?
+        @@last_url
+      end
+
+      def self.clear_url : Nil
+        @@last_url = nil
+      end
+
       def initialize(@skill_manager : SkillManager)
       end
 
@@ -75,13 +86,33 @@ module Crybot
           status = process.wait
 
           if status.success?
-            Log.info { "[PastoChannel] Successfully posted to pasto" }
-            Log.debug { "[PastoChannel] Output: #{output}" }
+            # Pasto typically returns a URL in the output
+            url = extract_url(output)
+            if url
+              @@last_url = url
+              Log.info { "[PastoChannel] Successfully posted to pasto: #{url}" }
+              puts "[PastoChannel] 📝 Paste created: #{url}"
+            else
+              Log.info { "[PastoChannel] Successfully posted to pasto (URL not found in output)" }
+              Log.debug { "[PastoChannel] Output: #{output}" }
+            end
           else
             Log.error { "[PastoChannel] Failed to post to pasto: #{error}" }
           end
         rescue e : Exception
           Log.error { "[PastoChannel] Exception posting to pasto: #{e.message}" }
+        end
+      end
+
+      private def extract_url(output : String) : String?
+        # Pasto typically returns URLs like:
+        # https://pasto1.ralsina.me/p/abc123
+        # or just: https://pasto1.ralsina.me/p/abc123
+        # Try to extract the URL from the output
+        if match = output.match(/https?:\/\/[^\s]+/i)
+          match[0]
+        else
+          nil
         end
       end
     end

@@ -248,20 +248,35 @@ module Crybot
 
         Log.debug { "[ScheduledTask] Forwarding to #{channel_name} chat '#{chat_id}'" }
 
+        message_to_send = message
+
+        # If this is pasto, send it first so we can capture the URL
+        if channel_name == "pasto"
+          Channels::PastoChannel.clear_url
+        end
+
         # Use unified registry to send to any channel
         success = Channels::UnifiedRegistry.send_to_channel(
           channel_name: channel_name,
           chat_id: chat_id,
-          content: message,
+          content: message_to_send,
           format: Channels::ChannelMessage::MessageFormat::Markdown
         )
 
         if success
           Log.info { "[ScheduledTask] Successfully forwarded to #{channel_name}" }
+
           # Save to session so it appears in web UI (only for channels with sessions)
           if channel_name != "pasto"
             session_key = "#{channel_name}:#{chat_id}"
-            save_assistant_message_to_session(session_key, message)
+
+            # For non-pasto channels, add the pasto URL if available
+            if url = Channels::PastoChannel.last_url
+              message_to_send = "#{message}\n\n📝 **Pasto URL**: #{url}"
+              Channels::PastoChannel.clear_url
+            end
+
+            save_assistant_message_to_session(session_key, message_to_send)
           end
         else
           Log.warn { "[ScheduledTask] Failed to forward to #{channel_name} (channel not available)" }
