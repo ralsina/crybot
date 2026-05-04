@@ -106,7 +106,7 @@ module Crybot
             model: glm-4.7-flash
             max_tokens: 8192
             temperature: 0.7
-            max_tool_iterations: 20
+            max_tool_iterations: 400
 
         providers:
           zhipu:

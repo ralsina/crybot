@@ -88,7 +88,11 @@ class CrybotWeb {
     if (typeof marked !== 'undefined' && marked.use) {
       marked.use({
         renderer: {
-          link(href, title, text) {
+          link(token) {
+            // marked v11+ passes a token object instead of individual parameters
+            const href = token.href || '';
+            const title = token.title || '';
+            const text = token.text || '';
             return `<a href="${href}" target="_blank" rel="noopener noreferrer"${title ? ` title="${title}"` : ''}>${text}</a>`;
           }
         }

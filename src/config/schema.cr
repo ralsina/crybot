@@ -14,7 +14,7 @@ module Crybot
         property model : String = "glm-4.7-flash"
         property max_tokens : Int32 = 8192
         property temperature : Float64 = 0.7
-        property max_tool_iterations : Int32 = 20
+        property max_tool_iterations : Int32 = 400
       end
     end
 
