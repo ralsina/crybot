@@ -322,7 +322,9 @@ module Crybot
 
             # For non-pasto channels, add the pasto URL if available
             if url = Channels::PastoChannel.last_url
-              message_to_send = "#{message}\n\n📝 **Pasto URL**: #{url}"
+              # Ensure url is a string
+              url_str = url.to_s
+              message_to_send = "#{message}\n\n📝 **Pasto URL**: #{url_str}"
               Channels::PastoChannel.clear_url
             end
 
