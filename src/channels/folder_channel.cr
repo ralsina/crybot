@@ -31,6 +31,8 @@ module Crybot
       def send_message(message : ChannelMessage) : Nil
         content = message.content_for_channel(self)
 
+        Log.info { "[FolderChannel] send_message called: chat_id=#{message.chat_id}, content_size=#{content.size}" }
+
         # Create a filename based on timestamp and chat_id
         timestamp = Time.utc.to_s("%Y%m%d_%H%M%S")
         safe_chat_id = message.chat_id.gsub(/[^a-zA-Z0-9_-]/, "_")
@@ -38,6 +40,8 @@ module Crybot
 
         # Create full file path
         filepath = @base_dir / filename
+
+        Log.info { "[FolderChannel] Writing to: #{filepath}" }
 
         # Save content to file
         File.write(filepath, content)
@@ -60,6 +64,8 @@ module Crybot
           File.write(debug_filepath, debug_content)
           Log.debug { "[FolderChannel] Debug metadata saved to: #{debug_filepath}" }
         end
+      rescue e : Exception
+        Log.error(exception: e) { "[FolderChannel] Exception: #{e.message}, #{e.backtrace.join("\n")}" }
       end
 
       def session_key(chat_id : String) : String
