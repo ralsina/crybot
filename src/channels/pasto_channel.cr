@@ -64,15 +64,16 @@ module Crybot
         # Execute SSH command to post to pasto
         # Using basic Process.run since we're not in agent context
         begin
-          # Escape the title properly for shell
-          escaped_title = title.gsub("'", "'\\\\''")
+          # Build the full title with date
+          full_title = "#{title} - #{date}"
 
-          # Build the command
-          full_title = "#{escaped_title} - #{date}"
+          # Use Process.quote to properly escape the title for shell
+          quoted_title = Process.quote([full_title])[0]
 
-          Log.debug { "[PastoChannel] Running: ssh pasto1.ralsina.me -p 2222 paste -l markdown -t \"#{full_title}\"" }
+          Log.debug { "[PastoChannel] Running: ssh pasto1.ralsina.me -p 2222 paste -l markdown -t #{quoted_title}" }
 
           # Run the command with content via stdin
+          # Pass the title as a single properly quoted argument
           process = Process.new(
             "ssh",
             ["pasto1.ralsina.me", "-p", "2222", "paste", "-l", "markdown", "-t", full_title],
