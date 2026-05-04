@@ -219,9 +219,24 @@ module Crybot
           return
         end
 
-        Log.info { "[ScheduledTask] Forwarding output for '#{task.name}' to: #{forward_target}" }
+        # Support multiple forward targets separated by comma
+        targets = forward_target.split(",").map(&.strip)
 
-        # Parse forward target: "telegram:chat_id", "web:session_id", "voice:", "repl:"
+        Log.info { "[ScheduledTask] Forwarding output for '#{task.name}' to #{targets.size} target(s)" }
+
+        # Format the message once
+        message = format_task_message(task.name, output)
+
+        # Forward to each target
+        targets.each do |target|
+          forward_to_single_target(task, target, message)
+        end
+      end
+
+      private def forward_to_single_target(task : TaskConfig, forward_target : String, message : String) : Nil
+        Log.info { "[ScheduledTask] Forwarding to: #{forward_target}" }
+
+        # Parse forward target: "telegram:chat_id", "web:session_id", "pasto:", "voice:", "repl:"
         parts = forward_target.split(":", 2)
         if parts.size < 2
           Log.warn { "[ScheduledTask] Invalid forward_to format: #{forward_target}" }
@@ -233,9 +248,6 @@ module Crybot
 
         Log.debug { "[ScheduledTask] Forwarding to #{channel_name} chat '#{chat_id}'" }
 
-        # Format the message
-        message = format_task_message(task.name, output)
-
         # Use unified registry to send to any channel
         success = Channels::UnifiedRegistry.send_to_channel(
           channel_name: channel_name,
@@ -246,9 +258,11 @@ module Crybot
 
         if success
           Log.info { "[ScheduledTask] Successfully forwarded to #{channel_name}" }
-          # Save to session so it appears in web UI
-          session_key = "#{channel_name}:#{chat_id}"
-          save_assistant_message_to_session(session_key, message)
+          # Save to session so it appears in web UI (only for channels with sessions)
+          if channel_name != "pasto"
+            session_key = "#{channel_name}:#{chat_id}"
+            save_assistant_message_to_session(session_key, message)
+          end
         else
           Log.warn { "[ScheduledTask] Failed to forward to #{channel_name} (channel not available)" }
         end

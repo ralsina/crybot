@@ -13,7 +13,7 @@ module Crybot
       property? enabled : Bool = true
       property last_run : Time?
       property next_run : Time?
-      property forward_to : String?        # e.g., "telegram:chat_id" or "web"
+      property forward_to : String?        # e.g., "telegram:chat_id" or "web" or "telegram:123,web:session_id" (multiple)
       property memory_expiration : String? # e.g., "1 hour", "30 minutes", "none" (nil = no expiration)
 
       def initialize(@id : String, @name : String, @prompt : String, @interval : String, @description : String? = nil, @enabled : Bool = true, @forward_to : String? = nil, @memory_expiration : String? = nil)
