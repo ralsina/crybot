@@ -175,11 +175,12 @@ module Crybot
         response = @agent_loop.process(session_key, task.prompt)
 
         # Forward output if configured
-        if response.response
-          forward_output(task, response.response)
+        response_content = response.response || ""
+        if response_content && !response_content.empty?
+          forward_output(task, response_content)
         end
 
-        response.response
+        response_content
       end
 
       private def apply_memory_expiration(task : TaskConfig, session_key : String) : Nil
@@ -209,6 +210,12 @@ module Crybot
         forward_target = task.forward_to
         unless forward_target
           Log.debug { "[ScheduledTask] No forward_to configured for task '#{task.name}'" }
+          return
+        end
+
+        # Don't forward empty output
+        if output.empty?
+          Log.debug { "[ScheduledTask] Empty output for task '#{task.name}', skipping forward" }
           return
         end
 

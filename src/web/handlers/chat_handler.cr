@@ -31,6 +31,11 @@ module Crybot
           # Process with agent
           agent_response = @agent.process(session_id, content)
 
+          # Check if this is an error response
+          if agent_response.response.starts_with?("Error:")
+            Log.warn { "[Web] [Chat] Agent returned error: #{agent_response.response}" }
+          end
+
           # Log response (truncated if long)
           response_preview = agent_response.response.size > 200 ? "#{agent_response.response[0..200]}..." : agent_response.response
           puts "[Web] [Chat] Assistant: #{response_preview}"
@@ -58,8 +63,15 @@ module Crybot
           env.response.status_code = 400
           {error: "Invalid JSON"}.to_json
         rescue e : Exception
+          error_message = e.message || "Unknown error"
+          Log.error { "[Web] [Chat] Error: #{error_message}" }
+          Log.error { e.backtrace.join("\n") } if ENV["DEBUG"]?
           env.response.status_code = 500
-          {error: e.message}.to_json
+          {
+            error:           error_message,
+            content:         "Error: #{error_message}",
+            tool_executions: JSON::Any.new([] of JSON::Any),
+          }.to_json
         end
 
         private def generate_session_key : String

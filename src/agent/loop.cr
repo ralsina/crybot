@@ -263,7 +263,36 @@ module Crybot
               final_response = "[Request cancelled by user]"
               break
             end
-            # Re-raise other exceptions
+
+            # Check for connection/network errors
+            if ex.message.try(&.includes?("connection error"))
+              Log.error { "Provider connection error: #{ex.message}" }
+              final_response = "Error: Unable to connect to the provider. Please check your network connection and try again."
+              break
+            end
+
+            # Check for API errors (including model availability issues)
+            if error_msg = ex.message
+              if error_msg.includes?("API request failed")
+                Log.error { "Provider API error: #{error_msg}" }
+                # Check for common error patterns
+                if error_msg.includes?("404") || error_msg.includes?("model not found") || error_msg.includes?("does not exist")
+                  final_response = "Error: The requested model is not available. Please check your model configuration in config.yml and ensure the model exists on your provider."
+                elsif error_msg.includes?("401") || error_msg.includes?("authentication") || error_msg.includes?("api key")
+                  final_response = "Error: Authentication failed. Please check your API key configuration."
+                elsif error_msg.includes?("429") || error_msg.includes?("rate limit")
+                  final_response = "Error: Rate limit exceeded. Please wait a moment and try again."
+                else
+                  # Generic API error with details
+                  final_response = "Error: #{error_msg}"
+                end
+                break
+              end
+            end
+
+            # Log and re-raise unexpected exceptions
+            Log.error { "Unexpected error in agent loop: #{ex.message}" }
+            Log.error { ex.backtrace.join("\n") } if ENV["DEBUG"]?
             raise ex
           end
 

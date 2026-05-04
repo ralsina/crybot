@@ -151,7 +151,9 @@ module Crybot
             response = @agent.process(session_id, content)
             response_channel.send(response)
           rescue e : Exception
-            response_channel.send(nil)
+            # Send error response through channel
+            error_response = AgentResponse.new("Error: #{e.message || "Unknown error"}")
+            response_channel.send(error_response)
           end
         end
 

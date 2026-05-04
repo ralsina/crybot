@@ -104,6 +104,8 @@ module Crybot
             end
           end
 
+          chat_id = nil # Declare in outer scope for error handler
+
           puts "[Web] Found Telegram channel, processing message..."
 
           # Extract chat_id from session_id (format: telegram_<chat_id>)
@@ -131,7 +133,13 @@ module Crybot
             response = agent_response.response
             if response && !response.empty?
               puts "[Web] Sending agent response to Telegram..."
+              # Check if this is an error response
+              if response.starts_with?("Error:")
+                Log.warn { "[Web] Agent returned error: #{response}" }
+              end
               telegram_channel.send_to_chat(chat_id, response)
+            else
+              Log.warn { "[Web] Agent returned empty response" }
             end
 
             # Return success to the web UI
@@ -145,10 +153,22 @@ module Crybot
             {error: "Invalid telegram session ID"}.to_json
           end
         rescue e : Exception
-          puts "[Web] ERROR in send_message: #{e.message}"
+          error_message = e.message || "Unknown error"
+          puts "[Web] ERROR in send_message: #{error_message}"
           puts e.backtrace.join("\n") if ENV["DEBUG"]?
+
+          # Send error notification to Telegram if possible
+          if chat_id && telegram_channel
+            begin
+              error_msg = "❌ Sorry, there was an error processing your message:\n\n#{error_message}"
+              telegram_channel.send_to_chat(chat_id, error_msg)
+            rescue e : Exception
+              Log.error { "Failed to send error to Telegram: #{e.message}" }
+            end
+          end
+
           env.response.status_code = 500
-          {error: e.message}.to_json
+          {error: error_message}.to_json
         end
 
         private def extract_title(session_id : String) : String

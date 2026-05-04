@@ -30,9 +30,10 @@ module Crybot
             response = HTTP::Client.post(url, headers, body)
             response_channel.send(response)
           rescue e : Exception
-            # If there was an error, still send to response channel
-            # The caller will check the response status
-            cancel_channel.send(nil)
+            # Send error through response channel as a special error response
+            # We create a response with status 0 to indicate an error occurred
+            error_response = HTTP::Client::Response.new(0, e.message || "Unknown error")
+            response_channel.send(error_response)
           end
         end
 

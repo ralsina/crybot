@@ -36,6 +36,13 @@ module Crybot
             cancellation_token
           )
 
+          # Check for network/connection errors (status code 0 from async_http)
+          if response.status_code == 0
+            error_msg = response.body
+            Log.error { "Network/Connection error: #{error_msg}" }
+            raise "API connection error: #{error_msg}"
+          end
+
           # Success - return response
           if response.success?
             return parse_response(response.body)
@@ -61,8 +68,9 @@ module Crybot
             end
           end
 
-          # Other error or max retries exceeded
-          raise "API request failed: #{status} - #{response.body}"
+          # Other error or max retries exceeded - provide detailed error message
+          error_details = parse_error_details(response.body)
+          raise "API request failed (#{status}): #{error_details}"
         end
 
         # Should not reach here, but compiler needs a return
@@ -164,6 +172,25 @@ module Crybot
         end
 
         result
+      end
+
+      private def parse_error_details(body : String) : String
+        json = JSON.parse(body)
+        # Try to extract error message from common API error formats
+        if error = json["error"]?
+          error_hash = error.as_h?
+          if error_hash
+            if error_str = error_hash["message"]? || error_hash["msg"]?
+              return error_str.as_s
+            end
+          end
+          return error.to_s
+        end
+        # Fallback to raw body
+        body
+      rescue
+        # If parsing fails, return raw body
+        body.size > 200 ? body[0..200] : body
       end
     end
   end
