@@ -3475,6 +3475,7 @@ execution:
         <option value="repl" ${channel === 'repl' ? 'selected' : ''}>REPL (Console)</option>
       </select>
       <input type="text" class="target-chat-id" placeholder="Chat ID" value="${this.escapeHtml(chatId)}" style="flex: 1;">
+      <button type="button" class="btn-load-target btn-secondary btn-sm" style="padding: 4px 8px;" disabled>Load</button>
       <button type="button" class="btn-remove-target btn-secondary btn-sm" style="padding: 4px 8px;">×</button>
     `;
 
@@ -3483,23 +3484,44 @@ execution:
     // Setup event listeners for this row
     const channelSelect = targetDiv.querySelector('.target-channel');
     const chatIdInput = targetDiv.querySelector('.target-chat-id');
+    const loadBtn = targetDiv.querySelector('.btn-load-target');
     const removeBtn = targetDiv.querySelector('.btn-remove-target');
 
     // Channel change handler
     channelSelect.addEventListener('change', (e) => {
       const selectedChannel = e.target.value;
       if (selectedChannel === 'telegram') {
-        chatIdInput.placeholder = 'Select from list below';
+        chatIdInput.placeholder = 'Click Load to select Telegram chat';
+        loadBtn.disabled = false;
+        loadBtn.textContent = 'Load Chats';
       } else if (selectedChannel === 'web') {
-        chatIdInput.placeholder = 'Enter web session ID';
+        chatIdInput.placeholder = 'Click Load to select web session';
+        loadBtn.disabled = false;
+        loadBtn.textContent = 'Load Sessions';
       } else if (selectedChannel === 'pasto') {
         chatIdInput.value = 'pastebin';
         chatIdInput.placeholder = 'Pastebin service';
+        loadBtn.disabled = true;
+        loadBtn.textContent = 'Load';
       } else if (selectedChannel === 'voice' || selectedChannel === 'repl') {
         chatIdInput.value = selectedChannel;
         chatIdInput.placeholder = 'Uses shared session';
+        loadBtn.disabled = true;
+        loadBtn.textContent = 'Load';
       } else {
         chatIdInput.placeholder = 'Chat ID';
+        loadBtn.disabled = true;
+        loadBtn.textContent = 'Load';
+      }
+    });
+
+    // Load button handler
+    loadBtn.addEventListener('click', () => {
+      const selectedChannel = channelSelect.value;
+      if (selectedChannel === 'telegram') {
+        this.loadTelegramChatsForTarget(chatIdInput);
+      } else if (selectedChannel === 'web') {
+        this.loadWebSessionsForTarget(chatIdInput);
       }
     });
 
@@ -3529,6 +3551,74 @@ execution:
     });
 
     return targets.length > 0 ? targets.join(', ') : '';
+  }
+
+  async loadTelegramChatsForTarget(inputElement) {
+    try {
+      const response = await fetch('/api/telegram/conversations');
+      const data = await response.json();
+
+      if (!data.conversations || data.conversations.length === 0) {
+        alert('No Telegram conversations found.');
+        return;
+      }
+
+      // Create a simple selection dialog
+      const chatId = prompt('Enter the number of the chat to use:\n\n' +
+        data.conversations.map((conv, index) =>
+          `${index + 1}. ${conv.title || conv.id} (${conv.id})`
+        ).join('\n'));
+
+      if (chatId && !isNaN(chatId)) {
+        const index = parseInt(chatId) - 1;
+        if (index >= 0 && index < data.conversations.length) {
+          inputElement.value = data.conversations[index].id;
+        } else {
+          alert('Invalid chat number.');
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load Telegram chats:', error);
+      alert('Failed to load Telegram chats. Check console for details.');
+    }
+  }
+
+  async loadWebSessionsForTarget(inputElement) {
+    try {
+      const response = await fetch('/api/sessions');
+      const data = await response.json();
+
+      if (!data.sessions || data.sessions.length === 0) {
+        alert('No web sessions found.');
+        return;
+      }
+
+      // Filter only web sessions
+      const webSessions = data.sessions.filter(s => s.session_type === 'web');
+
+      if (webSessions.length === 0) {
+        alert('No web sessions found.');
+        return;
+      }
+
+      // Create a simple selection dialog
+      const sessionId = prompt('Enter the number of the session to use:\n\n' +
+        webSessions.map((session, index) =>
+          `${index + 1}. ${session.title || session.id} (${session.id})`
+        ).join('\n'));
+
+      if (sessionId && !isNaN(sessionId)) {
+        const index = parseInt(sessionId) - 1;
+        if (index >= 0 && index < webSessions.length) {
+          inputElement.value = webSessions[index].id;
+        } else {
+          alert('Invalid session number.');
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load web sessions:', error);
+      alert('Failed to load web sessions. Check console for details.');
+    }
   }
 
   editTask(taskId) {
