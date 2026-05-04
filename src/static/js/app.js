@@ -436,43 +436,24 @@ class CrybotWeb {
       this.sendTaskOutputMessage();
     });
 
-    // Load telegram chats button
-    const loadTelegramChatsBtn = document.getElementById('load-telegram-chats-btn');
-    if (loadTelegramChatsBtn) {
-      loadTelegramChatsBtn.addEventListener('click', () => {
-        this.loadTelegramChatsForForwarding();
+    // Setup forwarding targets UI
+    const addForwardTargetBtn = document.getElementById('add-forward-target-btn');
+    const forwardTargetsList = document.getElementById('forward-targets-list');
+
+    if (addForwardTargetBtn && forwardTargetsList) {
+      // Store forwarding targets
+      this.forwardTargets = [];
+
+      // Add button click handler
+      addForwardTargetBtn.addEventListener('click', () => {
+        this.addForwardTargetUI();
       });
+
+      // Add initial empty target if list is empty
+      if (forwardTargetsList.children.length === 0) {
+        this.addForwardTargetUI();
+      }
     }
-
-    // Unified channel selection for forwarding
-    const channelSelect = document.getElementById('task-forward-channel');
-    const loadChatsBtn = document.getElementById('load-chats-btn');
-    const forwardToInput = document.getElementById('task-forward-to');
-
-    if (channelSelect && loadChatsBtn && forwardToInput) {
-      channelSelect.addEventListener('change', (e) => {
-        const channel = e.target.value;
-        loadChatsBtn.disabled = !channel;
-
-        if (channel === 'telegram') {
-          loadChatsBtn.textContent = '📋 Load Chats';
-          forwardToInput.placeholder = 'Click "Load Chats" to select a Telegram chat';
-        } else if (channel === 'web') {
-          loadChatsBtn.textContent = '📋 Load Sessions';
-          forwardToInput.placeholder = 'Enter a web session ID';
-        } else if (channel === 'pasto') {
-          loadChatsBtn.disabled = true;
-          forwardToInput.value = 'pasto:pastebin';
-          forwardToInput.placeholder = 'Posts to pastebin service';
-        } else if (channel === 'voice' || channel === 'repl') {
-          loadChatsBtn.disabled = true;
-          forwardToInput.value = channel + ':';
-          forwardToInput.placeholder = 'Uses shared session (no ID needed)';
-        } else {
-          loadChatsBtn.disabled = true;
-          forwardToInput.placeholder = 'Select a channel first';
-        }
-      });
 
       loadChatsBtn.addEventListener('click', () => {
         const channel = channelSelect.value;
@@ -2541,9 +2522,15 @@ class CrybotWeb {
       }
 
       // Filter to show web and repl sessions only (not telegram, voice, whatsapp, slack)
-      const chatSessions = data.sessions.filter(s =>
-        s.session_type === 'web' || s.session_type === 'repl'
-      );
+      const chatSessions = data.sessions.filter(s => {
+        // Ensure session_type is a string before calling startsWith
+        const sessionType = s.session_type;
+        if (typeof sessionType !== 'string') {
+          console.warn('Invalid session_type:', sessionType, 'for session:', s);
+          return false;
+        }
+        return sessionType === 'web' || sessionType === 'repl';
+      });
 
       if (chatSessions.length === 0) {
         itemsContainer.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">No conversations yet. Start chatting!</p>';
@@ -3422,6 +3409,12 @@ execution:
     this.editingTaskId = task ? task.id : null;
     const title = document.getElementById('task-modal-title');
 
+    // Clear forwarding targets list
+    const forwardTargetsList = document.getElementById('forward-targets-list');
+    if (forwardTargetsList) {
+      forwardTargetsList.innerHTML = '';
+    }
+
     if (task) {
       title.textContent = 'Edit Scheduled Task';
       document.getElementById('task-name').value = task.name;
@@ -3429,8 +3422,18 @@ execution:
       document.getElementById('task-prompt').value = task.prompt;
       document.getElementById('task-interval').value = task.interval;
       document.getElementById('task-enabled').checked = task.enabled;
-      document.getElementById('task-forward-to').value = task.forward_to || '';
       document.getElementById('task-memory-expiration').value = task.memory_expiration || '';
+
+      // Load existing forwarding targets
+      if (task.forward_to) {
+        const targets = task.forward_to.split(',').map(t => t.trim());
+        targets.forEach(target => {
+          this.addForwardTargetUI(target);
+        });
+      } else {
+        // Add one empty target row
+        this.addForwardTargetUI();
+      }
     } else {
       title.textContent = 'Add Scheduled Task';
       document.getElementById('task-name').value = '';
@@ -3438,8 +3441,10 @@ execution:
       document.getElementById('task-prompt').value = '';
       document.getElementById('task-interval').value = '';
       document.getElementById('task-enabled').checked = true;
-      document.getElementById('task-forward-to').value = '';
       document.getElementById('task-memory-expiration').value = '';
+
+      // Add one empty target row for new tasks
+      this.addForwardTargetUI();
     }
 
     document.getElementById('task-modal').classList.remove('hidden');
@@ -3448,6 +3453,92 @@ execution:
   closeTaskModal() {
     document.getElementById('task-modal').classList.add('hidden');
     this.editingTaskId = null;
+    this.forwardTargets = [];
+  }
+
+  addForwardTargetUI(existingTarget = '') {
+    const forwardTargetsList = document.getElementById('forward-targets-list');
+    if (!forwardTargetsList) return;
+
+    const targetDiv = document.createElement('div');
+    targetDiv.className = 'forward-target-row';
+    targetDiv.style.cssText = 'display: flex; gap: 8px; margin-bottom: 8px; align-items: center;';
+
+    // Parse existing target if provided
+    let channel = '';
+    let chatId = '';
+    if (existingTarget) {
+      const parts = existingTarget.split(':', 2);
+      if (parts.length === 2) {
+        channel = parts[0];
+        chatId = parts[1];
+      }
+    }
+
+    targetDiv.innerHTML = `
+      <select class="target-channel" style="flex: 1;">
+        <option value="">-- Select Channel --</option>
+        <option value="telegram" ${channel === 'telegram' ? 'selected' : ''}>Telegram</option>
+        <option value="web" ${channel === 'web' ? 'selected' : ''}>Web Session</option>
+        <option value="pasto" ${channel === 'pasto' ? 'selected' : ''}>Pasto (Pastebin)</option>
+        <option value="voice" ${channel === 'voice' ? 'selected' : ''}>Voice (TTS)</option>
+        <option value="repl" ${channel === 'repl' ? 'selected' : ''}>REPL (Console)</option>
+      </select>
+      <input type="text" class="target-chat-id" placeholder="Chat ID" value="${this.escapeHtml(chatId)}" style="flex: 1;">
+      <button type="button" class="btn-remove-target btn-secondary btn-sm" style="padding: 4px 8px;">×</button>
+    `;
+
+    forwardTargetsList.appendChild(targetDiv);
+
+    // Setup event listeners for this row
+    const channelSelect = targetDiv.querySelector('.target-channel');
+    const chatIdInput = targetDiv.querySelector('.target-chat-id');
+    const removeBtn = targetDiv.querySelector('.btn-remove-target');
+
+    // Channel change handler
+    channelSelect.addEventListener('change', (e) => {
+      const selectedChannel = e.target.value;
+      if (selectedChannel === 'telegram') {
+        chatIdInput.placeholder = 'Select from list below';
+      } else if (selectedChannel === 'web') {
+        chatIdInput.placeholder = 'Enter web session ID';
+      } else if (selectedChannel === 'pasto') {
+        chatIdInput.value = 'pastebin';
+        chatIdInput.placeholder = 'Pastebin service';
+      } else if (selectedChannel === 'voice' || selectedChannel === 'repl') {
+        chatIdInput.value = selectedChannel;
+        chatIdInput.placeholder = 'Uses shared session';
+      } else {
+        chatIdInput.placeholder = 'Chat ID';
+      }
+    });
+
+    // Remove button handler
+    removeBtn.addEventListener('click', () => {
+      targetDiv.remove();
+    });
+
+    // Trigger change event if channel was pre-selected
+    if (channel) {
+      channelSelect.dispatchEvent(new Event('change'));
+    }
+  }
+
+  getForwardTargetsValue() {
+    const forwardTargetsList = document.getElementById('forward-targets-list');
+    if (!forwardTargetsList) return '';
+
+    const targets = [];
+    forwardTargetsList.querySelectorAll('.forward-target-row').forEach(row => {
+      const channel = row.querySelector('.target-channel').value;
+      const chatId = row.querySelector('.target-chat-id').value.trim();
+
+      if (channel && chatId) {
+        targets.push(`${channel}:${chatId}`);
+      }
+    });
+
+    return targets.length > 0 ? targets.join(', ') : '';
   }
 
   editTask(taskId) {
@@ -3463,7 +3554,7 @@ execution:
     const prompt = document.getElementById('task-prompt').value.trim();
     const interval = document.getElementById('task-interval').value.trim();
     const enabled = document.getElementById('task-enabled').checked;
-    const forwardTo = document.getElementById('task-forward-to').value.trim() || null;
+    const forwardTo = this.getForwardTargetsValue() || null;
     const memoryExpiration = document.getElementById('task-memory-expiration').value.trim() || null;
 
     if (!name || !prompt || !interval) {

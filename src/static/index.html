@@ -412,21 +412,12 @@
             </label>
           </div>
           <div class="form-group">
-            <label for="task-forward-channel">Forward Output to Channel (optional)</label>
-            <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-              <select id="task-forward-channel" style="flex: 1;">
-                <option value="">-- No forwarding --</option>
-                <option value="telegram">Telegram</option>
-                <option value="web">Web Session</option>
-                <option value="pasto">Pasto (Pastebin)</option>
-                <option value="voice">Voice (TTS)</option>
-                <option value="repl">REPL (Console)</option>
-              </select>
-              <button type="button" id="load-chats-btn" class="btn-secondary btn-sm" disabled>📋 Load Chats</button>
+            <label for="task-forward-targets">Forward Output to Channels (optional)</label>
+            <div class="forward-targets-container">
+              <div id="forward-targets-list"></div>
+              <button type="button" id="add-forward-target-btn" class="btn-secondary btn-sm" style="margin-top: 8px;">+ Add Forward Target</button>
             </div>
-            <input type="text" id="task-forward-to" placeholder="Chat ID or Session ID (appears when channel selected)" style="flex: 1;">
-            <small>Forward task output to a channel. For Telegram, select chats from the list. For Web, enter a session ID. For Pasto, use "pastebin" as the ID.</small>
-            <div id="chats-list" class="telegram-chats-list hidden"></div>
+            <small>Add multiple forwarding destinations. The task output will be sent to all configured channels.</small>
           </div>
           <div class="form-group">
             <label for="task-memory-expiration">Memory Expiration (optional)</label>
