@@ -1918,7 +1918,8 @@ class CrybotWeb {
     messageEl.dataset.originalContent = content;
 
     const avatar = role === 'user' ? 'U' : role === 'assistant' ? 'C' : '!';
-    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const now = new Date();
+    const time = now.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
     // Parse markdown for both user and assistant messages
     let renderedContent;
