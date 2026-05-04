@@ -123,7 +123,14 @@ module Crybot
           if msg_value
             msg = msg_value
             content_value = msg["content"]?
-            content = content_value.as_s if content_value
+            # content_value might be null (JSON::Any) instead of a string
+            if content_value
+              begin
+                content = content_value.as_s
+              rescue
+                # content_value is null, leave content as nil
+              end
+            end
 
             tool_calls_value = msg["tool_calls"]?
             if tool_calls_value && tool_calls_value.as_a?
