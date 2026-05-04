@@ -460,6 +460,10 @@ class CrybotWeb {
         } else if (channel === 'web') {
           loadChatsBtn.textContent = '📋 Load Sessions';
           forwardToInput.placeholder = 'Enter a web session ID';
+        } else if (channel === 'pasto') {
+          loadChatsBtn.disabled = true;
+          forwardToInput.value = 'pasto:pastebin';
+          forwardToInput.placeholder = 'Posts to pastebin service';
         } else if (channel === 'voice' || channel === 'repl') {
           loadChatsBtn.disabled = true;
           forwardToInput.value = channel + ':';

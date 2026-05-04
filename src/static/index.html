@@ -418,13 +418,14 @@
                 <option value="">-- No forwarding --</option>
                 <option value="telegram">Telegram</option>
                 <option value="web">Web Session</option>
+                <option value="pasto">Pasto (Pastebin)</option>
                 <option value="voice">Voice (TTS)</option>
                 <option value="repl">REPL (Console)</option>
               </select>
               <button type="button" id="load-chats-btn" class="btn-secondary btn-sm" disabled>📋 Load Chats</button>
             </div>
             <input type="text" id="task-forward-to" placeholder="Chat ID or Session ID (appears when channel selected)" style="flex: 1;">
-            <small>Forward task output to a channel. For Telegram, select chats from the list. For Web, enter a session ID.</small>
+            <small>Forward task output to a channel. For Telegram, select chats from the list. For Web, enter a session ID. For Pasto, use "pastebin" as the ID.</small>
             <div id="chats-list" class="telegram-chats-list hidden"></div>
           </div>
           <div class="form-group">
