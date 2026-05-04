@@ -227,20 +227,64 @@ module Crybot
         # Format the message once
         message = format_task_message(task.name, output)
 
-        # Forward to each target
+        # Track forwarding results
+        forwarding_results = [] of NamedTuple(target: String, success: Bool, url: String?)
+
+        # Forward to each target and track results
         targets.each do |target|
-          forward_to_single_target(task, target, message)
+          result = forward_to_single_target(task, target, message)
+          forwarding_results << result
         end
+
+        # Add forwarding report to the output
+        add_forwarding_report(task, forwarding_results)
       end
 
-      private def forward_to_single_target(task : TaskConfig, forward_target : String, message : String) : Nil
+      private def add_forwarding_report(task : TaskConfig, results : Array(NamedTuple(target: String, success: Bool, url: String?))) : Nil
+        # Add the forwarding report to the task's session
+        session_key = "scheduled/#{task.id}"
+        sessions = Session::Manager.instance
+
+        # Build a nice report message
+        report_lines = ["\n---\n**📤 Forwarding Report:**", ""]
+
+        results.each do |result|
+          if result[:success]
+            status = "✅ Success"
+            details = result[:url] ? " → #{result[:url]}" : ""
+          else
+            status = "❌ Failed"
+            details = " (channel not available)"
+          end
+
+          # Format the target name nicely
+          target_display = result[:target].split(":").first.capitalize
+
+          report_lines << "- **#{target_display}**: #{status}#{details}"
+        end
+
+        report = report_lines.join("\n")
+
+        # Add the report as a system message in the session
+        messages = sessions.get_or_create(session_key)
+        report_message = Providers::Message.new(
+          role: "assistant",
+          content: report,
+        )
+        messages << report_message
+        sessions.save(session_key, messages)
+
+        Log.info { "[ScheduledTask] Added forwarding report to session" }
+      end
+
+      private def forward_to_single_target(task : TaskConfig, forward_target : String, message : String) : NamedTuple(target: String, success: Bool, url: String?)
         Log.info { "[ScheduledTask] Forwarding to: #{forward_target}" }
 
         # Parse forward target: "telegram:chat_id", "web:session_id", "pasto:", "voice:", "repl:"
         parts = forward_target.split(":", 2)
         if parts.size < 2
           Log.warn { "[ScheduledTask] Invalid forward_to format: #{forward_target}" }
-          return
+          return {target: forward_target, success: false, url: nil}
         end
 
         channel_name = parts[0]
@@ -249,8 +293,9 @@ module Crybot
         Log.debug { "[ScheduledTask] Forwarding to #{channel_name} chat '#{chat_id}'" }
 
         message_to_send = message
+        pasto_url = nil
 
-        # If this is pasto, send it first so we can capture the URL
+        # If this is pasto, clear the URL before sending
         if channel_name == "pasto"
           Channels::PastoChannel.clear_url
         end
@@ -266,6 +311,11 @@ module Crybot
         if success
           Log.info { "[ScheduledTask] Successfully forwarded to #{channel_name}" }
 
+          # Capture pasto URL if available
+          if channel_name == "pasto"
+            pasto_url = Channels::PastoChannel.last_url
+          end
+
           # Save to session so it appears in web UI (only for channels with sessions)
           if channel_name != "pasto"
             session_key = "#{channel_name}:#{chat_id}"
@@ -278,11 +328,15 @@ module Crybot
 
             save_assistant_message_to_session(session_key, message_to_send)
           end
+
+          {target: forward_target, success: true, url: pasto_url}
         else
           Log.warn { "[ScheduledTask] Failed to forward to #{channel_name} (channel not available)" }
+          {target: forward_target, success: false, url: nil}
         end
       rescue e : Exception
         Log.error(exception: e) { "[ScheduledTask] Error forwarding to #{forward_target}: #{e.message}" }
+        {target: forward_target, success: false, url: nil}
       end
 
       private def format_task_message(task_name : String, output : String) : String
