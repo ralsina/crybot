@@ -67,16 +67,21 @@ module Crybot
           # Build the full title with date
           full_title = "#{title} - #{date}"
 
-          # Use Process.quote to properly escape the title for shell
-          quoted_title = Process.quote([full_title])[0]
+          # Properly quote the title for the remote shell
+          # We need to use shell quoting that will be preserved through SSH
+          quoted_title = full_title.gsub("'", "'\\\\''")
 
-          Log.debug { "[PastoChannel] Running: ssh pasto1.ralsina.me -p 2222 paste -l markdown -t #{quoted_title}" }
+          # Build the command as a string that SSH will execute
+          # This ensures the title is treated as a single argument by the remote shell
+          ssh_command = "paste -l markdown -t '#{quoted_title}'"
+
+          Log.debug { "[PastoChannel] Running: ssh pasto1.ralsina.me -p 2222 #{ssh_command}" }
 
           # Run the command with content via stdin
-          # Pass the title as a single properly quoted argument
+          # We pass the command as a single string to SSH
           process = Process.new(
             "ssh",
-            ["pasto1.ralsina.me", "-p", "2222", "paste", "-l", "markdown", "-t", full_title],
+            ["pasto1.ralsina.me", "-p", "2222", ssh_command],
             input: IO::Memory.new(content),
             output: Process::Redirect::Pipe,
             error: Process::Redirect::Pipe
