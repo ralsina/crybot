@@ -454,16 +454,6 @@ class CrybotWeb {
         this.addForwardTargetUI();
       }
     }
-
-      loadChatsBtn.addEventListener('click', () => {
-        const channel = channelSelect.value;
-        if (channel === 'telegram') {
-          this.loadTelegramChatsForForwarding();
-        } else if (channel === 'web') {
-          this.loadWebSessionsForForwarding();
-        }
-      });
-    }
   }
 
   setupCancelButton() {
