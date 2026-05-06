@@ -1,3 +1,5 @@
+There are better things and even those are rather garbage. Archived and dead.
+
 # Crybot
 
 Crybot is a modular personal AI assistant built in Crystal. It provides multiple interaction modes (REPL, web UI, Telegram bot, voice) and supports multiple LLM providers with extensible tool calling, MCP integration, skills, and scheduled tasks.
